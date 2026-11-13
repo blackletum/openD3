@@ -1,6 +1,6 @@
 # openD3 UI Visual Design
 
-Specification version 1.1, 13 November 2026. Status: implementation target; the
+Specification version 1.2, 13 November 2026. Status: implementation target; the
 vector replacement has not shipped. openD3 runs the stock Doom 3 GUIs today, set in
 the reconstructed TrueType faces and, on wide and tall screens, arranged by
 [layout patches](widescreen-layout.md) that follow the Remastered rules of
@@ -12,13 +12,15 @@ displays, in-world device screens, multiplayer overlays, loading screens and the
 console.
 
 Version 1.0 recorded a survey of the effective retail GUI scripts, interface art,
-fonts and materials, states the rules a vector replacement follows, and adds the
+fonts and materials, stated the rules a vector replacement follows, and added the
 [modern interface direction](#12-modern-interface-direction): viewing profiles,
 adaptive layout, controller and touch behaviour and an accessibility baseline. The
 [Interface Atlas](#14-the-interface-atlas) draws the same vocabulary as
 independently authored vector references, set in the
-[reconstructed TrueType faces](ttf-font-system.md). Version 1.1 brings the layout
-rules into line with the wide and tall layouts openD3 now ships.
+[reconstructed TrueType faces](ttf-font-system.md). Version 1.1 brought the layout
+rules into line with the wide and tall layouts openD3 now ships. Version 1.2 defines
+the dp, makes the scales and size classes of section 12 agree with it, and corrects
+figures that did not follow from the measurements.
 [Appendix D](#appendix-d-change-record) lists every change.
 
 ## Contents
@@ -319,6 +321,14 @@ specification are not in the patches:
 
 ### Density rules
 
+- **What a dp is.** A dp is the unit a viewing profile lays out in (section 12.2). On
+  Desk, Couch and Handheld the composition is fitted to the view, as the stock canvas
+  is: at 100% interface scale the view's shorter side is 720 dp, whatever its
+  resolution (1280x720 dp at 16:9, 960x720 at 4:3, 720x1280 in portrait). On a view
+  at least as wide as 4:3, `1 u` is therefore 1.5 dp, 1/480 of the view's height. On
+  Phone and Tablet a dp is the platform's density-independent pixel and nothing is
+  fitted; the size classes of section 12.3 arrange the same furniture in the dp the
+  screen has.
 - Geometry is authored in dp and rasterised at the display's density. A chamfer, a
   hairline and its glow keep their dp size at every resolution; nothing is a
   magnified bitmap.
@@ -328,8 +338,10 @@ specification are not in the patches:
   physical pixels so they never beat against the display; where 3 dp is fewer than
   two physical pixels, omit the scan lines.
 - Text is drawn from the TrueType faces at the size the display needs (section 5).
-- An interface scale and a text scale (section 12) multiply dp sizes; they never
-  change proportions inside a component.
+- The interface scale multiplies every dp size, text included, and so leaves fewer dp
+  in a fitted view: a 16:9 view is 1280x720 dp at 100%, 1024x576 at 125% and 853x480
+  at 150%. The text scale multiplies text sizes again, and rows grow with their text.
+  Neither changes proportions inside a component.
 
 ## 4. Colour, alpha and light
 
@@ -466,11 +478,23 @@ no brighter relative to the text beside it than it is in the stock.
 
 ### Contrast
 
-- Menu body text is white or `#99CCCC` on a `#2E4052` plate at 80% over black space:
-  a contrast ratio of at least 9:1 against the plate alone. Keep text on a plate or a
-  well; never set reading text directly on the planet.
-- The hint line rests at 20% by design. With a controller or keyboard it rests at 50%
-  (section 12.4), and the text backing option applies to it.
+- Menu body text is white or `#99CCCC` on a `#2E4052` plate at 80%, and what shows
+  through the plate sets the ratio:
+
+  | Behind the plate | White | `#99CCCC` | `#99FFFF` |
+  | --- | --- | --- | --- |
+  | Black space | 12.9:1 | 7.3:1 | 11.1:1 |
+  | The planet's median surface | 9.5:1 | 5.4:1 | 8.2:1 |
+  | The planet's lit face | 8.2:1 | 4.7:1 | 7.1:1 |
+  | The limb halo's peak | 8.0:1 | 4.5:1 | 6.9:1 |
+
+  Every reading colour stays at or above 4.5:1 in the worst case. Keep text on a plate
+  or a well; never set reading text directly on the planet.
+- `text.dim` (white at 50%) is 4.5:1 over black space and 3.4:1 over the planet. It
+  marks disabled labels and captions; do not set a sentence in it.
+- The hint line rests at 20% by design, which is 1.7:1: the dimmest text on the screen.
+  With a controller or keyboard it rests at 50%, 5.3:1 (section 12.4), and the text
+  backing option applies to it.
 - HUD digits are `#ABB2B2` over an arbitrary scene behind a 25% plate. The stock gives
   them a black copy offset by 1 and 2 u; the replacement keeps the copy and adds the
   optional backing of section 12.7.
@@ -655,7 +679,10 @@ section 10.14.
 The retail atlases cover Latin-1 only, and codes 127 to 159 draw a hollow box. The
 TrueType faces add the Windows-1252 punctuation the stock lacked, Latin Extended-A and
 B, Vietnamese, Greek, Cyrillic, Hebrew and Arabic forms, built from each face's own
-parts where a letter can be composed and from a weight-matched donor otherwise. A
+parts where a letter can be composed and from a weight-matched donor otherwise. The
+engine does not yet shape Arabic or lay out right-to-left text, and text input above
+ASCII is not implemented ([font system](ttf-font-system.md)); until it does, the
+leading and trailing sides of this document are left and right. A
 translated string may be longer than the stock's: a control grows along its middle
 section and keeps its ends, and a label that cannot fit its row wraps to a second line
 before it is ever scaled down.
@@ -924,7 +951,8 @@ pale-blue outline of light, over a dimmed scene.
 | Buttons | `QOSBtn1`, `QOSBtn2` | plate + (60, 100) and (210, 100); sub-menu items (6.4) 96 x 19 u | 6.4 |
 
 Proportions: the plate is 57% of the canvas width and 30% of its height; the title band is 17% of
-the plate height; the buttons take the bottom 22%, centred at 30% and 71% of the plate width. The
+the plate height; the buttons' plates (a 19 u band in a 32 u cell) lie between 74% and 87% of
+the plate height, centred at 30% and 71% of its width. The
 CD-key box is the same shell 204 u tall; the advanced server options shell is 440 x 320 u.
 
 Rules for the replacement:
@@ -1446,8 +1474,8 @@ of `384, 416, -256, 64` places texel x at screen x 640 − x.
 | 5 | Plate fill | `BgLA` | mirrored `BgL`, 20 u shorter | Panel shown |
 | 6 | Reserve box | `Lines1A` (`Lines1B` for grenades) | visible x 570–629, y 446–462 | Panel shown |
 | 7 | Clip box | `Lines2A` | visible x 517–572, y 443–462 | Panel shown |
-| 8 | Clip digits | `ammovalue2Black`, `ammovalue2` | 504, 436, 80, 32 | Rounds in the clip |
-| 9 | Reserve digits | `ammovalue3Black`, `ammovalue3` | 559, 441, 80, 20 | Total minus clip |
+| 8 | Clip digits | `ammovalue2Black`, `ammovalue2` | 504, 436, 80, 32 (shadow at 503, 438) | Rounds in the clip |
+| 9 | Reserve digits | `ammovalue3Black`, `ammovalue3` | 559, 441, 80, 20 (shadow at 558, 442) | Total minus clip |
 | 10 | Weapon pips | `Weapon11`, `Weapon0` … `Weapon10` | 10x6 each at y 471; x 526, then 535 to 625 at 9 u pitch | Weapons owned; current weapon |
 | 11 | Weapon name | `WeapName` | 295, 460, 220, 20, right-aligned | Weapon change |
 | 12 | Weapon icon | `WeapIcon0` … `WeapIcon11` | 64x32 at 560, 405 or 410; 32x32 at 580, 405 or 410 | Weapon change |
@@ -1520,12 +1548,12 @@ unless a row says otherwise. Alpha ranges are the limits of the idle flicker (se
 | --- | --- | --- |
 | `hud.frame` | `#407366` at 41–50% | Plate frames, short grenade frame; side panels at 33–40% |
 | `hud.frame.low` | `#337366` at 27–33% | Stamina frame, pip-row frame |
-| `hud.plate` | `#174242` at 23–25% | Plate fill; side panels at 31–33% |
+| `hud.plate` | `#174242` at 23–25% | Plate fill; side panels at 30–33% |
 | `hud.box` | `#4CCCB2` at 20% | Readout boxes and their pictograms |
 | `hud.shadow` | `#000000` at 30% | Frame shadow, offset +1, +1 u |
 | `hud.digit` | `#ABB2B2` at 100% | Health and clip digits |
 | `hud.digit.minor` | `#596B66` at 100% | Armour and reserve digits |
-| `hud.digit.shadow` | `#000000` at 50% | Shadow copy of digits, offset +1, +2 u |
+| `hud.digit.shadow` | `#000000` at 50% | Shadow copy of digits: offset 1, 2 u under the large digits (health, clip) and 1, 1 u under the small ones (armour, reserve), toward the screen centre |
 | `hud.caption` | `#406666` at 100% | Location caption, weapon name |
 | `hud.pip` | `#009999` at 40% | Weapon owned |
 | `hud.pip.current` | `#009999` at 90% | Weapon in hand |
@@ -1545,7 +1573,8 @@ unless a row says otherwise. Alpha ranges are the limits of the idle flicker (se
 | `hud.cross.hit` | `#CC0000` at 100% and `#994C00` at 60% | Crosshair arcs and circle on a hit |
 
 The persistent palette is one desaturated blue-green family, hue 165–180 degrees, with a grey-white
-for digits. Nothing persistent is opaque; the brightest idle stroke peaks at 50%.
+for digits. No persistent frame, plate or box is opaque: the brightest idle stroke peaks at 50%.
+Only the digits, the location caption and the pip of the weapon in hand are drawn near full strength.
 
 **Warning ramp.** Warning is a hue change on the same art: teal, then amber, then red. Amber
 breathes slowly; red blinks at 500 ms. No warning adds an element.
@@ -1596,8 +1625,8 @@ launcher 1.
 | `notice.info.line` | `#8AEDFF` at 100% | Info box stroke |
 | `notice.info.fill` | `#006BC5` at 30% | Info box fill |
 
-Orange `notice.title` is the player's own data: it marks objective and item titles here and in the
-PDA and nothing else.
+Orange `notice.title` is the player's own data: it marks objective, item and tip titles here and in the
+PDA, and the download reminders blink to it. Nothing else is orange.
 
 ### 10.3 Shape and type
 
@@ -1616,7 +1645,7 @@ u from the top-left of the bounds, then as fractions of the bounds:
 | Leading vertical stub | x 0, y 18 to 22 | |
 | Bottom-leading chamfer | 0, 22 to 7, 28 | 7 x 6 u |
 | Bottom edge | y 28–29, x 7 to 131 | |
-| Trailing edge, leaning, top further out | 131, 28 up to 143, 3 | slope 0.46 (25 degrees) |
+| Trailing edge, leaning, top further out | 131, 29 up to 143, 3 | slope 0.46 (25 degrees) |
 
 The stroke is 3 u on the leaning edges and 2 u on the horizontal edges, with a glow falloff of about
 3 u to transparency. The ammunition frame is the same drawing mirrored and 20 u shorter (123 u
@@ -1671,7 +1700,8 @@ top: −0.33 leans the digits forward by 18.3 degrees, 0.33 backward. Notices ar
 renders lower case as small capitals, so short lower-case labels appear as small caps.
 
 Shadows are hand-placed copies, not an effect: a second copy of the text in black, at 50% and offset
-+1, +2 u for the digits, at 60% and offset +1, +1 u for notices. The engine text shadow is used by
+1, 2 u under the large digits and 1, 1 u under the small ones (toward the screen centre), at 60%
+and offset +1, +1 u for notices. The engine text shadow is used by
 the tip alone.
 
 **Replacement rules.**
@@ -1791,7 +1821,7 @@ ring and four faint arcs inside a hairline circle, 32 u across and centred on 32
 
 | Part | Window | Geometry (u from the centre) | Colour |
 | --- | --- | --- | --- |
-| Dot | `crosshairCenter` | 1–2 u across | `hud.cross.dot` |
+| Dot | `crosshairCenter` | 3 u across | `hud.cross.dot` |
 | Ring | `crosshairCenter2` | radius 5.5, band 2 | `hud.cross` at 50% |
 | Arcs | `crosshairLight` | radius 8.5, band 2; one arc of 55–60 degrees per diagonal quadrant, gaps of about 30 degrees at the four axes; arcs thicken at their ends | `hud.cross` at 20% |
 | Circle | `crosshairFrame` | radius 11, hairline; a pair of short radial ticks at top and bottom, thickened spots at the sides | `hud.cross` at 10% |
@@ -1805,7 +1835,7 @@ ring and four faint arcs inside a hairline circle, 32 u across and centred on 32
 
 **Device cursor rule.** When the player's aim lands on an interactive world GUI the crosshair is not
 drawn. The device's own cursor is drawn on the surface instead, in the surface's space and at its
-scale: an arrow about 13 x 19 px in a 32 px tile. A sound marks entering and another leaving. The
+scale: an arrow 12 x 17 px in a 32 px tile (14 x 20 with its soft edge). A sound marks entering and another leaving. The
 crosshair returns as soon as focus leaves the surface. The stock HUD has no separate "use" or hand
 cursor of its own.
 
@@ -1910,7 +1940,7 @@ near-black under a faint grid.
 | File header | 0, 119, 144, 32 | Caption box above the list |
 | File list | 1, 155, 125, 223 | One row per collected PDA: the player's own first, then newest first; PDAs already read are greyed |
 | Main frame | 145, 31, 416, 160; 505 wide on the e-mail tab | Frame with an L bracket; upper tab content |
-| User data | 180, 46, 353, 132 | Fingerprint and retina block 128 x 128 u; five label and value rows at 26 u pitch, each indented 10 u further than the one above (labels at x 104, 115, 126, 134, 144; values at 110, 120, 130, 140, 150) |
+| User data | 180, 46, 353, 132 | Fingerprint and retina block 128 x 128 u; five label and value rows at 26 u pitch, each indented about 10 u further than the one above (labels at x 104, 115, 126, 134, 144; values at 110, 120, 130, 140, 150) |
 | Lower panel | visible x 172–535, top edge at y 196 (its pieces' rects span x 160–547 from y 171, 150 or 256 tall) | Audio logs (another person's PDA) or mission objectives (the player's own) |
 | E-mail | 174, 46, 450, 360 | Header bar 442 x 15; column headers at x 2, 125, 360 (120, 232, 84 wide, 15 tall); list 442 x 90, tab stops 2, 125, 362; reader below: title bar 445 x 22, body 445 x 170 |
 | Video | 174, 46, 356, 132 | Header 354 x 15; list 350 x 106; player below: title 353 x 22, picture 210 x 170 at 32, 56, info text 135 x 140 at 244, 60, play at 250, 205 and stop at 318, 205 (64 x 16 each) |
@@ -1968,7 +1998,7 @@ everything. The PDA is cooler and brighter than the HUD; orange appears only on 
 
 | Piece | Geometry |
 | --- | --- |
-| L bracket (main frame) | A top bar 10 u thick and a leading bar 10 u thick meet at a corner cut about 5 x 5 u; the top bar carries a split inset tab; the leading bar thins to a hairline below about 97 u. The other three sides are hairlines with 3 u corner cuts; the bracket weight repeats at the bottom-trailing corner. Grey gradient stroke |
+| L bracket (main frame) | A top bar 9 u thick and a leading bar 9 u thick meet at a corner cut about 5 x 5 u; the top bar carries a split inset tab; the leading bar thins to a hairline below about 97 u. The other three sides are hairlines with 3 u corner cuts; the bracket weight repeats at the bottom-trailing corner. Grey gradient stroke |
 | Tab button | Bar 16 u tall: a 12 u body over a separate 3 u underline, trailing end cut 3 u |
 | Active-tab bar | 12 u tall, fading in from its leading end over about 31 u, trailing end cut 2 u |
 | Tab marker | 6 x 11 u block, `#CCFFFF` at 70% |
@@ -2002,7 +2032,8 @@ only. The stock scroll-bar art could not be determined; the replacement draws a 
 | Strip scroll | Steps of 41–44 u with no tween |
 | Tutorial | At 300 ms black curtains close from top and bottom to meet at y 170 over 1000 ms, accel(0.1, 0.8), to 70%. Box at 1200 ms, title at 1700 ms, text unrolls over 500 ms from 1900 ms. Dismissable from 10 000 ms; fades in 500 ms |
 
-**Sounds.** The PDA is the one place in the game where hovering sounds: it is a device with keys.
+**Sounds.** The PDA and the death screen (section 9.8) are the only interfaces where hovering sounds: the PDA is
+a device with keys.
 
 | Sound | Event |
 | --- | --- |
@@ -2108,17 +2139,17 @@ art instead of adding anything. Sources: `guis/mphud.gui`, `guis/chat.gui`, `gui
 | `mp.lag` | #FF4C00 | connection-lost icon |
 | `mp.player.0` .. `mp.player.4` | #404040, #FF0000, #00CC1A, #3380CC, #FFCC1A | player colour by skin: default, red, green, blue, yellow |
 
-All plate and frame art is white shape tinted by the token, straight alpha. The only additive layer
-is the scan-line overlay on the ammunition plate (white at 15%, masked to the plate).
+All plate and frame art is white shape tinted by the token, straight alpha. The only additive layers
+are the scan-line overlay on the ammunition plate (white at 15%, masked to the plate) and the lagometer.
 
 **Stock layout.**
 
 | Element | Rect (u) | Construction |
 | --- | --- | --- |
-| Status plate | ink 6, 448, 143, 29 (art rect 0, 426, 256, 64) | Outline `mp.line` over `mp.line.shadow`, fill `mp.plate.fill`, two cells: armour 11..70 x 456..471, health 68..143 x 453..471 in `mp.cell.line` |
+| Status plate | ink 6, 448, 143, 29 (art rect 0, 426, 256, 64) | Outline `mp.line` over `mp.line.shadow`, fill `mp.plate.fill`, two cells: armour 11..70 x 456..472, health 68..143 x 453..472 in `mp.cell.line` |
 | Health numeral | 90, 446, 39, 32 | Micro 0.38, centred, shadow 1, shear 0, -0.33 |
 | Armour numeral | 28, 451, 34, 32 | Micro 0.25, centred, shadow 1, shear 0, -0.3 |
-| Ammunition plate | ink 526, 448, 107, 28 (art rect 512, 416, 128, 64) | Outline, fill, scan lines; hidden for fists, chainsaw and flashlight |
+| Ammunition plate | ink 526, 448, 107, 29 (art rect 512, 416, 128, 64) | Outline, fill, scan lines; hidden for fists, chainsaw and flashlight |
 | Ammunition numeral | 538, 449, 80, 20 | Micro 0.32, centred, shadow 1, shear 0, 0.33; reads clip/reserve |
 | Timer plate | art rect 540, -44, 128, 64 | The ammunition plate's art pushed up so only its lower 19 u show |
 | Timer | 570, 0, 100, 30 | Default 0.25, `mp.timer.text`, shadow 1; minutes:seconds, or a short state word |
@@ -2139,11 +2170,12 @@ is the scan-line overlay on the ammunition plate (white at 15%, masked to the pl
 
 | Plate | Outline |
 | --- | --- |
-| Status | Top edge at y 448 from x 69 to 148, stepping down 2 u to y 450 from x 14 to 68; leading edge from 12, 452 to 6, 466; cut corner 6, 470 to 13, 476; bottom edge y 476 from x 13 to 137; trailing edge from 149, 451 to 137, 476 |
+| Status | Top edge at y 448 from x 71 to 146, stepping down 2 u to y 450 from x 14 to 68; leading edge from 12, 452 to 6, 466; cut corner 6, 470 to 13, 476; bottom edge y 476 from x 13 to 137; trailing edge from 149, 451 to 137, 476 |
 | Ammunition | Top edge y 448 from x 526 to 622; leading edge from 526, 448 to 537, 476; trailing edge from 622, 448 to 633, 476; bottom edge y 476 |
 
-Both are parallelograms about 21 degrees off vertical, mirrored: the status plate leans toward the
-leading edge at its base, the ammunition plate toward the trailing edge. Fills sit 4 u inside the
+Both are parallelograms, mirrored: the status plate leans toward the leading edge at its base, the
+ammunition plate toward the trailing edge. The status plate is the single-player plate's art
+(section 10.3), so its edges lean 23 and 25 degrees; the ammunition plate's lean 21 degrees. Fills sit 4 u inside the
 outline. The numerals' shear of 0.33 (about 18 degrees) follows each plate's lean.
 
 **States.** The art never changes; its tint does.
@@ -2155,7 +2187,7 @@ outline. The numerals' shear of 0.33 (about 18 degrees) follows each plate's lea
 | Armour 0 | Cell lines #FFA61A pulsing 30 / 20 / 18% every 2000 ms; numeral #998033 |
 | Clip low | Outline #994C00 pulsing 62 / 42 / 37% every 1000 ms; fill #805200; numeral #FF6600 at 80% |
 | Clip empty | Outline #FF2600 pulsing 75 / 50 / 45% every 500 ms; fill #660D00; numeral #FF0000 at 80% |
-| Weapon in the strip | Not owned: tinted red, about #FF3333; owned: teal, #66BFB3 to #4DA699; both breathe every 500 ms |
+| Weapon in the strip | Not owned: tinted red, about #FF3333; owned: teal, #66BFB3 to #4CA699; both breathe every 500 ms |
 
 **Timings.**
 
@@ -2178,7 +2210,7 @@ outline. The numerals' shear of 0.33 (about 18 degrees) follows each plate's lea
 4. Numerals are Micro with the stock shear; keep tabular spacing so a changing count does not move.
 5. **Classic** keeps the stock rects on the centred 4:3 canvas.
 6. **Remastered** anchors by corner and keeps the stock insets: the status plate 6 u from the leading
-   edge and 3 u from the bottom; the ammunition plate 7 u from the trailing edge and 4 u from the
+   edge and 3 u from the bottom; the ammunition plate 7 u from the trailing edge and 3 u from the
    bottom; the score rows 1 u from the trailing edge and 24 u from the top, with the frame still
    open to that edge; the timer above them in the top-trailing corner; the lag icon 5 u from the
    top-leading corner.
@@ -2552,7 +2584,8 @@ squeeze the sheet 2:1 horizontally. The sheet has no baked shadow.
 6. The frame-rate counter stays white big cells in the top-trailing corner. In **Remastered** it and
    the debug lines anchor 5 u from the trailing edge; the console spans the full width of the view
    and keeps its 8 u text inset, with as many columns as fit.
-7. The stock engine draws no screenshot flash, recording mark or network graph. The replacement adds
+7. The stock engine draws no screenshot flash and no recording mark, and its only network graph is the
+   multiplayer HUD's lagometer (section 10.11). The replacement adds
    none.
 
 ## 11. In-world device GUIs
@@ -2623,14 +2656,16 @@ of all is `guis/screens/cpu_top.gui` (263), a ten-window breathing wordmark.
   notice in Bank at 1.1 and the owner's name.
 - **Ambient loops.** A cyan-tinted tube face, a wordmark that breathes on a 1 s table, sub-windows
   that appear and disappear on a 3,900 to 13,000 ms timeline, a spike chart, a grid, one light sweep
-  and a glare band. They carry no dirt, no scan lines and no bezel shadow.
+  and a glare band. The `cpu_*` loops that make up most of the family carry no dirt, no scan lines
+  and no bezel shadow.
 - **Broken screens.** Failure text in Default at 2.0, `#FF3333`; a fast light bar; static at a constant
   40%; erratic flicker tables (11.7). `cracked*` devices are glass cracks and dirt over nothing.
 - **Video.** The cinematic sits at 31, 24, 577, 428 on a black plate 10, 10, 618, 456. The tint is
   nearly neutral (`#0D1A1A`) so footage reads true. No cursor.
 - **Cameras.** The remote view fills 10, 10, 620, 460 between amber frame bars 610 x 60 u (top) and
   610 x 72 u (bottom). The selector is six text rows of 500 x 50 u at a 52 to 54 u pitch.
-- **Signs.** One text line from a level parameter, Default at 0.8 to 1.0, green or red, on a plate
+- **Signs.** One text line from a level parameter, Default at 0.8 to 1.0 on the marquee (other signs
+  run to 2.5, section 11.5), green or red, on a plate
   mirrored left and right. The marquee surface is 110.8 x 11.4 world units, so its canvas is stretched
   7.3 times wider than tall.
 - **Hell.** No interface structure: a pentagram plate, three drifting face layers, scrolling blood,
@@ -2658,10 +2693,10 @@ finishing layer at all.
 | 3 | Rim glow | white, 37% at the rim falling to 0 over 21% of each side | alpha | (85% to 100%) / 6, i.e. 14% to 17% | 15% at 0.4 s | 266 |
 | 4 | Bezel shadow | black, 60%, 36%, 18%, 6% on four texels inside a clear border texel; 3.9% of each side | alpha | 100% (421 of 481) | none | 400 |
 | 5 | Top highlight | flat across; 14.5% white at the top falling linearly to 0 at 69% of the height | additive | tint colour, alpha ignored | none | 373 |
-| 6 | Scan lines | one lit row in three; 5.6 u pitch (7.5 u for the older texture) | additive | 2.5/255 per line (2/255 older) | scrolls 0.02 or 0.04 repeats per second | 356 |
+| 6 | Scan lines | one lit row in three; 5.6 u pitch where the tile repeats twice down the canvas, 7.5 u at 1.5 times | additive | 2.5/255 per line (2/255 older) | scrolls 0.02 or 0.04 repeats per second | 356 |
 | 7 | Scan pulse | a rolling sawtooth band in a 3,000 u tall window | alpha | 1% to 3% | scrolls 0.2 repeats per second | 48 |
 | 8 | Alert rim | hairline frame 0.8% in from the edge with a glow 7% deep | additive | `#FF8080` at 100% when shown | flashed by error timelines | 73 |
-| 9 | Dirt | black smudges, heaviest at the top and edges; coverage 26% to 52% | alpha | 50% (138), 20% (67), 100% (60), 30% (51), 80% (46) | none | 288 |
+| 9 | Dirt | black smudges, heaviest at the top and edges; coverage 14% to 52% | alpha | 50% (138), 20% (67), 100% (60), 30% (51), 80% (46) | none | 288 |
 | 10 | Glare | white band: bright edge 9% from the top, gone by 34%, inset 5% each side; faint echo 8% above the bottom | alpha | 10% (97), 20% (70), 15% (62), 5% (34) | 8% at 0.33 s | 322 |
 | 11 | Vignette | black radial, 78% at edge midpoints, 3% at the centre | alpha | 40% (45), 20% (38) | none | 117 |
 
@@ -2753,8 +2788,9 @@ T-junctions and tabs where the source has them. This is the machinery frame; do 
 #### L-bracket frame
 
 One corner piece: a heavy bar along the top (about 3/16 of the piece's height) and a heavy bar down
-one side (about 1/16 of its width), with a faint hairline closing the other two sides. Mirrored into
-four quadrants of 626 x 276 u it frames transfer and office panels in `#99CCCC` at 100%.
+one side (about 1/16 of its width), with a faint hairline closing the other two sides. Four mirrored
+copies of 626 x 276 u, one for each corner, overlap to frame transfer and office panels in
+`#99CCCC` at 100%.
 Rules: corners are square. The four brackets meet at the centre lines; keep the stock asymmetry
 between the heavy top/bottom bars and the lighter side bars.
 
@@ -2798,9 +2834,9 @@ watermark). It is never drawn at full opacity and never in a brand colour.
 | Status pulse | a text or plate whose alpha or colour loops | 1,200 ms (`Text2` in `guis/controlpanels/securitylock.gui`); 1 s table loops on ambient screens | 1,035 looping timelines in 300 files |
 | Level and progress bars | capsule bars; scrolling bar strips | ten bars on 400 to 2,400 ms loops (`Bar1`.. in `guis/screens/scan4.gui`) | charts and bars in 43 files |
 | Keypad key | flat plate, centred digit in Micro 0.9 | 96 x 64 u; plate white at 10%, digit white at 40% | 8 keypad files |
-| Warning stripe | a stripe pattern tiled 7 times across, scrolling 0.05 repeats per second, tinted by the device | 28 uses | 16 files |
+| Warning stripe | a stripe pattern tiled 7 times across, scrolling 0.05 repeats per second, tinted by the device | 28 uses | 16 files (19 with its variants) |
 | Moving arrows | a blurred chevron tiled 4 times, scrolling 2.5 repeats per second, alpha breathing on a 1 s table | 161 x 264 u on lift panels | 18 files |
-| Tick strips | rows of evenly spaced marks, 8 texels tall | 192 uses of the commonest strip | 74 files |
+| Tick strips | rows of evenly spaced marks, 8 texels tall | 192 uses of the commonest strip | 74 files (112 with all four strips) |
 | Hex and square grids | thin tiled lines; hex grid tiled 9 x 9 at 7% | coverage 17% and 23% | 30 and 115 files |
 
 ### 11.4 Palettes
@@ -2921,7 +2957,7 @@ Vocabulary. State is said three ways at once: a word, a colour and a change in t
 | "RESTRICTED ACCESS" / "GENERAL ACCESS" | 9 / 20 | state line under the location |
 | "SECURITY DOOR", "LOCK" | 22, 24 | title slab and badge |
 | "CLICK TO EXIT", other "CLICK ..." | 23, 39 in all | direct instruction on the button |
-| "TRANSFER ..." | 81 | transfer panels |
+| "TRANSFER ..." | 81 | transfer panels and the lifts and doors that lead to them |
 | "WARNING", "CAUTION", "ERROR" | 31, 7, 23 | alarms |
 | "ONLINE", "OFFLINE", "ACTIVE", "STANDBY" | 35, 28, 46, 12 | machine state |
 | "UAC" | 42 | footer mark |
@@ -2949,7 +2985,7 @@ glass.
 | Focus | a trace of 80 world units along the view; an interactive device hit by it takes focus |
 | Who takes focus | only devices with at least one click handler (221 files). Display-only devices never take focus: no cursor, no hover, weapon stays up |
 | Cursor | moved to the hit point each frame; drawn 64 x 64 u, white, untinted, above the finishing stack |
-| Cursor art | arrow, visible 26 x 38 u; hand over a clickable window, visible 28 x 34 u |
+| Cursor art | arrow, 24 x 34 u; hand over a clickable window, 24 x 30 u (28 x 40 and 30 x 36 u with their soft edges) |
 | Focus hold | 500 ms after the last hit |
 | Enter and leave | the device runs its activate and deactivate scripts; the player hears an enter and an exit sound |
 | Weapon and crosshair | the weapon lowers; the crosshair is not drawn |
@@ -2974,8 +3010,9 @@ Hover and press:
 - 134 of 221 interactive files define hover. Lift call panels and keycard scanners mostly have none.
 - A second full-canvas click layer plays the error sound when the action is unavailable.
 
-Button sizes: 73 click targets cover the whole canvas, in 55 files. The rest have a median of
-254 x 110 u; heights run 59 u (first quartile), 86 u (median), 233 u (third quartile); the tenth
+Button sizes: 73 click targets cover the whole canvas, in 55 files. Of the rest, the middle
+button by area is 254 x 110 u; taken alone, heights run 59 u (first quartile), 86 u (median) and
+233 u (third quartile); the tenth
 percentile by area is the 95 x 64 u keypad key. 281 of 499 click windows are the label itself.
 
 Sounds are sent as commands to the game; hover is silent.
@@ -3028,21 +3065,21 @@ Devices boot, breathe, sequence and loop. 9,533 timed handlers drive 1,576 windo
 | Status pulse | two or three steps that swap alpha or colour, then reset | `Text2`, `guis/controlpanels/securitylock.gui`, 1,200 ms |
 | Hover pulse | the hovered plate is replaced by a copy on a 300 ms colour loop | `Background2a`, `guis/doors/doorlock.gui` |
 | Response sequence | idle until a click resets it: lock input, expand a plate, stagger lines by 100 ms, hold, collapse, restore, unlock | `AccessDenied`, `guis/doors/doorlock.gui`, 4,500 ms |
-| State conversion | started by a trigger: swap rings at 50 ms steps, cross-fade bars in 400 ms, replace the status word | `AccessGranted`, `guis/doors/doorlock.gui` |
+| State conversion | started by a trigger: swap rings at 0, 50, 100 and 300 ms, cross-fade bars in 400 ms, replace the status word | `AccessGranted`, `guis/doors/doorlock.gui` |
 | Process | 30 or more steps through read-outs, bars and messages | `Anim`, `guis/controlpanels/airlock_outer.gui`, 6,000 ms |
 | Boot | staged lines revealed one by one, ending in a ready state | `guis/delta1/datalink.gui` (94 timed handlers) |
 | Screen loop | one window cycling sub-windows | `Anim`, `guis/screens/cpu_top.gui`, 3,900 ms |
 | Rolling text | a wide text window moved on a long loop | `TextScrollClip`, `guis/controlpanels/healthstation.gui`, 24,000 ms |
 
-697 timeline windows are idle until a script resets them. 1,035 loops reset themselves, in 300
-files.
+Of the 1,576 timeline windows, 697 are idle until a script resets them and 1,035 reset themselves,
+in 300 files; at least 156 do both, waiting for a trigger and then looping.
 
 | Transition duration | Count | | Loop period | Loops |
 |---|---|---|---|---|
 | under 50 ms | 6 | | under 300 ms | 42 |
 | 50 to 150 ms | 964 | | 0.3 to 1.05 s | 439 |
 | 150 to 250 ms | 2,303 | | 1.05 to 2.05 s | 321 |
-| 250 to 350 ms | 2,744 | | 2 to 4 s | 117 |
+| 250 to 350 ms | 2,744 | | 2.05 to 4 s | 117 |
 | 350 to 550 ms | 4,300 | | 4 to 8 s | 40 |
 | 0.55 to 1.05 s | 1,569 | | 8 to 16 s | 54 |
 | 1.05 to 2.05 s | 368 | | over 16 s | 22 |
@@ -3069,7 +3106,8 @@ Flicker separates healthy from broken:
 | broken | 1, 0.2, 0.6, 0.1, 0.8, 0.4 | 2 s | erratic | broken screens |
 | demonic | 12 values, 0.3 to 1 | 2 to 3.3 s | erratic | hell faces, corrupted text |
 
-Healthy devices flicker 8% to 33% at 1 to 3 Hz on two-value tables. Broken and demonic devices use
+Healthy furniture (glare, rim, static) flickers 8% to 33% at 1 to 6 Hz on two-value tables, and healthy
+text breathes on a slow one. Broken and demonic devices use
 the multi-value tables. That difference alone signals a screen that is wrong.
 
 Rotation and scroll:
@@ -3219,28 +3257,60 @@ own interface and text scale choices always override the profile defaults.
 
 | Profile | Devices | Viewing distance | Primary input | Interface / text scale | Minimum target |
 | --- | --- | --- | --- | --- | --- |
-| Desk | Monitors, laptops | 50 to 80 cm | Mouse and keyboard | 100% / 100% | 30 dp |
+| Desk | Monitors, laptops | 50 to 80 cm | Mouse and keyboard | 100% / 100% | 30 dp; stock list rows keep their 13 to 14 u |
 | Couch | Televisions | 2 to 3 m | Controller | 150% / 125% | Focus-driven; 40 dp rows |
 | Handheld | Steam Deck and similar PCs | 30 to 40 cm | Controller, touch | 125% / 110% | 48 dp for touch |
 | Phone | Phones in landscape or portrait | 25 to 35 cm | Touch, controller | 100% / 100% at native density | 48 dp |
 | Tablet | Tablets and foldables | 35 to 50 cm | Touch, controller, keyboard | 100% / 100% at native density | 48 dp |
 
-The stock menu sets nearly all of its text at 12 u, an 18 dp em at the reference: about
-20 arc-minutes at a desk. The Couch and Handheld defaults bring the same text to 22 to
-28 arc-minutes. Stock option rows are 16 u (24 dp) tall on a 23 to 25 u pitch; the
-replacement keeps the drawn plate and grows its hit region to the profile's minimum
-target, filling the pitch.
+The stock menu sets nearly all of its text at 12 u, an 18 dp em. In a fitted view that
+is 2.5% of the view's height, so its apparent size follows the display and the
+distance; the two scales multiply (section 3), and the defaults are chosen to hold it
+between 25 and 45 arc-minutes.
+
+| Display | Distance | 12 u em, unscaled | Profile, interface x text | 12 u em, scaled |
+| --- | --- | --- | --- | --- |
+| 24-inch monitor | 65 cm | 40 arc-minutes | Desk, 100% x 100% | 40 |
+| 15.6-inch laptop | 55 cm | 30 | Desk, 100% x 100% | 30 |
+| 55-inch television | 2.5 m | 24 | Couch, 150% x 125% | 44 |
+| 7-inch handheld | 35 cm | 23 | Handheld, 125% x 110% | 32 |
+| Phone | 30 cm | 33 (18 platform dp) | Phone, 100% x 100% | 33 |
+| Tablet | 40 cm | 25 (18 platform dp) | Tablet, 100% x 100% | 25 |
+
+Stock option rows are 16 u (24 dp) tall on a 23 to 25 u pitch, 34.5 to 37.5 dp. The
+replacement keeps the drawn plate and grows its hit region to fill the pitch. Where the
+pitch after scaling is still under the profile's minimum target (43 to 47 dp on
+Handheld; 34.5 to 37.5 dp on Phone and Tablet), the pitch itself grows to the target,
+in that profile whatever input is in use, so that changing input never moves the
+layout.
 
 ### 12.3 Size classes and adaptive structure
 
-Size classes are evaluated on the safe area in dp after the interface scale.
+Size classes are evaluated on the safe area in dp after the interface scale, in this
+order: the first whose condition holds applies.
 
 | Class | Condition | Structure |
 | --- | --- | --- |
-| Compact height | Height below 600 dp, width at least 720 dp | The navigation band keeps its place at the bottom with its three buttons; page plates open above it at full canvas width; the logo yields to an open page as in the stock |
+| Compact height | Height below 720 dp, width at least 720 dp | The navigation band keeps its place at the bottom with its three buttons, their middles shortened to fit the width; page plates open above it at full canvas width and scroll their rows when they are taller than the space, with the title, rule and apply bar staying in view; the logo yields to an open page as in the stock |
 | Compact width | Width below 960 dp | One column. The navigation band's three buttons stack as three sub-menu items above the bottom strip; a page plate spans the width between 12 dp gutters; labels sit above their values |
 | Regular | Width 960 to 1439 dp | The stock composition on the centred canvas |
 | Expanded | Width 1440 dp and above | The stock composition; frame strips and backdrop reach the view's edges; a detail column may open on the trailing side of a page plate, joined by a bridge stroke |
+
+The stock composition is 720 dp tall, so Regular and Expanded exist only at that
+height: a fitted view with an interface scale above 100% is Compact height.
+
+| View | Safe area | Class |
+| --- | --- | --- |
+| Desk, 16:9, 100% | 1280x720 dp | Regular |
+| Desk, 21:9, 100% | 1680x720 dp | Expanded |
+| Desk, 4:3, 100% | 960x720 dp | Regular |
+| Desk, portrait 9:16, 100% | 720x1280 dp | Compact width |
+| Handheld, 16:10, 125% | 922x576 dp | Compact height |
+| Couch, 16:9, 150% | 853x480 dp | Compact height |
+| Phone, landscape | about 800x360 dp | Compact height |
+| Phone, portrait | about 360x800 dp | Compact width |
+| Tablet, landscape | about 1280x800 dp | Regular |
+| Tablet, portrait | about 800x1280 dp | Compact width |
 
 Compact layouts keep the chamfer sizes, hairlines, type sizes and construction
 choreography of the regular layout. They change where a component sits, never how it
@@ -3305,8 +3375,11 @@ The cursor never snaps (section 11.6).
 
 ### 12.6 Touch
 
-- Hit regions are at least 48 dp with 8 dp between neighbours. A drawn piece may be
-  smaller; its hit region grows instead.
+- Hit regions are at least 48 dp. A drawn piece may be smaller; its hit region grows
+  instead. Separate controls keep 8 dp between their regions; the rows of a list or a
+  page abut, at a pitch of at least 48 dp (section 12.2). Stock pitches under that are
+  the sub-menu items (20 u, 30 dp), the option rows (23 to 25 u) and list rows (13 to
+  14 u, about 20 dp).
 - Touch-down shows the hover treatment at once; release inside the region acts and
   plays the press flash. There is no hover-only information.
 - Lists scroll by drag with the stock scroll bar as an indicator. Sliders drag along
@@ -3523,7 +3596,7 @@ the tile, measured where alpha is at least half. HUD panel tiles are drawn 1:1.
 | Play, stop | `pda/play`, `pda/stop` | 64x16 | 64 x 16 | Capsule x 1–57, y 1–15; glyph x 6–13 |
 | Close | `pda/close` | 64x16 | 64 x 16 | Tab x 13–55, y 2–15 |
 | Weapon slots | `hud/icons/weaplargeclip`, `weapsmallclip` | 128x64, 64x64 | 80 x 40, 40 x 40 | 1 px outline on the tile edge |
-| Device cursor | `ui/assets/guicursor_arrow` | 32x32 | on the surface | Arrow x 0–13, y 0–19 |
+| Device cursor | `ui/assets/guicursor_arrow` | 32x32 | on the surface | Arrow x 0–12, y 0–17; soft edge to x 14, y 20 |
 
 ### B.3 Devices
 
@@ -3536,8 +3609,8 @@ white, alpha-shaped and drawn with straight alpha unless noted.
 | `guis/assets/common/outerglow` | 128 x 128 | clear border texel, then alpha 95 falling to 0 over 27 texels | rim glow, 266 files |
 | `guis/assets/common/addhighlight` | 128 x 128 | additive; luminance 37 at the top falling to 0 at row 88; flat across | top highlight, 373 files |
 | `guis/assets/common/outerglowbar` | 128 x 128 | additive; full-alpha hairline at texel 1, then 120 falling to 12 over 9 texels | alert rim, 73 files |
-| `guis/assets/test/gui_scanlines5`, `gui_scanlines` | 128 x 128 | additive; every third row luminance 25 (2 in the older texture) | scan lines, 263 and 113 layers; tiled 2 times vertically in 182 layers, 1.5 times in 133 |
-| `guis/assets/smdoor/reflect1` | 64 x 64 | alpha 3, 25, 73, 149 rising to 190 at rows 6 to 7, falling about 14 per row to 0 by row 22; faint band 26 to 39 at rows 58 to 60; 3-texel soft ends | glare, 298 layers |
+| `guis/assets/test/gui_scanlines5`, `gui_scanlines` | 128 x 128 | additive; every third row luminance 25 (2 in the older texture); the newer is drawn at `matcolor` 0.1, so a line adds 2.5/255 | scan lines, 263 and 113 layers; tiled 2 times vertically in 182 layers, 1.5 times in 133 |
+| `guis/assets/smdoor/reflect1` | 64 x 64 | alpha 3, 25, 73, 149 rising to 190 at rows 6 to 7, falling about 14 per row to 0 by row 22; faint band 26 to 39 at rows 58 to 60; 3-texel soft ends | glare, 298 of 342 glare layers in 322 files |
 | `guis/assets/test/mask` | 64 x 64 | black; alpha 200 at edge midpoints, 8 at the centre | vignette, 117 files |
 | `guis/assets/cpuserver/bglow` | 64 x 64 | alpha 255 over the central 9 texels, 59 at an edge midpoint, 5 at corners | back glow, 285 files |
 | `guis/assets/common/dirt4` (and 1, 2, 3, 5, 7) | 128 x 128 | black; coverage 46%, peak alpha 135; others peak 186 to 225, coverage 14% to 52% | dirt, 288 files |
@@ -3555,12 +3628,12 @@ white, alpha-shaped and drawn with straight alpha unless noted.
 | `guis/assets/cpuserver/bgwhite4`, `bgwhitesmall` | 64 x 32, 16 x 8 | plain `#EEEEEE` rectangle with a soft 1 to 2 texel margin | flat plate; 386 uses in 113 files, 361 in 27 |
 | `guis/assets/cpuserver/bg` | 64 x 64 | `#111111`, opaque, soft border texel | tube face |
 | `guis/assets/common/securitybg` | 256 x 256 | toothed octagonal outline, visible from 15 to 241 | cog rings |
-| `guis/assets/common/mlogo` | 128 x 128 | crest, visible 2, 3 to 126, 126; peak alpha 234 | 84 windows in 56 files |
+| `guis/assets/common/mlogo` | 128 x 128 | crest, visible 2, 3 to 126, 126; peak alpha 234 | 84 windows in 56 files; 93 files with the additive copy `gui/addlogo` |
 | `guis/assets/elevator/callfloorbg`, `_g` | 128 x 64 | baked colour: mean `#2E1D06`, peak `#684006`; grey twin mean `#212121` | lift slabs, 31 files |
 | `guis/assets/common/btn_yellow` | 64 x 64 | baked colour: mean `#FFA036`, peak alpha 214 | floor-button plate |
 | `guis/assets/camera/bgc` | 128 x 128 | baked colour: mean `#431F12`, peak `#B7AF82` | camera and keycard plate |
 | `guis/assets/common/pentagramfx` | 256 x 256 | baked colour: mean `#652100`, peak `#FFFF00` | hell devices |
-| `ui/assets/guicursor_arrow`, `guicursor_hand` | 32 x 32 | visible 13 x 19 and 14 x 17 texels, anchored top-left | device cursor, drawn 64 x 64 u |
+| `ui/assets/guicursor_arrow`, `guicursor_hand` | 32 x 32 | visible 12 x 17 and 12 x 15 texels (14 x 20 and 15 x 18 with their soft edges), anchored top-left | device cursor, drawn 64 x 64 u |
 
 ### B.4 Multiplayer and loading
 
@@ -3573,11 +3646,11 @@ Coordinates are texels from the top-left corner of the tile.
 | `hud/mp/score_vert` | 8 x 8 | 8 thick, any length | The same line upright: columns 4-5 solid, 3 and 6 at 20%, 2 and 7 at 7% |
 | `hud/mp/score_corner` | 8 x 8 | 8 x 8, mirrored for the other corners | Joins the horizontal run at rows 2-3 to the upright run at columns 4-5 through a quarter turn of about 3 texels radius |
 | `hud/mp/lborder1a` | 256 x 64 | 0, 426, 256, 64 | Status plate outline, 2-3 texels wide, 3 texel soft edge; ink x 4-150, y 20-52 |
-| `hud/mp/lbg1` | 256 x 64 | same | Status plate fill; x 10-144, y 26-46 |
-| `hud/mp/llines11` | 256 x 64 | same | Armour cell outline, 1 texel; x 11-70, y 30-45 |
-| `hud/mp/llines21` | 256 x 64 | same | Health cell outline, 1 texel, with tick marks at x 72-85; x 68-143, y 27-45 |
-| `hud/mp/rborder` | 128 x 64 | 512, 416, 128, 64 | Ammunition plate outline: top y 32 from x 14 to 110; leading edge 14, 32 to 25, 60; trailing edge 110, 32 to 121, 60 |
-| `hud/mp/rbg` | 128 x 64 | same | Ammunition plate fill; x 20-115, y 36-56 |
+| `hud/mp/lbg1` | 256 x 64 | same | Status plate fill; x 10-144, y 26-47 |
+| `hud/mp/llines11` | 256 x 64 | same | Armour cell outline, 1 texel; x 11-70, y 30-46 |
+| `hud/mp/llines21` | 256 x 64 | same | Health cell outline, 1 texel, with tick marks at x 72-85; x 68-143, y 27-46 |
+| `hud/mp/rborder` | 128 x 64 | 512, 416, 128, 64 | Ammunition plate outline: top y 32 from x 14 to 110; leading edge 14, 32 to 25, 61; trailing edge 110, 32 to 121, 61 |
+| `hud/mp/rbg` | 128 x 64 | same | Ammunition plate fill; x 20-115, y 36-57 |
 | `hud/mp/lag` | 32 x 32 | 5, 5, 32, 32 | A ring, ink 9-91% of the tile, crossed by a thick diagonal bolt |
 | `mainmenu/button_middle` | 8 x 32 | strip body, 27 high | Solid on rows 5-25 |
 | `mainmenu/button_edge` | 32 x 32 | 22 x 27 | The same band ending in a straight diagonal from x 7 on its top row to x 25 on its bottom row |
@@ -3701,6 +3774,56 @@ exceptions are kept where they are and extended nowhere.
   kind by design.
 
 ## Appendix D. Change record
+
+### Version 1.2, 13 November 2026
+
+A consistency pass. A scripted audit found every token the atlas names defined here
+with the same colour, and every section reference resolving; the corrections are to
+derived figures and to rules that did not agree with one another.
+
+- Section 3 defines the dp: fitted to the view on Desk, Couch and Handheld (the
+  shorter side is 720 dp), the platform's unit on Phone and Tablet. It states that the
+  interface scale multiplies every size, text included, and the text scale multiplies
+  text again. 1.0 used the unit without defining it.
+- Section 4: the contrast of menu text is tabulated against what shows through the
+  plate. 1.0 claimed at least 9:1; `#99CCCC` is 7.3:1 over black space and 4.5:1 at
+  worst. `text.dim` and the hint line have their ratios stated.
+- Section 12.2: the apparent size of the 12 u em is tabulated per display. 1.0 gave
+  about 20 arc-minutes at a desk and 22 to 28 with the Couch and Handheld defaults;
+  the figures are 30 to 40 and 32 to 44. Rows whose pitch is under a profile's minimum
+  target are respaced in that profile, not by input.
+- Section 12.3: size classes are evaluated in order, and Compact height begins below
+  720 dp, the height of the stock composition (1.0 had 600, which left views between
+  600 and 720 dp in a class whose composition does not fit). A table gives the class
+  each profile's default lands in.
+- Section 12.6: 48 dp is the pitch of abutting rows; the 8 dp spacing applies between
+  separate controls.
+- Section 5: Arabic shaping, right-to-left layout and text input above ASCII are
+  recorded as not implemented.
+- Section 6.10: the dialog buttons' place is 74 to 87% of the plate height (1.0 said
+  the bottom 22%).
+- Sections 10 and 11 and Appendix B were read against one another, and the places
+  that disagreed were settled from the retail textures, the effective `hud.gui` and
+  the survey notes:
+  - Appendix B.4 gave the multiplayer plate art's lower bounds one texel short of
+    B.2 for the same tiles. B.2 is right; the multiplayer cells are 16 and 19 u
+    tall, the ammunition plate 29 u, and it stands 3 u from the bottom, not 4.
+  - The multiplayer status plate is the single-player plate's art: its top edge runs
+    from x 71 to 146 and its edges lean 23 and 25 degrees (10.11 had 69 to 148 and
+    21 degrees, which is the ammunition plate's lean).
+  - Digit shadows are offset 1, 2 u under the large digits and 1, 1 u under the
+    small ones, toward the screen centre (1.0 gave +1, +2 for all).
+  - The crosshair dot is 3 u across; the PDA bracket's bars are 9 u thick; the
+    pointer arrow is 12 x 17 texels at half alpha in every section (three places
+    gave its soft extent, 13 x 19).
+  - Devices: the bezel shadow's absence is limited to the `cpu_*` ambient loops; dirt
+    coverage is 14 to 52%; the ring swap is at 0, 50, 100 and 300 ms in both places;
+    file counts that differed between two tables name what each one counts.
+  - Statements that were too broad are narrowed: what in the HUD is near opaque,
+    where orange appears, where hovering sounds, which layers are additive.
+- Atlas: the device place-tint figure shows each tint as a chip and fills its rows;
+  the dialog's buttons sit 2 u higher, where the stock draws them; the HUD's digit
+  shadows and crosshair dot follow the corrections above.
 
 ### Version 1.1, 13 November 2026
 

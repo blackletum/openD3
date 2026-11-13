@@ -1,19 +1,24 @@
 # openD3 UI Visual Design
 
-Specification version 1.0, 11 November 2026. Status: implementation target; the
-replacement has not shipped. openD3 runs the stock Doom 3 GUIs today, and launches
-pin `ui_retained 0` because the retained interface has no Doom 3 documents yet
-([rebase record](doom3-rebase.md)). This specification applies to every
-player-facing GUI: menus, dialogs, the HUD, the PDA, gun-mounted displays, in-world
-device screens, multiplayer overlays, loading screens and the console.
+Specification version 1.1, 13 November 2026. Status: implementation target; the
+vector replacement has not shipped. openD3 runs the stock Doom 3 GUIs today, set in
+the reconstructed TrueType faces and, on wide and tall screens, arranged by
+[layout patches](widescreen-layout.md) that follow the Remastered rules of
+section 3. Launches pin `ui_retained 0` because the retained interface has no Doom 3
+documents yet ([rebase record](doom3-rebase.md)).
+[What exists today](#what-exists-today) separates the two. This specification
+applies to every player-facing GUI: menus, dialogs, the HUD, the PDA, gun-mounted
+displays, in-world device screens, multiplayer overlays, loading screens and the
+console.
 
-Version 1.0 records a survey of the effective retail GUI scripts, interface art,
+Version 1.0 recorded a survey of the effective retail GUI scripts, interface art,
 fonts and materials, states the rules a vector replacement follows, and adds the
 [modern interface direction](#12-modern-interface-direction): viewing profiles,
 adaptive layout, controller and touch behaviour and an accessibility baseline. The
 [Interface Atlas](#14-the-interface-atlas) draws the same vocabulary as
 independently authored vector references, set in the
-[reconstructed TrueType faces](ttf-font-system.md).
+[reconstructed TrueType faces](ttf-font-system.md). Version 1.1 brings the layout
+rules into line with the wide and tall layouts openD3 now ships.
 [Appendix D](#appendix-d-change-record) lists every change.
 
 ## Contents
@@ -81,6 +86,23 @@ family, `guis/hud.gui` and `guis/cursor.gui` for the HUD, `guis/pda.gui` for the
 and each device, weapon and loading GUI for its own family. Do not apply the steel
 blue menu chrome to the HUD, the PDA or a device: each family has its own measured
 palette and geometry inside the shared vocabulary of section 2.
+
+### What exists today
+
+Most of this document is a target. These parts of it are in the engine, and the
+[rebase record](doom3-rebase.md) says how each was checked:
+
+| Part | State | Record |
+| --- | --- | --- |
+| The five TrueType faces as the default text path (section 5) | In the engine, drawing the stock GUIs and the console | [Font system](ttf-font-system.md) |
+| The stock slot rule: the 12 px slot up to textscale 0.30 (section 5) | In the engine (`gui_smallFontLimit`) | [Font system](ttf-font-system.md) |
+| The Remastered layout of the stock menus, HUDs, loading screens and message screens (section 3) | In the engine as layout patches over the stock GUIs (`ui_widescreenLayouts`, on by default) | [Wide and tall screen layout](widescreen-layout.md) |
+| The PDA's soft-focus surround (section 10.9) | In the engine, part of the same patches | [Wide and tall screen layout](widescreen-layout.md) |
+
+Everything else is not built: the vector furniture, the tokens as data, the
+construction choreography in retained documents, and the whole of section 12. Where a
+Remastered rule in a later section goes beyond the layout patches, it says so, and
+section 3 lists the differences.
 
 ### Measuring stock sources
 
@@ -257,27 +279,43 @@ Every screen has two layouts built from the same components.
 
 | Element | Remastered anchor |
 | --- | --- |
-| Menu backdrop: stars, planet, halo | View centre; stars and grid continue to the view's edges |
-| Grid | Continues at its 15 u pitch from the canvas origin in every direction |
-| Scan lines, edge glow | The whole view; the glow hugs the real edges |
+| Menu backdrop: stars, planet, halo | View centre; the stars continue to the view's edges, the planet is never stretched |
+| Grid | Continues at its 15 u pitch from the canvas origin in every direction, the brighter fifth lines in step (the pattern repeats every 75 u) |
+| Scan lines, edge glow, modal dim | The whole view; the glow hugs the real edges |
 | Top bar and flare; bottom strips | Leading parts to the leading edge, trailing parts to the trailing edge, their spans stretched between |
-| Navigation band, logo, page plates, dialogs | The canvas, centred |
-| Hint line | Bottom-leading corner of the canvas |
+| Navigation band | Spans the view. NEW GAME's leading end goes to the leading edge with the OPTIONS tab and MULTIPLAYER's trailing end to the trailing edge; both lengthen toward the centre. LOAD GAME, the 5 u gaps and every slant keep their canvas places |
+| Sub-lists | With the button that owns them: OPTIONS and the difficulty list at the leading edge, the multiplayer list at the trailing edge |
+| Footer links | Bottom-trailing corner of the view |
+| Hint line | Bottom-leading corner of the view |
+| Logo, page plates, dialogs | The canvas, centred |
 | HUD health and armour frame | Bottom-leading corner of the view, stock offsets |
 | HUD ammunition frame, weapon pips | Bottom-trailing corner of the view, stock offsets |
 | Crosshair, centre notices | View centre |
-| PDA | Canvas centred; bands stretched to the view's edges |
-| Loading picture and bands | The whole view; progress group top-leading, text block bottom-leading |
+| PDA | Keeps its 4:3 canvas, as the device in the marine's hand does; the view beside it is the world, softened and dimmed (section 10.9) |
+| Loading picture and bands | The whole view, the picture cropped and never stretched; progress group top-leading, text block bottom-leading |
 | Device screens | Their own canvas on their surface; no expansion |
 
-Side-anchored elements stop moving outward at 21:9: on a wider view they keep the
-position they have at 21:9, measured from the view centre. On a view narrower than
-4:3 the canvas spans the width, top-anchored elements go to the top of the view and
-bottom-anchored elements to the bottom, and the centre keeps the stock composition.
+On a view narrower than 4:3 the canvas spans the width. The HUD's top-anchored
+elements go to the top of the view and its bottom-anchored elements to the bottom.
+The front end stays centred vertically as a whole: its panels park just above and
+below the canvas before they slide in, so the menu is clipped to the canvas height
+and only the backdrop, the scan lines and the grid fill the rest.
 
-Essential content, text and targets stay inside the platform's safe area. Backdrops,
-bands and scan lines extend full-bleed under display cutouts, rounded corners and
-system bars.
+**Stock GUIs today.** The layout patches in `guis/layouts/` apply these anchors to
+the stock GUIs as they are parsed, without copies of id's scripts;
+`ui_widescreenLayouts 0` gives Classic. [Wide and tall screen layout](widescreen-layout.md)
+is their record, and the replacement lays out the same way. Three rules of this
+specification are not in the patches:
+
+- **The 21:9 limit.** Side-anchored elements should stop moving outward at 21:9 and
+  on a wider view keep the position they have there, measured from the view centre.
+  The patches follow the view to any width.
+- **Safe areas.** Essential content, text and targets should stay inside the
+  platform's safe area while backdrops, bands and scan lines extend full-bleed under
+  display cutouts, rounded corners and system bars. The patches measure from the
+  physical view.
+- **The multiplayer menu and the scoreboard.** Their Remastered rules (sections
+  10.12 and 10.13) are not patched; both draw centred as in Classic.
 
 ### Density rules
 
@@ -418,6 +456,8 @@ The menus reuse these steps; a new menu element takes the step of the role it pl
 - **Masked** layers appear twice in the menus: stars that flare through a fixed mask,
   and interference bands that crawl inside the logo's silhouette.
 - The stock never blurs the scene and never multiplies. A modal dims with flat black.
+  openD3 adds one blur, outside the canvas and behind no furniture: the softened
+  view beside the PDA on a screen that is not 4:3 (section 10.9).
 - A hairline's glow is part of the hairline (section 6.2), not a blur and not additive.
 
 Composite in linear order back to front as the stock does. Where the replacement draws
@@ -516,13 +556,14 @@ lighter at 12 and 24, and Default's stem-to-bar contrast is 2:1 at 48, 3:1 at 24
 
 | Slot rule | 12 px | 24 px | 48 px |
 | --- | --- | --- | --- |
-| Stock | textscale up to 0.30 | up to 0.60 | above 0.60 |
-| openD3 today | up to 0.10 | up to 0.60 | above 0.60 |
+| Stock, and openD3 (`gui_smallFontLimit` 0.30) | textscale up to 0.30 | up to 0.60 | above 0.60 |
+| The engine openD3 inherited | up to 0.10 | up to 0.60 | above 0.60 |
 
-With openD3's present limit the 12 px slot is never chosen, which changes the width, weight and
-line pitch of every text between 0.10 and 0.30: 21% of the stock's text windows. Stock sets the
-first baseline one line box below the top of the text rect and advances lines by the line box plus
-5 u; openD3 today rounds each advance up and uses 1.25 line boxes.
+Keep the limit at 0.30. At the inherited 0.10 the 12 px slot is never chosen, which changes the
+width, weight and line pitch of every text between 0.10 and 0.30: 21% of the stock's text windows.
+Stock sets the first baseline one line box below the top of the text rect and advances lines by
+the line box plus 5 u; openD3's text path today advances by 1.25 line boxes, which is closer at
+small sizes and looser at large ones.
 
 **Usage** across all 521 stock GUIs (25804 windows, 4025 of them with literal text):
 
@@ -1322,14 +1363,18 @@ Opened in a game the same screen changes as follows.
 | Top bar and flare | stock rects | the bar starts at the real leading edge; the flare anchors to the real top-trailing corner |
 | Bottom strips, second band | stock rects | extend to both real edges; the step and the 45 degree joins keep their distance from the trailing edge |
 | OPTIONS tab | stock rect | anchors to the real bottom-leading corner |
-| Nav buttons | stock rects | keep their size and their 5 u gaps; the group stays centred on the canvas |
+| Nav buttons | stock rects | the band spans the view: NEW GAME lengthens to the leading edge and MULTIPLAYER to the trailing edge, their labels centred in the longer buttons; LOAD GAME, the 5 u gaps and the slants keep their canvas places |
 | Footer links | stock rects | anchor to the real bottom-trailing corner |
 | Hint line | stock rect | anchors to the real bottom-leading corner |
-| Page plates, sub-lists | stock rects | stay on the 4:3 canvas; the bridge still reaches its nav button |
+| Sub-lists | stock rects | stay with the button that owns them: the OPTIONS and difficulty lists at the leading edge, the multiplayer list at the trailing edge |
+| Page plates | stock rects | stay on the 4:3 canvas; the bridge still points at its nav button |
 | Dialogs, message boxes | stock rects | centred in the view; the dim covers the view |
 | Edge glow | 30 and 20 u outside the canvas | hugs the real view edges with the same visible falloff, about 14 u at the sides and 12.5 u top and bottom (derived)  |
 | Scene pans | 480 u | one view height |
-| Tall views | letterboxed | the nav band anchors to the real bottom edge, the top bar to the real top edge; the canvas centre holds the planet |
+| Tall views | letterboxed | the menu stays centred vertically and is clipped to the canvas height, so no parked panel shows; stars, scan lines and the grid fill the height |
+
+The layout patch for `guis/mainmenu.gui` implements the Remastered column for the stock menu
+(section 3).
 
 Rules for both layouts:
 
@@ -1366,7 +1411,7 @@ The frame is built in this order, back to front. Later layers cover earlier ones
 | 4 | Crosshair | `guis/cursor.gui` | Not drawn while a world GUI has focus or while the weapon rises, lowers or is holstered |
 | 5 | Armour pulse, tunnel vision, berserk, BFG vision | `PlayerView` | Over the HUD |
 | 6 | Double vision, berserk pass, screen fade | `PlayerView` | Re-draws the whole frame, HUD included |
-| 7 | PDA | `guis/pda.gui` | Replaces layers 1 to 6 while open (section 10.9) |
+| 7 | PDA | `guis/pda.gui` | Covers layers 1 to 6 on its 4:3 canvas while open; beside the canvas the world view shows, softened and dimmed (section 10.9) |
 
 Within the HUD, draw order is the order of the rows below. All rects are u on the 640x480 canvas.
 
@@ -1445,17 +1490,22 @@ the canvas edge (`ObjPopBox` ends at x 656) are clipped at the canvas edge exact
    stock offsets from the canvas corner.
 2. The ammunition plate, the pip row, the weapon name, the weapon icon and the soul cube anchor to
    the bottom-trailing corner at their stock offsets.
-3. The crosshair, the talk prompt, the new-weapon notice and the download bars stay on the view
-   centre at their stock offsets from the canvas centre. A download chip flies from the view centre
-   to the reminder position in the bottom-leading corner.
+3. The crosshair, the talk prompt and the new-weapon notice stay on the view centre at their stock
+   offsets from the canvas centre. The download bars stay centred across the view and keep their
+   stock distance from the bottom edge, so on a tall view they stay under the crosshair's half of
+   the screen. A download chip flies from its bar to the reminder position in the bottom-leading
+   corner.
 4. Side notices anchor to their own edge at the stock offset: objective boxes to the trailing edge,
    the tip to the top-leading corner, the inventory notice and the message to the leading edge. On a
    wide view every unit of added width moves them out of the central 4:3 area. They never move
    inward of their stock position.
 5. Nothing new occupies the central 4:3 area, and nothing is added along the top edge.
 
-**Safe area.** Edge anchors measure from the platform safe-area rectangle, not from the physical
-screen. The stock margins are the minimum: the plate frames stand 6 u (9 dp) from the side edge and
+The layout patch for `guis/hud.gui` implements rules 1 to 4 for the stock HUD, except that the
+saved-game message keeps its canvas position.
+
+**Safe area.** A target; the layout patches measure from the physical screen. Edge anchors
+measure from the platform safe-area rectangle, not from the physical screen. The stock margins are the minimum: the plate frames stand 6 u (9 dp) from the side edge and
 the stamina and pip frames end 2 u (3 dp) above the bottom edge. Where the platform reports a larger
 inset, the stock offset is added to it. Panel art of a side notice may run past the safe area to the
 physical edge, as `ObjPopBox` and `TipPopBox` do in stock; its text and icons stay inside.
@@ -1967,13 +2017,25 @@ HUD sounds are `guisounds_objnew_up`, `guisounds_objdone_up` and `guisounds_obj_
 `guisounds_compup` for clearance and new e-mail, and `guisounds_air` for the oxygen panel. Downloads,
 pickup lines, weapon changes and ammunition warnings are silent.
 
-**Classic.** The PDA is the full 640x480 composition, opaque, centred and scaled to the view. The
-area outside the 4:3 canvas is filled with `pda.base` and the grid continued at the same 15 u pitch.
+**Classic.** The PDA is the full 640x480 composition, opaque, centred and scaled to the view, with
+black beside it.
 
-**Remastered.** The top and bottom bands, the grid and the base extend to the screen edges. The
-content column (tabs, lists, main frame, lower panel, strips) stays 4:3-wide and centred, at stock
-positions inside it. Panels still slide in from the screen's real edges, so on a wide view they
-travel further in the same 600 ms.
+**Remastered.** The PDA keeps its 4:3 canvas on every shape of screen, as the screen of the device
+in the marine's hand does. Nothing of it is stretched or re-anchored, and its panels still slide in
+from the canvas edges, clipped there so that none waits in view. Beside the canvas the game keeps
+drawing the world, and the PDA puts it out of focus:
+
+| Surround | Value |
+| --- | --- |
+| Blur | Gaussian, radius 4 u of the canvas height (6 dp at the reference) |
+| Saturation | 60% |
+| Dim | black at 35% over the blur |
+| Where | Only where the view shows more than the canvas; nothing changes at 4:3 |
+| Without soft focus (GLES) | The dim alone |
+
+This is the one place the interface blurs the scene (section 4). It marks the world as paused
+behind a hand-held device; it is not a backing for furniture, and no plate, dialog or notice may
+use it. The layout patch for `guis/pda.gui` implements it for the stock PDA.
 
 Replacement rules:
 
@@ -3295,7 +3357,8 @@ battery profile may drop the scan lines, static and edge glow and cap ambient lo
 - Toasts, snack bars, cards or sheets from a platform toolkit.
 - Icons standing in for the stock's text labels.
 - A light theme, or a "high contrast" theme that recolours the chrome.
-- Blur of the scene behind a plate. The stock dims; it never blurs.
+- Blur of the scene behind a plate. The stock dims; it never blurs. The PDA's surround
+  (section 10.9) lies beside the canvas, not behind furniture, and is the only blur.
 - Smooth scaling of a whole stock screen into a small window.
 - Hover sounds, haptics on focus movement, or sound on the hint line.
 
@@ -3336,8 +3399,11 @@ numbers here. It is the fastest way to check a component against the contract.
 - **Live states.** Controls in the atlas respond to pointer, keyboard focus and touch
   with the measured timings, and the page honours the reduced-motion preference in the
   way section 8 prescribes.
+- **Layouts.** The title screen and the HUD switch between 4:3, 16:9 and 21:9 and
+  between Classic and Remastered, and the PDA shows its soft-focus surround on the
+  wider views, each drawn from the anchors of section 3.
 - **Keeping it current.** A change to a token, a size or a timing in this document
-  changes the atlas in the same commit. The atlas's own change list names the
+  changes the atlas in the same commit. The atlas's head and foot name the
   specification version it draws.
 
 ## Appendix A. Survey method
@@ -3635,6 +3701,29 @@ exceptions are kept where they are and extended nowhere.
   kind by design.
 
 ## Appendix D. Change record
+
+### Version 1.1, 13 November 2026
+
+Brings the layout rules into line with the wide and tall layouts openD3 ships
+([record](widescreen-layout.md)), which were built after version 1.0.
+
+- Section 1 gains "What exists today": the faces, the slot rule, the Remastered layout
+  of the stock GUIs and the PDA surround are in the engine; the rest is a target.
+- Section 3: the navigation band spans the view, with NEW GAME and MULTIPLAYER
+  lengthened to the edges and sub-lists docked with their buttons (1.0 kept the band
+  on the centred canvas). The front end stays centred vertically on a tall view
+  (1.0 anchored it to the top and bottom edges). The 21:9 limit, safe areas and the
+  multiplayer menu and scoreboard rules are marked as not in the layout patches.
+- Sections 3, 4, 10.1, 10.9 and 12.10: the PDA keeps its 4:3 canvas over a softened,
+  dimmed view of the world (1.0 stretched its bands and grid to the edges and allowed
+  no blur anywhere).
+- Section 5: the slot table no longer describes the inherited 0.10 limit as openD3's;
+  the engine has used 0.30 since version 1.0.
+- Sections 9.11 and 10.1 follow section 3; download bars keep their distance from the
+  bottom edge.
+- Atlas: the title screen's Remastered view and a PDA surround figure follow these
+  rules; the page's top bar, the family strips' labels, the plate anatomy's callouts
+  and two clipped labels are corrected.
 
 ### Version 1.0, 11 November 2026
 

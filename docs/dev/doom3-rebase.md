@@ -187,6 +187,27 @@ release of Doom 3 (1.3.1 packs):
   and initialises the game. On the test machine, which has only the
   expansion's patch pack, startup then stops with a parse error in the
   expansion's `guis/mainmenu.gui`.
+- With `+set ui_retained 1` the retained title, single-player pause and
+  message box present in place of the stock ones, in the vector design of the
+  [visual design specification](ui-visual-design.md): the title at 4:3, 16:9,
+  21:9 and in a tall window; the difficulty list, from which MARINE loads
+  `game/mars_city1`; the exit and quit-game dialogs; the pause over that game
+  and its return; the hand-off to the stock options list and credits and
+  back; the Load Game and Save Game pages, from which a game in
+  `game/alphalabs1` was saved, saved over and deleted; and the options list
+  with its CONTROLS, GAME OPTIONS and SYSTEM pages, on which a key was bound,
+  two game settings changed and vertical sync was applied through the
+  settings service; the mods panel and the credits page; and the multiplayer
+  list and Game Browser, from which a client joined a dedicated server of the
+  same build on the same machine as far as the map load and the player's
+  spawn; and the Create Server page, from which a LAN deathmatch server was
+  started on `game/mp/d3dm3` with the name, limits and warmup set on the
+  page; and the Multiplayer Settings panel, on which the data rate, Always
+  Run, the player's name and skin were changed and read back from the
+  written config; and the death screen, from which a killed player
+  restarted the map, opened the Load Game page and returned to the title.
+  [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
+  what was not seen.
 - Saving and loading in the same build (2026-11-14, OpenGL, console
   `saveGame` and `loadGame`, an isolated `fs_savepath`). On `game/alphalabs1`
   (`devmap`), with `god`, `noclip` and `give all` set, the player moved with
@@ -296,12 +317,19 @@ Listed roughly by how much they block a player.
    game both declare `r_showSkel`; sound shader volumes above +10 dB are
    clamped. A `mars_city1` load currently logs about 25 distinct warnings,
    some of them the retail content's own.
-5. **The retained RmlUi interface has no Doom 3 documents.** Launches pin
-   `ui_retained 0`. The stock Doom 3 GUIs are the interface. The contract
-   those documents will be built to is the
-   [visual design specification](ui-visual-design.md), drawn in the
-   [Interface Atlas](ui/atlas/opend3-interface-atlas.html); none of it is
-   implemented yet.
+5. **The retained interface has twelve Doom 3 documents.** The title, the
+   single-player pause, the message box, the death screen's choices and the
+   Load Game, Save Game,
+   Controls, Game Options, System, Credits, Game Browser and Create Server
+   pages, with the Mods and Multiplayer Settings panels in the title, are
+   built to the
+   [visual design specification](ui-visual-design.md) and present with
+   `ui_retained 1` ([retained Doom 3 menus](ui/retained-menus.md)). Every
+   other page, the HUD and the loading screens have none, so launches still
+   pin `ui_retained 0` and the stock Doom 3 GUIs remain the interface. With
+   `ui_retained 1` the pages without a document are the stock ones, reached
+   from the retained home, and a map load warns that the retained HUD
+   documents are missing before it uses the stock HUD.
 6. **Tooling under `tools/` is inherited and unadapted.** The test corpus,
    validation profiles, packaging, installer and release scripts were written
    for openQ4. They were renamed mechanically and have not been run for
@@ -360,6 +388,11 @@ Listed roughly by how much they block a player.
     - Not covered: Resurrection of Evil, subviews (mirrors, remote cameras),
       moving lights, cascaded shadow maps (`r_shadowMapCSM`), other players'
       shadows as a client.
+11. **The master server address is Quake 4's.** `IDNET_HOST`
+    (`src/framework/licensee.h`) is `q4master.idsoftware.com`, as upstream
+    has it. That server answers: an internet server started from the menu
+    on 2026-11-14 sent it a heartbeat and answered its info request. Which
+    master openD3 should announce to and browse is undecided.
 
 ## Naming
 

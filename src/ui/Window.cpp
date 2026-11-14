@@ -2904,7 +2904,7 @@ void idWindow::Redraw(float x, float y) {
 
 	HandleRetailSpecialVars();
 	UpdateRetailCreditActivation();
-	if ( !visible ) {
+	if ( !visible || hostHidden ) {
 		drawRect.Offset( -x, -y );
 		clientRect.Offset( -x, -y );
 		textRect.Offset( -x, -y );

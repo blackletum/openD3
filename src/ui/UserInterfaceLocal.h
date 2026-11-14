@@ -131,6 +131,9 @@ public:
 	// of the view that window scrolls in (its parent).
 	bool						FocusWithin( const char *ancestorName, idStr &focusName, idRectangle &rect, float &viewHeight );
 	bool						HasWindow( const char *windowName ) const;
+	bool						SetWindowHidden( const char *windowName, bool hidden );
+	void						SetCursorHidden( bool hidden ) { hostCursorHidden = hidden; }
+	bool						hostCursorHidden = false;	// openD3: a retained screen over this GUI draws the pointer
 	bool						HasNamedEvent( const char *eventName ) const;
 
 private:

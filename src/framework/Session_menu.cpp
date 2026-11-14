@@ -99,8 +99,12 @@ idCVar ui_retainedMultiplayer( "ui_retainedMultiplayer", "0", CVAR_GUI | CVAR_BO
 // to (see idSessionLocal::FindRetainedGui). While it is 0 no session route
 // creates a retained view and the stock GUIs present every screen. Archived,
 // so an explicit player preference persists across launches.
-// openD3: the retained screens are authored for Quake 4 (content/baseod3 in openD3);
-// Prey presents its retail GUIs, so the stock interface is the default.
+// openD3: the stock interface is the default. Doom 3 has retained documents
+// for the title, the single-player pause, the message box, the death screen's
+// choices and the Load Game,
+// Save Game, Controls, Game Options, System, Mods, Credits, Game Browser,
+// Create Server and Multiplayer Settings pages only
+// (docs/dev/ui/retained-menus.md).
 idCVar ui_retained( "ui_retained", "0", CVAR_GUI | CVAR_BOOL | CVAR_ARCHIVE, "use the retained interface by default; 0 selects the stock interface" );
 idCVar ui_hudScale( "ui_hudScale", "1", CVAR_GUI | CVAR_FLOAT | CVAR_ARCHIVE, "retained status bar scale, independent of menus", .5f, 2.0f );
 idCVar ui_browserView( "ui_browserView", "0", CVAR_GUI | CVAR_INTEGER | CVAR_ARCHIVE, "the server browser's list: 0 rows, 1 tiles with each map's levelshot", 0, 1 );
@@ -371,6 +375,19 @@ static const int RETAINED_GAME_LANGUAGE_COUNT = sizeof( RETAINED_GAME_LANGUAGES 
 // The retained CONTROLS page (tools/ui/retained_controls.py): its document and
 // the bindings of its rows, in its order (the stock page's tabs in turn).
 static const char *const RETAINED_CONTROLS_GUI = "guis/menu/settings/controls.rui";
+#if defined( OPEND3 )
+// Doom 3's bindings, the stock page's four categories in turn: MOVEMENT (10),
+// WEAPONS (12), ATTACK/LOOK (10) and OTHER (11); BINDINGS in
+// tools/ui/doom3_menu_options.py lists the same.
+static const char *const RETAINED_CONTROLS_BINDINGS[] = {
+	"_forward", "_back", "_moveLeft", "_moveRight", "_moveUp", "_moveDown", "_left", "_right", "_strafe", "_speed",
+	"_impulse1", "_impulse2", "_impulse3", "_impulse4", "_impulse5", "_impulse6", "_impulse7", "_impulse8", "_impulse9",
+	"_impulse10", "_impulse0", "_impulse11",
+	"_attack", "_impulse15", "_impulse14", "_impulse13", "_lookUp", "_lookDown", "_mlook", "_impulse18", "_zoom", "_impulse19",
+	"savegame quick", "loadgame quick", "screenshot", "clientMessageMode", "clientMessageMode 1", "_impulse20", "_impulse22",
+	"_impulse17", "_impulse28", "_impulse29", "clientDropWeapon"
+};
+#else
 static const char *const RETAINED_CONTROLS_BINDINGS[] = {
 	"_forward", "_back", "_moveleft", "_moveright", "_moveUp", "_moveDown", "_left", "_right", "_strafe", "_speed", "_impulse0",
 	"_impulse1", "_impulse2", "_impulse3", "_impulse4", "_impulse5", "_impulse6", "_impulse7", "_impulse8", "_impulse9",
@@ -379,6 +396,7 @@ static const char *const RETAINED_CONTROLS_BINDINGS[] = {
 	"clientMessageMode", "clientMessageMode 1", "_impulse28", "_impulse29", "_ingamestats", "_impulse17", "emote salute",
 	"emote cheer", "emote taunt", "emote grab_a", "_voicechat"
 };
+#endif
 static const int RETAINED_CONTROLS_ROWS = sizeof( RETAINED_CONTROLS_BINDINGS ) / sizeof( RETAINED_CONTROLS_BINDINGS[0] );
 // The retained SETTINGS page (tools/ui/retained_settings_page.py): its
 // sections, each with its verb and the stock settings screen's panel
@@ -2408,9 +2426,16 @@ void idSessionLocal::StartMenu( bool playIntro ) {
 }
 
 bool idSessionLocal::IsMainMenuIntroPlaying() const {
+#if defined( OPEND3 )
+	// Doom 3's menu holds desktop::doomme at 0 while the id logo plays.
+	idStr playing;
+	return guiActive == guiMainMenu && guiMainMenu != NULL &&
+		guiMainMenu->GetPresentationValue( "desktop::doomme", playing ) && atoi( playing.c_str() ) == 0;
+#else
 	return guiActive == guiMainMenu &&
 		guiMainMenu != NULL &&
 		guiMainMenu->GetStateInt( "desktop::video_check", "0" ) != 0;
+#endif
 }
 
 /*
@@ -3033,10 +3058,29 @@ returns to the settings screen.
 */
 void idSessionLocal::HandleRetainedGameRequest( idUserInterface *gui, const char *request ) {
 #ifndef ID_DEDICATED
+#if defined( OPEND3 )
+	if ( !idStr::Icmp( request, "gameBack" ) ) {
+		ReturnRetainedPage();
+		return;
+	}
+	// Player Name: the page holds the entered text in game.name.
+	if ( !idStr::Icmp( request, "gameName" ) ) {
+		idStr name = gui->State().GetString( "game.name" );
+		name.StripTrailingWhitespace();
+		if ( name.Length() > 0 ) {
+			cvarSystem->SetCVarString( "ui_name", name.c_str() );
+			HandleMainMenuCommands( "play guisounds_chirpconnect" );
+		}
+		gui->SetStateString( "game.name", cvarSystem->GetCVarString( "ui_name" ) );
+		gui->StateChanged( common->GetPresentationTime() );
+		return;
+	}
+#else
 	if ( !idStr::Icmp( request, "gameBack" ) ) {
 		ReturnRetainedGame();
 		return;
 	}
+#endif
 	int field = -1, value = 0;
 	if ( guiMainMenu == NULL || !Session_RetainedValueRequest( request, RETAINED_GAME_VERBS, RETAINED_GAME_VERB_COUNT, field, value ) ) {
 		return;
@@ -3252,7 +3296,12 @@ return from setup.
 void idSessionLocal::HandleRetainedControlsRequest( idUserInterface *gui, const char *request ) {
 #ifndef ID_DEDICATED
 	if ( !idStr::Icmp( request, "controlsBack" ) ) {
+#if defined( OPEND3 )
+		retainedControlsCapture = -1;
+		ReturnRetainedPage();
+#else
 		ReturnRetainedControls();
+#endif
 		return;
 	}
 	if ( !idStr::Icmp( request, "controlsTouchLayout" ) ) {
@@ -3971,7 +4020,11 @@ void idSessionLocal::SetSaveGameGuiVars( void ) {
 	guiActive->SetStateInt( "loadgame_listdef_count", fileList.Num() );
 
 	guiActive->SetStateString( "loadgame_sel_0", "-1" );
+#if defined( OPEND3 )
+	guiActive->SetStateString( "loadgame_shot", "guis/assets/blankLevelShot" );
+#else
 	guiActive->SetStateString( "loadgame_shot", "gfx/guis/loadscreens/generic" );
+#endif
 	const idMaterial *defaultPreview = declManager->FindMaterial( "gfx/guis/loadscreens/generic" );
 	if ( defaultPreview != NULL ) {
 		defaultPreview->SetSort( SS_GUI );
@@ -5114,6 +5167,12 @@ void idSessionLocal::HandleMainMenuCommands( const char *menuCommand ) {
 					channel = atoi( snd );
 					snd = args.Argv( icmd++ );
 				}
+#if defined( OPEND3 )
+				// The session's own menu click is Doom 3's forward click.
+				if ( !snd.Icmp( "main_menu_selection" ) ) {
+					snd = "guisounds_menuclickup";
+				}
+#endif
 				menuSoundWorld->PlayShaderDirectly( snd, channel );
 
 			}
@@ -5452,10 +5511,18 @@ bool idSessionLocal::StartMenuServer() {
 	// Create Server binds Server Type and Dedicated to CVars, which retail
 	// Quake4.exe 1.4.2 reads here; Quake 4's menu never sets Doom 3's
 	// "server_type" and "dedicated" GUI keys.
+#if defined( OPEND3 )
+	// Doom 3's Create Server page keeps Server Type and Dedicated in the main
+	// menu's own state ("server_type", "dedicated"), where id's session read
+	// them; the retained page writes the same keys.
+	cvarSystem->SetCVarBool( "net_LANServer", guiMainMenu != NULL && guiMainMenu->State().GetBool( "server_type" ) );
+	const int dedicated = guiMainMenu != NULL && guiMainMenu->State().GetBool( "dedicated" ) ? 1 : 0;
+#else
 	cvarSystem->SetCVarBool( "net_LANServer", cvarSystem->GetCVarBool( "net_menulanserver" ) );
 	// Dedicated turns this client into a dedicated server in SpawnServer:
 	// the window closes and the system console runs the server.
 	const int dedicated = cvarSystem->GetCVarBool( "net_serverMenuDedicated" ) ? 1 : 0;
+#endif
 	if ( gui_configServerRate.GetInteger() > 0 ) {
 		// guess the best rate for upstream, number of internet clients
 		if ( gui_configServerRate.GetInteger() == 5 || cvarSystem->GetCVarBool( "net_LANServer" ) ) {
@@ -6412,7 +6479,12 @@ const char* idSessionLocal::MessageBox( msgBoxType_t type, const char *message, 
 	if ( !BoxDialogSanityCheck() ) {
 		return NULL;
 	}
+#if defined( OPEND3 )
+	// The retained Doom 3 box has no entry field yet: a prompt keeps the stock box.
+	SelectMessageBox( type != MSG_PROMPT );
+#else
 	SelectMessageBox( true );
+#endif
 
 	guiMsg->SetStateString( "title", title ? title : "" );
 	guiMsg->SetStateString( "message", message ? message : "" );
@@ -6932,10 +7004,19 @@ static const int RETAINED_SETTINGSPAGE_LEAVE_MSEC = 500;
 // are the stock choice's, in its order (mp_create_val4's values).
 static const char *const RETAINED_CREATE_SERVER_GUI = "guis/menu/createserver.rui";
 static const int RETAINED_CREATE_MAP_ROWS = 64;
+#if defined( OPEND3 )
+// Doom 3's game types as si_gameType names them, in the stock choice's order
+// (#str_04228). Capture the Flag is the last, offered only where the loaded
+// game takes it (Session_RetainedCreateGameTypeCount).
+static const char *const RETAINED_CREATE_GAMETYPES[] = {
+	"deathmatch", "Tourney", "Team DM", "Last Man", "CTF"
+};
+#else
 static const char *const RETAINED_CREATE_GAMETYPES[] = {
 	"DM", "Tourney", "Team DM", "CTF", "Arena CTF", "DeadZone", "Duel", "Clan Arena", "Freeze Tag", "Red Rover", "One Flag CTF",
 	"Arena One Flag CTF"
 };
+#endif
 static const int RETAINED_CREATE_GAMETYPE_COUNT = static_cast<int>( sizeof( RETAINED_CREATE_GAMETYPES ) / sizeof( RETAINED_CREATE_GAMETYPES[0] ) );
 // Each setting the page offers: the verb its control asks with
 // ("<verb> <value>"), the page state the session publishes it in
@@ -6950,6 +7031,25 @@ typedef struct retainedCreateSetting_s {
 	int				maximum;
 	bool			boolean;
 } retainedCreateSetting_t;
+#if defined( OPEND3 )
+// Doom 3's Create Server page and its ADVANCED SERVER OPTIONS. Server Type
+// and Dedicated are not CVars in Doom 3: the menu keeps them in its own state
+// (HandleRetainedCreateServerRequest, StartMenuServer). The game clamps the
+// player count to what it takes (4, or 8 in Resurrection of Evil).
+static const retainedCreateSetting_t RETAINED_CREATE_SETTINGS[] = {
+	{ "createFragLimit",	"fraglimit",	"si_fragLimit",				1, 100,	false },
+	{ "createTimeLimit",	"timelimit",	"si_timeLimit",				0, 60,	false },
+	{ "createMaxPlayers",	"maxplayers",	"si_maxPlayers",			1, 8,	false },
+	{ "createTeamDamage",	"teamdamage",	"si_teamDamage",			0, 1,	true },
+	{ "createWarmup",		"warmup",		"si_warmup",				0, 1,	true },
+	{ "createSpectators",	"spectators",	"si_spectators",			0, 1,	true },
+	{ "createUsePass",		"usepass",		"si_usePass",				0, 1,	true },
+	{ "createReloadEngine",	"reloadengine",	"net_serverReloadEngine",	0, 1,	true },
+	{ "createServerMods",	"servermods",	"net_serverAllowServerMod",	0, 1,	true },
+	{ "createPure",			"pure",			"si_pure",					0, 1,	true },
+	{ "createRate",			"rate",			"gui_configServerRate",		0, 5,	false },
+};
+#else
 static const retainedCreateSetting_t RETAINED_CREATE_SETTINGS[] = {
 	{ "createLan",			"lan",			"net_menulanserver",		0, 1,	false },
 	{ "createDedicated",	"dedicated",	"net_serverMenuDedicated",	0, 1,	true },
@@ -6981,6 +7081,7 @@ static const retainedCreateSetting_t RETAINED_CREATE_SETTINGS[] = {
 	{ "createMercy",		"mercy",		"si_mercyLimit",			0, 999,	false },
 	{ "createRoundLimit",	"roundlimit",	"si_roundLimit",			0, 60,	false },
 };
+#endif
 static const int RETAINED_CREATE_SETTING_COUNT = static_cast<int>( sizeof( RETAINED_CREATE_SETTINGS ) / sizeof( RETAINED_CREATE_SETTINGS[0] ) );
 // The page's text fields: the verb a field asks with once its text is in its
 // page state, that state, the CVar the session writes and the most bytes it
@@ -6992,7 +7093,11 @@ typedef struct retainedCreateText_s {
 	int				limit;
 } retainedCreateText_t;
 static const retainedCreateText_t RETAINED_CREATE_TEXTS[] = {
+#if defined( OPEND3 )
+	{ "createName",			"create.name",			"si_name",							24 },
+#else
 	{ "createName",			"create.name",			"si_name",							25 },
+#endif
 	{ "createMapCycle",		"create.mapcycle",		"g_mapCycle",						200 },
 	{ "createPassword",		"create.password",		"g_password",						16 },
 	{ "createRconPassword",	"create.rconpassword",	"net_serverRemoteConsolePassword",	16 },
@@ -7060,7 +7165,12 @@ static const int RETAINED_MOD_ROWS = 32;
 static const char *const RETAINED_DEMO_FILTERS[] = { "all", "mvd", "render", "legacy", "incomplete" };
 static const int RETAINED_DEMO_FILTER_COUNT = sizeof( RETAINED_DEMO_FILTERS ) / sizeof( RETAINED_DEMO_FILTERS[0] );
 static const int RETAINED_LOAD_ROWS = 64;
+#if defined( OPEND3 )
+// Doom 3's own picture for a save without one.
+static const char *const RETAINED_LOAD_GENERIC_SHOT = "guis/assets/blankLevelShot";
+#else
 static const char *const RETAINED_LOAD_GENERIC_SHOT = "gfx/guis/loadscreens/generic";
+#endif
 // Multiplayer levelshots precache on idle front-end frames: none until the
 // title has presented for this long, then as many a frame as fit this long
 // (at least one).
@@ -7069,7 +7179,14 @@ static const int RETAINED_LEVELSHOT_FRAME_MSEC = 4;
 // The stock choreography shows a page 550 ms after its activation and a
 // home-state pop-up at once (specification section 8); the retained screen
 // covers the legacy departure for that long before the page takes over.
+#if defined( OPEND3 )
+// Doom 3's pages unfold over the home that opened them (section 8.4 of the
+// visual specification), so a retained page presents almost at once and plays
+// its own opening while the home's departure runs behind it.
+static const int RETAINED_PAGE_HANDOFF_MSEC = 50;
+#else
 static const int RETAINED_PAGE_HANDOFF_MSEC = 550;
+#endif
 static const int RETAINED_POPUP_HANDOFF_MSEC = 200;
 // Returning to the game releases the paused view's soft focus over 250 ms,
 // as the modal backdrop does (section 4).
@@ -7098,6 +7215,75 @@ typedef struct retainedHandoff_s {
 	retainedHandoffKind_t	kind;
 } retainedHandoff_t;
 
+#if defined( OPEND3 )
+// Doom 3's stock menu: the buttons whose actions open its pages. The retained
+// home runs one for a page that has no retained document yet. The home draws
+// the stock menu's own composition, so it leaves at once and the stock menu
+// plays its opening from there (RETAINED_STOCK_HANDOFF_MSEC).
+static const retainedHandoff_t RETAINED_HANDOFFS[] = {
+	{ "singlePlayer",	"NewGameBtnText",		RETAINED_HANDOFF_PAGE },
+	{ "loadGame",		"LoadBtnText",			RETAINED_HANDOFF_PAGE },
+	{ "saveGame",		"SaveGameBtnText",		RETAINED_HANDOFF_PAGE },
+	{ "multiplayer",	"MultiplayerBtnText",	RETAINED_HANDOFF_PAGE },
+	{ "settings",		"OptionsBtnText",		RETAINED_HANDOFF_PAGE },
+	{ "credits",		"CreditsBtnText",		RETAINED_HANDOFF_PAGE },
+	{ "mods",			"ModsBtnText",			RETAINED_HANDOFF_PAGE },
+	// The update check opens no page: its answer, if one comes, is a message
+	// box over the home.
+	{ "updates",		"UpdatesBtnText",		RETAINED_HANDOFF_IN_PLACE },
+};
+static const int RETAINED_STOCK_HANDOFF_MSEC = 0;
+// Back on a stock page sets desktop::selected to 0 at once and then plays the
+// page's closing choreography, the longest of which runs 400 ms (section 8.4
+// of the visual specification); the retained home takes the screen back
+// after it.
+static const int RETAINED_STOCK_RETURN_MSEC = 450;
+// The stock menu's furniture, which the retained home and its pages draw
+// themselves. The stock menu keeps drawing the scene behind them: space, the
+// stars, the planet and its halo, the scan lines, the grid and its opening
+// fade.
+static const char *const RETAINED_STOCK_FURNITURE[] = {
+	"PrimaryMenuParent", "DoomLogo", "DoomLogo2", "ToolTip1", "ToolTip2", "OuterGlowBar"
+};
+static bool retainedStockPage = false;		// a stock page is open, or closing, over the stock home
+// OPTIONS' list is part of the retained home. An item with no retained page
+// opens the stock one in two steps, as two clicks would: the stock OPTIONS
+// button now, and the stock list's item once that list has unfolded (the
+// stock AnimMainToOptions runs 680 ms).
+static bool retainedSystemOpened = false;		// the retained SYSTEM page opened from the home's list
+static const char *retainedStockFollow = NULL;	// the stock list item still to press (NULL: none)
+static int retainedStockFollowAt = 0;			// presentation time to press it
+static const int RETAINED_STOCK_FOLLOW_MSEC = 720;
+static int retainedStockReturnAt = 0;		// presentation time its closing choreography ends (0: still open)
+
+// The stock death screen (guis/restart.gui) draws its scene under the retained
+// one: the fire, the faces, the blood, the pentagrams, the logo and the washes
+// over them. Its three choices and its load panel are the retained screen's.
+static const char *const RETAINED_DEATH_FURNITURE[] = {
+	"Restart", "Restart2", "Replay", "Replay2", "Quit", "Quit2", "LoadGame"
+};
+static const int RETAINED_DEATH_FURNITURE_COUNT = static_cast<int>( sizeof( RETAINED_DEATH_FURNITURE ) / sizeof( RETAINED_DEATH_FURNITURE[0] ) );
+
+// Draws a stock GUI's scene alone, without the windows `furniture` names and
+// without its pointer, for a retained screen to draw over.
+static void Session_DrawRetainedScene( idUserInterface *menu, int presentationTime, const char *const *furniture, int count ) {
+	for ( int i = 0; i < count; ++i ) {
+		UI_SetLegacyWindowHidden( menu, furniture[i], true );
+	}
+	UI_SetLegacyCursorHidden( menu, true );
+	menu->Redraw( presentationTime );
+	UI_SetLegacyCursorHidden( menu, false );
+	for ( int i = 0; i < count; ++i ) {
+		UI_SetLegacyWindowHidden( menu, furniture[i], false );
+	}
+}
+
+// The stock menu's scene.
+static void Session_DrawRetainedScene( idUserInterface *menu, int presentationTime ) {
+	Session_DrawRetainedScene( menu, presentationTime, RETAINED_STOCK_FURNITURE,
+		static_cast<int>( sizeof( RETAINED_STOCK_FURNITURE ) / sizeof( RETAINED_STOCK_FURNITURE[0] ) ) );
+}
+#else
 static const retainedHandoff_t RETAINED_HANDOFFS[] = {
 	{ "singlePlayer",	"main_b_newgame",		RETAINED_HANDOFF_PAGE },
 	{ "loadGame",		"main_b_loadgame",		RETAINED_HANDOFF_PAGE },
@@ -7111,7 +7297,9 @@ static const retainedHandoff_t RETAINED_HANDOFFS[] = {
 	// over the home, up to 2 s later (idAsyncClient::HandleDownloads).
 	{ "updates",		"main_b_updates",		RETAINED_HANDOFF_IN_PLACE },
 };
+#endif
 
+#if !defined( OPEND3 )
 // Legacy pop-ups drawn over the home state keep the framing bands at home.
 static bool Session_RetainedHomePopup( idUserInterface *gui ) {
 	static const int popups[] = { 5, 6, 8, 27 };
@@ -7122,6 +7310,7 @@ static bool Session_RetainedHomePopup( idUserInterface *gui ) {
 	}
 	return false;
 }
+#endif
 
 // The retained title and pause screens cover the legacy main menu and hand
 // its pages off to it, so they present only over a menu with every page they
@@ -7536,6 +7725,49 @@ void idSessionLocal::UpdateRetainedHome() {
 	}
 	const bool context = Session_RetainedScreensEnabled() && guiMainMenu != NULL && guiActive == guiMainMenu &&
 		guiTest == NULL && !RetainedUI_IsOpen() && ( !mapSpawned || !IsMultiplayer() );
+#if defined( OPEND3 )
+	// Doom 3's stock menu names its page in desktop::selected (0: home) and
+	// holds desktop::doomme at 0 while the id logo plays.
+	if ( retainedStockFollow != NULL && ( !context || now >= retainedStockFollowAt ) ) {
+		const char *follow = retainedStockFollow;
+		retainedStockFollow = NULL;
+		idStr command;
+		if ( context && UI_RunLegacyWindowAction( guiMainMenu, follow, false, command ) && command.Length() > 0 ) {
+			DispatchCommand( guiMainMenu, command.c_str() );
+		}
+	}
+	if ( retainedSystemOpened && guiActive != guiSystem ) {
+		// The SYSTEM page closed: the home comes back as from any page.
+		retainedSystemOpened = false;
+		retainedPageHome = NULL;
+		returning = context;
+	}
+	if ( !context ) {
+		retainedStockPage = false;
+		retainedStockReturnAt = 0;
+	} else if ( !MainMenuWindowStateEqualsInt( guiMainMenu, "desktop::doomme", 0 ) ) {
+		const bool atHome = MainMenuWindowStateEqualsInt( guiMainMenu, "desktop::selected", 0 );
+		if ( !atHome ) {
+			retainedStockPage = true;
+			retainedStockReturnAt = 0;
+		} else if ( retainedStockPage ) {
+			// Back on a stock page: its closing choreography plays out first.
+			if ( retainedStockReturnAt == 0 ) {
+				retainedStockReturnAt = now + RETAINED_STOCK_RETURN_MSEC;
+			}
+			if ( now >= retainedStockReturnAt ) {
+				retainedStockPage = false;
+				retainedStockReturnAt = 0;
+				returning = true;
+			}
+		}
+		const bool handoff = guiRetainedHome != NULL && now < retainedHandoffUntil;
+		if ( ( atHome && !retainedStockPage ) || handoff ) {
+			want = mapSpawned ? RetainedHomeDocument( guiRetainedPause, RETAINED_PAUSE_GUI ) :
+				RetainedHomeDocument( guiRetainedTitle, RETAINED_TITLE_GUI );
+		}
+	}
+#else
 	if ( context && !MainMenuWindowStateIsNonZero( guiMainMenu, "desktop::video_check" ) ) {
 		const bool atHome = MainMenuWindowStateEqualsInt( guiMainMenu, "desktop::curr", 0 ) &&
 			MainMenuWindowStateEqualsInt( guiMainMenu, "desktop::active", 0 );
@@ -7558,6 +7790,7 @@ void idSessionLocal::UpdateRetainedHome() {
 			}
 		}
 	}
+#endif
 	if ( mapSpawned ) {
 		retainedJoinReturn = false;
 	} else if ( retainedJoinReturn && want != NULL && want == guiRetainedTitle && guiRetainedHome == NULL ) {
@@ -7638,6 +7871,10 @@ idUserInterface *idSessionLocal::RetainedHomeDocument( idUserInterface *&home, c
 // Marine pause. The first Strogg answer starts parsing the Strogg pause's
 // pages on the job workers, so a page that pause hands off to rarely waits.
 bool idSessionLocal::RetainedPauseIsStrogg() {
+#if defined( OPEND3 )
+	// Doom 3 has one pause family.
+	return false;
+#else
 	if ( retainedPauseStrogg < 0 && game != NULL && mapSpawned && guiMainMenu != NULL ) {
 		guiMainMenu->SetStateBool( "pause_strogg", false );
 		Doom3Game_HandleMainMenuCommands( "retainedPauseFamily", guiMainMenu );
@@ -7654,6 +7891,7 @@ bool idSessionLocal::RetainedPauseIsStrogg() {
 #endif
 	}
 	return retainedPauseStrogg > 0;
+#endif
 }
 
 void idSessionLocal::RetainedHomeFrameEvent() {
@@ -7696,6 +7934,15 @@ void idSessionLocal::RetainedHomeFrameEvent() {
 }
 
 void idSessionLocal::DrawRetainedHome( int presentationTime ) {
+#if defined( OPEND3 )
+	// The stock menu draws the scene and keeps its timelines and music; the
+	// retained screen draws the furniture over it. Paused in a game, Doom 3's
+	// menu shows the same scene, not the game's view.
+#ifndef ID_DEDICATED
+	Session_DrawRetainedScene( guiMainMenu, presentationTime );
+	guiRetainedHome->Redraw( presentationTime );
+#endif
+#else
 	// The legacy menu keeps its timelines, music and hand-off choreography
 	// running unseen; only the retained screen reaches the output.
 	UI_RunTimeEvents( guiMainMenu, presentationTime );
@@ -7709,6 +7956,7 @@ void idSessionLocal::DrawRetainedHome( int presentationTime ) {
 		}
 	}
 	guiRetainedHome->Redraw( presentationTime );
+#endif
 }
 
 // The Single Player page and its Campaign and Arena sub-pages, the
@@ -7947,6 +8195,38 @@ void idSessionLocal::ShowSaveRestoreFailure( const char *saveName ) {
 #endif
 }
 
+#if defined( OPEND3 ) && !defined( ID_DEDICATED )
+static idStr Session_RetainedChoiceName( const char *listKey, int index, const char *fallback );
+
+// Doom 3's Multiplayer Settings offers three data rates (the stock choice's
+// values, #str_04223 naming them). A rate that is none of them, as the
+// engine's own default is, stays a fourth step shown as its number, so a
+// player can return to it.
+static const int RETAINED_MP_RATES[] = { 16000, 25600, 10000 };
+static const int RETAINED_MP_RATE_COUNT = static_cast<int>( sizeof( RETAINED_MP_RATES ) / sizeof( RETAINED_MP_RATES[0] ) );
+static int retainedMpRateOther = 0;
+
+// The title's Multiplayer Settings panel: the player's name and the data
+// rate's name. Always Run and the skin are CVar states of the document.
+static void Session_PublishRetainedMpSettings( idUserInterface *home ) {
+	const int rate = cvarSystem->GetCVarInteger( "net_clientMaxRate" );
+	idStr rateName = va( "%d", rate );
+	bool stock = false;
+	for ( int i = 0; i < RETAINED_MP_RATE_COUNT; ++i ) {
+		if ( rate == RETAINED_MP_RATES[i] ) {
+			rateName = Session_RetainedChoiceName( "#str_04223", i, rateName.c_str() );
+			stock = true;
+		}
+	}
+	if ( !stock ) {
+		retainedMpRateOther = rate;
+	}
+	home->SetStateString( "mpsettings.rate_name", rateName.c_str() );
+	home->SetStateString( "mpsettings.name", cvarSystem->GetCVarString( "ui_name" ) );
+	home->StateChanged( common->GetPresentationTime() );
+}
+#endif
+
 void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const char *request ) {
 #ifndef ID_DEDICATED
 	// The retained message box's buttons answer as the stock box's commands.
@@ -7976,6 +8256,22 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 		}
 		return;
 	}
+#if defined( OPEND3 )
+	// Doom 3's menu sounds (section 8.7 of the visual specification), for a
+	// document's own moves that send the session nothing else: opening a list
+	// or a dialog (forward), closing one (back), a refused choice.
+	if ( request != NULL && !idStr::Icmpn( request, "sound", 5 ) ) {
+		const char *shader = !idStr::Icmp( request, "soundForward" ) ? "guisounds_menuclickup" :
+			!idStr::Icmp( request, "soundBack" ) ? "guisounds_menuclickdown" :
+			!idStr::Icmp( request, "soundApply" ) ? "guisounds_chirpconnect" :
+			!idStr::Icmp( request, "soundError" ) ? "guisounds_menuerror" :
+			!idStr::Icmp( request, "soundLocked" ) ? "guisounds_error" : NULL;
+		if ( shader != NULL ) {
+			HandleMainMenuCommands( va( "play %s", shader ) );
+			return;
+		}
+	}
+#endif
 	// A notice's action (section 13.13), on whichever menu shows the stack.
 	const int noticeSlot = request == NULL ? -1 : !idStr::Icmp( request, "noticeAction0" ) ? 0 :
 		!idStr::Icmp( request, "noticeAction1" ) ? 1 : !idStr::Icmp( request, "noticeAction2" ) ? 2 : -1;
@@ -8078,7 +8374,11 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 	}
     if ( gui && request && gui == guiActive && gui == guiRetainedRestartMenu ) {
         // The restart screen's plates run the stock screen's own commands.
+#if defined( OPEND3 )
+        HandleRestartMenuCommands( "play guisounds_ping2" );	// the stock death screen's own press
+#else
         HandleMainMenuCommands( "play main_menu_selection" );
+#endif
         if ( !idStr::Icmp( request, "deathRestart" ) ) HandleRestartMenuCommands( "restart" );
         else if ( !idStr::Icmp( request, "deathLoad" ) ) {
             // LOAD GAME leaves for the title and opens the retained Load Game
@@ -8142,6 +8442,174 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 		}
 		return;
 	}
+#if defined( OPEND3 )
+	// OPTIONS' list is part of the retained home too (section 9.3). CONTROLS
+	// and GAME OPTIONS open their retained pages, which present over the home
+	// as the Load Game page does; SYSTEM and DEFAULTS, and either page where
+	// its document cannot present, are the stock menu's.
+	// MULTIPLAYER's list is part of the retained title as well (section 9.6).
+	// FIND MULTIPLAYER GAME opens the retained Game Browser, a page of its
+	// own over the stars, and asks for a new server list as the stock item
+	// does; CREATE SERVER opens the retained Create Server page the same way.
+	// Either page where its document cannot present, and MULTIPLAYER
+	// SETTINGS from a home that is not the title, is the stock menu's: its
+	// MULTIPLAYER button now, and its list's item once that list has unfolded.
+	// MULTIPLAYER SETTINGS is a panel of the title itself, as the stock page
+	// is a panel of the stock home: the session fills in what the document
+	// cannot read for itself and the title shows it. Data rate steps through
+	// the stock rates and the engine's default; Player Name takes the text
+	// the panel entered.
+	if ( guiRetainedHome == guiRetainedTitle && ( !idStr::Icmp( request, "mpRateNext" ) || !idStr::Icmp( request, "mpName" ) ) ) {
+		if ( !idStr::Icmp( request, "mpRateNext" ) ) {
+			const int rate = cvarSystem->GetCVarInteger( "net_clientMaxRate" );
+			int next = RETAINED_MP_RATES[0];
+			for ( int i = 0; i < RETAINED_MP_RATE_COUNT; ++i ) {
+				if ( rate == RETAINED_MP_RATES[i] ) {
+					next = i + 1 < RETAINED_MP_RATE_COUNT ? RETAINED_MP_RATES[ i + 1 ] :
+						retainedMpRateOther > 0 ? retainedMpRateOther : RETAINED_MP_RATES[0];
+				}
+			}
+			HandleMainMenuCommands( "play main_menu_selection" );
+			cvarSystem->SetCVarInteger( "net_clientMaxRate", next );
+		} else {
+			idStr name = guiRetainedHome->State().GetString( "mpsettings.name" );
+			name.StripTrailingWhitespace();
+			if ( name.Length() > 0 ) {
+				cvarSystem->SetCVarString( "ui_name", name.c_str() );
+				HandleMainMenuCommands( "play guisounds_chirpconnect" );
+			}
+		}
+		Session_PublishRetainedMpSettings( guiRetainedHome );
+		return;
+	}
+	if ( !idStr::Icmp( request, "mpSettings" ) && guiRetainedHome == guiRetainedTitle && !mapSpawned && retainedPagePending == NULL ) {
+		HandleMainMenuCommands( "play main_menu_selection" );
+		Session_PublishRetainedMpSettings( guiRetainedHome );
+		guiRetainedHome->HandleNamedEvent( "mpSettingsModalShow" );
+		return;
+	}
+	if ( !idStr::Icmp( request, "mpBrowser" ) || !idStr::Icmp( request, "mpCreate" ) || !idStr::Icmp( request, "mpSettings" ) ) {
+		if ( mapSpawned || retainedPagePending != NULL ) {
+			return;
+		}
+		if ( !idStr::Icmp( request, "mpBrowser" ) && RetainedJoinGamePage() != NULL ) {
+			HandleMainMenuCommands( "play main_menu_selection" );
+			OpenRetainedJoinGame();
+			if ( guiRetainedJoin != NULL && guiActive == guiRetainedJoin ) {
+				HandleRetainedJoinGameRequest( guiRetainedJoin, "joinNewList" );
+				return;
+			}
+		}
+		if ( !idStr::Icmp( request, "mpCreate" ) && RetainedCreateServerPage() != NULL ) {
+			HandleMainMenuCommands( "play main_menu_selection" );
+			OpenRetainedCreateServer();
+			if ( guiRetainedCreate != NULL && guiActive == guiRetainedCreate ) {
+				return;
+			}
+		}
+		idStr command;
+		if ( !UI_RunLegacyWindowAction( guiMainMenu, "MultiplayerBtnText", false, command ) ) {
+			common->Warning( "retained UI: '%s' is unavailable from the current menu", request );
+			return;
+		}
+		retainedHandoffUntil = now + RETAINED_STOCK_HANDOFF_MSEC;
+		retainedStockPage = true;
+		retainedStockReturnAt = 0;
+		retainedStockFollow = !idStr::Icmp( request, "mpBrowser" ) ? "MPNETBtnText" :
+			!idStr::Icmp( request, "mpCreate" ) ? "MPLANBtnText" : "MPPlayerBtnText";
+		retainedStockFollowAt = now + RETAINED_STOCK_FOLLOW_MSEC;
+		guiMainMenu->SetCursor( guiRetainedHome->CursorX(), guiRetainedHome->CursorY() );
+		if ( command.Length() > 0 ) {
+			DispatchCommand( guiMainMenu, command.c_str() );
+		}
+		return;
+	}
+	if ( !idStr::Icmpn( request, "options", 7 ) ) {
+		const bool controls = !idStr::Icmp( request, "optionsControls" ), gameOptions = !idStr::Icmp( request, "optionsGame" );
+		const char *stockItem = controls ? "ControlsBtnText" : gameOptions ? "GameOptionsBtnText" :
+			!idStr::Icmp( request, "optionsSystem" ) ? "SystemOptionsBtnText" :
+			!idStr::Icmp( request, "optionsDefaults" ) ? "ResetDefaultsBtnText" : NULL;
+		if ( stockItem == NULL || retainedPagePending != NULL ) {
+			return;
+		}
+		if ( !idStr::Icmp( request, "optionsSystem" ) ) {
+			// The retained SYSTEM page edits the engine's settings service. It
+			// opens over the home, which keeps drawing behind it.
+			idUserInterface *home = guiRetainedHome;
+			HandleMainMenuCommands( "play main_menu_selection" );
+			if ( OpenSystemSettings() ) {
+				home->HandleNamedEvent( "depart" );
+				PumpApplicationActions( home );
+				retainedPageHome = home;
+				retainedSystemOpened = true;
+				return;
+			}
+		}
+		if ( controls || gameOptions ) {
+			idUserInterface *&loaded = controls ? guiRetainedControls : guiRetainedGame;
+			const char *path = controls ? RETAINED_CONTROLS_GUI : RETAINED_GAME_GUI;
+			if ( loaded != NULL && UI_RetainedViewFailed( loaded ) ) {
+				common->Warning( "retained UI: '%s' stopped drawing; the stock screen presents instead", path );
+				retainedStock.AddUnique( path );
+				loaded = NULL;
+			}
+			if ( loaded == NULL ) {
+				loaded = FindRetainedGui( path, true, false );
+			}
+			if ( loaded != NULL ) {
+				if ( controls ) {
+					retainedControlsCapture = -1;
+					retainedControlsCaptured = -1;
+					PublishRetainedControls( loaded );
+				} else {
+					loaded->SetStateString( "game.name", cvarSystem->GetCVarString( "ui_name" ) );
+					loaded->StateChanged( now );
+				}
+				retainedHandoffUntil = now + RETAINED_PAGE_HANDOFF_MSEC;
+				retainedPagePending = loaded;
+				retainedPageAt = retainedHandoffUntil;
+				guiRetainedHome->HandleNamedEvent( "depart" );
+				HandleMainMenuCommands( "play main_menu_selection" );
+				return;
+			}
+		}
+		idStr command;
+		if ( !UI_RunLegacyWindowAction( guiMainMenu, "OptionsBtnText", false, command ) ) {
+			common->Warning( "retained UI: '%s' is unavailable from the current menu", request );
+			return;
+		}
+		retainedHandoffUntil = now + RETAINED_STOCK_HANDOFF_MSEC;
+		retainedStockPage = true;
+		retainedStockReturnAt = 0;
+		retainedStockFollow = stockItem;
+		retainedStockFollowAt = now + RETAINED_STOCK_FOLLOW_MSEC;
+		guiMainMenu->SetCursor( guiRetainedHome->CursorX(), guiRetainedHome->CursorY() );
+		if ( command.Length() > 0 ) {
+			DispatchCommand( guiMainMenu, command.c_str() );
+		}
+		return;
+	}
+	// NEW GAME's difficulty list is part of the retained title, as it is part
+	// of the stock home (section 9.4 of the visual specification): newGame0 to
+	// newGame3 start the campaign at that difficulty through the stock menu's
+	// own command. Nightmare stays locked until the game has unlocked it.
+	if ( !idStr::Icmpn( request, "newGame", 7 ) && request[7] >= '0' && request[7] <= '3' && request[8] == '\0' ) {
+		if ( mapSpawned ) {
+			return;
+		}
+		const int skill = request[7] - '0';
+		if ( skill == 3 && !cvarSystem->GetCVarBool( "g_nightmare" ) ) {
+			HandleMainMenuCommands( "play guisounds_error" );
+			return;
+		}
+		const bool expansion = !idStr::Icmp( cvarSystem->GetCVarString( "fs_game" ), "d3xp" ) ||
+			!idStr::Icmp( cvarSystem->GetCVarString( "fs_game_base" ), "d3xp" );
+		guiMainMenu->SetStateInt( "skill", skill );
+		HandleMainMenuCommands( expansion ? "play guisounds_menuclickup ; startGame game/erebus1" :
+			"play guisounds_menuclickup ; startGame game/mars_city1" );
+		return;
+	}
+#endif
 	if ( !idStr::Icmp( request, "continue" ) ) {
 		idStrList fileList;
 		idList<fileTIME_T> fileTimes;
@@ -8198,6 +8666,17 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 			return;
 		}
 		const bool popup = handoff.kind == RETAINED_HANDOFF_POPUP;
+#if defined( OPEND3 )
+		// The stock menu opens the page from the composition the home drew,
+		// with the pointer where the home had it.
+		( void )popup;
+		if ( handoff.kind != RETAINED_HANDOFF_IN_PLACE ) {
+			retainedHandoffUntil = now + RETAINED_STOCK_HANDOFF_MSEC;
+			retainedStockPage = true;
+			retainedStockReturnAt = 0;
+			guiMainMenu->SetCursor( guiRetainedHome->CursorX(), guiRetainedHome->CursorY() );
+		}
+#else
 		if ( handoff.kind != RETAINED_HANDOFF_IN_PLACE ) {
 			retainedHandoffUntil = now + ( popup ? RETAINED_POPUP_HANDOFF_MSEC : RETAINED_PAGE_HANDOFF_MSEC );
 			if ( !popup ) {
@@ -8206,6 +8685,7 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 			}
 			guiRetainedHome->HandleNamedEvent( popup ? "departPopup" : "depart" );
 		}
+#endif
 		if ( command.Length() > 0 ) {
 			// The legacy action's own command, such as its selection sound.
 			DispatchCommand( guiMainMenu, command.c_str() );
@@ -8319,6 +8799,14 @@ bool idSessionLocal::BeginRetainedPage( const char *request ) {
 bool idSessionLocal::RetainedPageActive() const {
 	return guiActive != NULL && ( IsRetainedLoadPage( guiActive ) || IsRetainedSavePage( guiActive ) || IsRetainedRestartPage( guiActive ) ||
 		guiActive == guiRetainedCredits || guiActive == guiRetainedMpPage ||
+#if defined( OPEND3 )
+		// Doom 3's CONTROLS and GAME OPTIONS pages open from the home's own list.
+		guiActive == guiRetainedControls || guiActive == guiRetainedGame ||
+		// The Game Browser and Create Server are pages of their own, opened
+		// from the home's list.
+		( guiRetainedJoin != NULL && guiActive == guiRetainedJoin ) ||
+		( guiRetainedCreate != NULL && guiActive == guiRetainedCreate ) ||
+#endif
 		( guiRetainedSettingsPage != NULL && guiActive == guiRetainedSettingsPage ) );
 }
 
@@ -8420,6 +8908,25 @@ title.
 */
 void idSessionLocal::DrawRetainedPageHome( int presentationTime ) {
 #ifndef ID_DEDICATED
+#if defined( OPEND3 )
+	// The death screen: the stock screen's scene, under the retained choices.
+	if ( guiRetainedRestartMenu != NULL && guiActive == guiRetainedRestartMenu ) {
+		if ( guiRestartMenu != NULL ) {
+			Session_DrawRetainedScene( guiRestartMenu, presentationTime, RETAINED_DEATH_FURNITURE, RETAINED_DEATH_FURNITURE_COUNT );
+		}
+		return;
+	}
+	// A retained page: the stock scene, then the home as its departure left it.
+	if ( guiMainMenu != NULL ) {
+		Session_DrawRetainedScene( guiMainMenu, presentationTime );
+	} else {
+		renderSystem->SetColor( colorBlack );
+		renderSystem->DrawStretchPic( 0, 0, 640, 480, 0, 0, 1, 1, declManager->FindMaterial( "_white" ) );
+	}
+	if ( retainedPageHome != NULL ) {
+		retainedPageHome->Redraw( presentationTime );
+	}
+#else
 	if ( mapSpawned && !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0 ) {
 		if ( !game->Draw( GetLocalClientNum() ) ) {
 			renderSystem->SetColor( colorBlack );
@@ -8432,6 +8939,7 @@ void idSessionLocal::DrawRetainedPageHome( int presentationTime ) {
 	if ( retainedPageHome != NULL ) {
 		retainedPageHome->Redraw( presentationTime );
 	}
+#endif
 #endif
 }
 
@@ -8919,6 +9427,13 @@ void idSessionLocal::OpenRestartMenu() {
 		guiRetainedRestartMenu = FindRetainedGui( RETAINED_RESTARTMENU_GUI, true, false );
 	}
 	if ( Session_RetainedScreensEnabled() && guiRetainedRestartMenu != NULL ) {
+#if defined( OPEND3 )
+		// The stock screen draws the scene under the retained choices
+		// (DrawRetainedPageHome); opening it starts its fade and its logo.
+		if ( guiRestartMenu != NULL ) {
+			guiRestartMenu->Activate( true, common->GetPresentationTime() );
+		}
+#endif
 		SetGUI( guiRetainedRestartMenu, NULL );
 		return;
 	}
@@ -9397,6 +9912,39 @@ static int Session_RetainedCreateGameType( void ) {
 	return 0;
 }
 
+#if defined( OPEND3 )
+// How many of the page's game types the loaded game takes: Capture the Flag,
+// the last, only where si_gameType lists it (Resurrection of Evil).
+static int Session_RetainedCreateGameTypeCount( void ) {
+	const idCVar *cvar = cvarSystem->Find( "si_gameType" );
+	const char **values = cvar != NULL ? cvar->GetValueStrings() : NULL;
+	for ( int i = 0; values != NULL && values[i] != NULL; ++i ) {
+		if ( !idStr::Icmp( values[i], RETAINED_CREATE_GAMETYPES[ RETAINED_CREATE_GAMETYPE_COUNT - 1 ] ) ) {
+			return RETAINED_CREATE_GAMETYPE_COUNT;
+		}
+	}
+	return RETAINED_CREATE_GAMETYPE_COUNT - 1;
+}
+
+// The stock choices keep their values' names in one string, "a;b;c". The
+// name at `index`, or `fallback` where the string has none there.
+static idStr Session_RetainedChoiceName( const char *listKey, int index, const char *fallback ) {
+	const idStr list = common->GetLanguageDict()->GetString( listKey );
+	int start = 0;
+	for ( int item = 0; start <= list.Length(); ++item ) {
+		int end = list.Find( ';', start );
+		if ( end < 0 ) {
+			end = list.Length();
+		}
+		if ( item == index ) {
+			return end > start ? list.Mid( start, end - start ) : idStr( fallback );
+		}
+		start = end + 1;
+	}
+	return fallback;
+}
+#endif
+
 // A setting's request, "<verb> <value>": its index in RETAINED_CREATE_SETTINGS
 // and the value, a whole number from -1 to 999.
 static bool Session_RetainedCreateSettingRequest( const char *request, int &setting, int &value ) {
@@ -9503,6 +10051,17 @@ void idSessionLocal::PublishRetainedCreateServer( idUserInterface *gui ) {
 		gui->SetStateString( RETAINED_CREATE_TEXTS[i].state, cvarSystem->GetCVarString( RETAINED_CREATE_TEXTS[i].cvar ) );
 	}
 	gui->SetStateInt( "create.gametype", Session_RetainedCreateGameType() );
+#if defined( OPEND3 )
+	// Server Type and Dedicated as the stock menu's state holds them, and the
+	// names of the values the page shows as text, from the stock choices.
+	const bool lan = guiMainMenu != NULL && guiMainMenu->State().GetBool( "server_type" );
+	gui->SetStateBool( "create.lan", lan );
+	gui->SetStateString( "create.lan_name", Session_RetainedChoiceName( "#str_04227", lan ? 1 : 0, lan ? "LAN" : "Internet" ).c_str() );
+	gui->SetStateBool( "create.dedicated", guiMainMenu != NULL && guiMainMenu->State().GetBool( "dedicated" ) );
+	const int gameType = Session_RetainedCreateGameType();
+	gui->SetStateString( "create.gametype_name", Session_RetainedChoiceName( "#str_04228", gameType, RETAINED_CREATE_GAMETYPES[ gameType ] ).c_str() );
+	gui->SetStateString( "create.rate_name", Session_RetainedChoiceName( "#str_04229", gui_configServerRate.GetInteger(), "" ).c_str() );
+#endif
 	gui->StateChanged( common->GetPresentationTime() );
 #endif
 }
@@ -9627,12 +10186,57 @@ void idSessionLocal::HandleRetainedCreateServerRequest( idUserInterface *gui, co
 	if ( retainedSubpageFrom != NULL ) {
 		return;
 	}
+#if defined( OPEND3 )
+	// Doom 3's Create Server page opens from the home's list and returns to
+	// it; its GAME BROWSER tab leaves for the browser.
+	if ( !idStr::Icmp( request, "createBack" ) || !idStr::Icmp( request, "createBrowser" ) ) {
+		const bool browser = !idStr::Icmp( request, "createBrowser" );
+		ReturnRetainedPage();
+		if ( browser && guiRetainedHome != NULL && guiActive == guiMainMenu ) {
+			HandleRetainedSessionRequest( guiRetainedHome, "mpBrowser" );
+		}
+		return;
+	}
+	// The stock choices step to their next value on a click; so do the page's.
+	if ( !idStr::Icmp( request, "createGameTypeNext" ) ) {
+		HandleMainMenuCommands( "play main_menu_selection" );
+		cvarSystem->SetCVarString( "si_gameType", RETAINED_CREATE_GAMETYPES[ ( Session_RetainedCreateGameType() + 1 ) % Session_RetainedCreateGameTypeCount() ] );
+		PublishRetainedCreateServer( gui );
+		PublishRetainedCreateMaps( gui, true );
+		return;
+	}
+	if ( !idStr::Icmp( request, "createRateNext" ) ) {
+		HandleMainMenuCommands( "play main_menu_selection" );
+		gui_configServerRate.SetInteger( ( idMath::ClampInt( 0, 5, gui_configServerRate.GetInteger() ) + 1 ) % 6 );
+		PublishRetainedCreateServer( gui );
+		return;
+	}
+	{
+		// Server Type and Dedicated live in the stock menu's state, where
+		// StartMenuServer reads them.
+		static const char *const menuVerbs[] = { "createLan", "createDedicated" };
+		int menuField = -1, menuValue = 0;
+		if ( Session_RetainedValueRequest( request, menuVerbs, 2, menuField, menuValue ) ) {
+			if ( guiMainMenu != NULL && ( menuValue == 0 || menuValue == 1 ) ) {
+				guiMainMenu->SetStateInt( menuField == 0 ? "server_type" : "dedicated", menuValue );
+			}
+			PublishRetainedCreateServer( gui );
+			return;
+		}
+	}
+#else
 	if ( !idStr::Icmp( request, "createBack" ) ) {
 		BeginRetainedSubpage( gui, false, RETAINED_SUBPAGE_CREATE_SERVER );
 		return;
 	}
+#endif
 	if ( !idStr::Icmp( request, "createStart" ) ) {
 		HandleMainMenuCommands( "play main_menu_selection" );
+#if defined( OPEND3 )
+		// The server plays the game type the page shows: a value the page
+		// does not offer (singleplayer, after a campaign) reads as its first.
+		cvarSystem->SetCVarString( "si_gameType", RETAINED_CREATE_GAMETYPES[ Session_RetainedCreateGameType() ] );
+#endif
 		StartMenuServer();
 		return;
 	}
@@ -10257,10 +10861,23 @@ void idSessionLocal::HandleRetainedJoinGameRequest( idUserInterface *gui, const 
 		return;
 	}
 	idServerScan &servers = idAsyncNetwork::client.serverList;
+#if defined( OPEND3 )
+	// Doom 3's Game Browser opens from the home's list and returns to it;
+	// its CREATE SERVER tab leaves for the Create Server page.
+	if ( !idStr::Icmp( request, "joinBack" ) || !idStr::Icmp( request, "joinCreate" ) ) {
+		const bool create = !idStr::Icmp( request, "joinCreate" );
+		ReturnRetainedPage();
+		if ( create && guiRetainedHome != NULL && guiActive == guiMainMenu ) {
+			HandleRetainedSessionRequest( guiRetainedHome, "mpCreate" );
+		}
+		return;
+	}
+#else
 	if ( !idStr::Icmp( request, "joinBack" ) ) {
 		BeginRetainedSubpage( gui, false, RETAINED_SUBPAGE_JOIN_GAME );
 		return;
 	}
+#endif
 	const bool spectate = !idStr::Icmp( request, "joinSpectate" );
 	if ( spectate || !idStr::Icmp( request, "joinServer" ) ) {
 		if ( gui->State().GetInt( "join.selected", "-1" ) < 0 || retainedJoinAddress.Length() == 0 ) {

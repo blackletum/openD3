@@ -147,6 +147,13 @@ bool UI_StepLegacyFocus( idUserInterface *gui, int direction, idStr &report );
 bool UI_LegacyFocusWithin( idUserInterface *gui, const char *ancestorName, idStr &focusName, idRectangle &rect, float &viewHeight );
 // Whether a classic GUI defines the named window, visible or not.
 bool UI_LegacyWindowExists( idUserInterface *gui, const char *windowName );
+// openD3: hides a classic GUI's named window and its children while a retained
+// screen draws in its place, or shows it again. The window's timelines keep
+// running. False when the GUI has no such window.
+bool UI_SetLegacyWindowHidden( idUserInterface *gui, const char *windowName, bool hidden );
+// openD3: keeps a classic GUI from drawing its pointer while a retained screen
+// over it draws its own.
+void UI_SetLegacyCursorHidden( idUserInterface *gui, bool hidden );
 // Whether a classic GUI's desktop defines the named event.
 bool UI_LegacyNamedEventExists( idUserInterface *gui, const char *eventName );
 typedef void (*UI_ApplicationCommandCallback)( idUserInterface *gui, const char *command, void *context );

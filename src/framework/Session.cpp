@@ -10652,6 +10652,12 @@ void idSessionLocal::Draw() {
 			// ordinary in-game "gameDraw" path.
 			rw->RenderScene( &currentDemoRenderView );
 			renderSystem->DrawDemoPics();
+#if defined( OPEND3 )
+		} else if ( guiActive == guiSystem && guiSystem != NULL && guiMainMenu != NULL ) {
+			// Doom 3's SYSTEM page stands over the menu's scene and the home
+			// that opened it, as its other pages do.
+			DrawRetainedPageHome( presentationTime );
+#endif
 		} else if ( guiActive == guiSystem || guiActive->State().GetBool( "gameDraw" ) ) {
 			if ( mapSpawned && !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0 ) {
 				bool gameDraw = game->Draw( GetLocalClientNum() );
@@ -10665,6 +10671,12 @@ void idSessionLocal::Draw() {
 			}
 		}
 
+#if defined( OPEND3 )
+		if ( guiRetainedRestartMenu != NULL && guiActive == guiRetainedRestartMenu ) {
+			// Doom 3's death screen: the stock screen's scene under the retained choices.
+			DrawRetainedPageHome( presentationTime );
+		} else
+#endif
 		if ( RetainedPageActive() ) {
 			// A retained page over the home that handed off to it.
 			DrawRetainedPageHome( presentationTime );

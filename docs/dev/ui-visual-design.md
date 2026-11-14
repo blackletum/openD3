@@ -1,11 +1,15 @@
 # openD3 UI Visual Design
 
 Specification version 1.2, 13 November 2026. Status: implementation target; the
-vector replacement has not shipped. openD3 runs the stock Doom 3 GUIs today, set in
+vector replacement has begun with the title screen, the single-player pause, the
+message box, the death screen's choices and the Load Game, Save Game, Controls, Game Options, System, Mods,
+Credits, Game Browser, Create Server and Multiplayer Settings pages ([retained Doom 3 menus](ui/retained-menus.md)), which
+present with
+`ui_retained 1`. openD3 otherwise runs the stock Doom 3 GUIs, set in
 the reconstructed TrueType faces and, on wide and tall screens, arranged by
 [layout patches](widescreen-layout.md) that follow the Remastered rules of
-section 3. Launches pin `ui_retained 0` because the retained interface has no Doom 3
-documents yet ([rebase record](doom3-rebase.md)).
+section 3. Launches pin `ui_retained 0` because most of the retained interface has no
+Doom 3 documents yet ([rebase record](doom3-rebase.md)).
 [What exists today](#what-exists-today) separates the two. This specification
 applies to every player-facing GUI: menus, dialogs, the HUD, the PDA, gun-mounted
 displays, in-world device screens, multiplayer overlays, loading screens and the
@@ -100,8 +104,9 @@ Most of this document is a target. These parts of it are in the engine, and the
 | The stock slot rule: the 12 px slot up to textscale 0.30 (section 5) | In the engine (`gui_smallFontLimit`) | [Font system](ttf-font-system.md) |
 | The Remastered layout of the stock menus, HUDs, loading screens and message screens (section 3) | In the engine as layout patches over the stock GUIs (`ui_widescreenLayouts`, on by default) | [Wide and tall screen layout](widescreen-layout.md) |
 | The PDA's soft-focus surround (section 10.9) | In the engine, part of the same patches | [Wide and tall screen layout](widescreen-layout.md) |
+| The title screen, the difficulty list, the single-player pause, the exit and quit-game dialogs, the engine message box, the death screen's choices, the options and multiplayer lists and the Load Game, Save Game, Controls, Game Options, System, Mods, Credits, Game Browser, Create Server and Multiplayer Settings pages as vector furniture (sections 6, 7, 8 and 9) | Retained documents, behind `ui_retained 1`; the stock menu still draws the scene and provides every other page | [Retained Doom 3 menus](ui/retained-menus.md) |
 
-Everything else is not built: the vector furniture, the tokens as data, the
+Everything else is not built: the vector furniture of every other screen, most of the
 construction choreography in retained documents, and the whole of section 12. Where a
 Remastered rule in a later section goes beyond the layout patches, it says so, and
 section 3 lists the differences.

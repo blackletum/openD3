@@ -866,6 +866,29 @@ bool UI_LegacyWindowExists( idUserInterface *gui, const char *windowName ) {
 	return legacy != NULL && legacy->HasWindow( windowName );
 }
 
+// openD3: hides a window and everything under it, or shows it again, without
+// touching its own visible flag or its timelines.
+bool idUserInterfaceLocal::SetWindowHidden( const char *windowName, bool hidden ) {
+	drawWin_t *found = desktop != NULL && windowName != NULL && windowName[ 0 ] != '\0' ? desktop->FindChildByName( windowName ) : NULL;
+	if ( found == NULL || found->win == NULL ) {
+		return false;
+	}
+	found->win->hostHidden = hidden;
+	return true;
+}
+
+bool UI_SetLegacyWindowHidden( idUserInterface *gui, const char *windowName, bool hidden ) {
+	idUserInterfaceLocal *legacy = dynamic_cast<idUserInterfaceLocal *>( gui );
+	return legacy != NULL && legacy->SetWindowHidden( windowName, hidden );
+}
+
+void UI_SetLegacyCursorHidden( idUserInterface *gui, bool hidden ) {
+	idUserInterfaceLocal *legacy = dynamic_cast<idUserInterfaceLocal *>( gui );
+	if ( legacy != NULL ) {
+		legacy->SetCursorHidden( hidden );
+	}
+}
+
 bool idUserInterfaceLocal::HasNamedEvent( const char *eventName ) const {
 	return desktop != NULL && eventName != NULL && eventName[ 0 ] != '\0' && desktop->HasNamedEvent( eventName );
 }
@@ -1670,7 +1693,7 @@ void idUserInterfaceLocal::DrawSoftFocusBackdrop() {
 }
 
 void idUserInterfaceLocal::DrawCursor() {
-	if ( controllerNavigation ) {
+	if ( controllerNavigation || hostCursorHidden ) {
 		return;
 	}
 	// A finger points for itself: touch draws no cursor (section 13.6).

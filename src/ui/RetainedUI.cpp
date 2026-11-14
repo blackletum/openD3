@@ -1137,10 +1137,18 @@ private:
 	const idMaterial *reducedBlurMaterial=nullptr, *reducedBlurResolve=nullptr;
 	int reducedBlurWidth=0, reducedBlurHeight=0;
 	static std::string FontFamily(const std::string& family) {
+#if defined( OPEND3 )
+		// Doom 3's faces (fonts/<face>.ttf): the default face is "english";
+		// anything else a document names draws in it.
+		static const char* const faces[] = {"bank","an","micro","bigchars"};
+		for (const char* face : faces) if (family == face) return face;
+		return "english";
+#else
 		// The faces a document may name; anything else draws in Chain.
 		static const char* const faces[] = {"marine","lowpixel","profont","r_strogg","strogg"};
 		for (const char* face : faces) if (family == face) return face;
 		return "chain";
+#endif
 	}
 	// The rune face maps the Latin alphabet onto Strogg runes and leaves most
 	// punctuation blank (visual specification section 5). Text in any other

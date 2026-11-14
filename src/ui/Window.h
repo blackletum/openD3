@@ -557,6 +557,9 @@ protected:
 	// "none" keeps the window and its children out of the HUD scale: a layer
 	// that is not part of the HUD's groups (the Arena presentation).
 	enum { HUD_ANCHOR_NONE = 3, HUD_ANCHOR_UNSET = 255 };
+	// openD3: a host (the session) hides this window while a retained screen
+	// draws in its place; its timelines keep running.
+	bool hostHidden = false;
 	unsigned char hudAnchorX = HUD_ANCHOR_UNSET;
 	unsigned char hudAnchorY = HUD_ANCHOR_UNSET;
 	// The group anchors this window sets: 0 the centre, 1 the leading or top

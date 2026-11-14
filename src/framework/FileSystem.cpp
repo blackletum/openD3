@@ -6646,12 +6646,6 @@ void idFileSystemLocal::Startup( void ) {
 	}
 
     idStr invalidReason;
-	if ( fs_game_base.GetString()[ 0 ] &&
-		 idStr::Icmp( fs_game_base.GetString(), BASE_GAMEDIR ) &&
-		 !ValidateConfiguredGameDir( fs_game_base.GetString(), &invalidReason ) ) {
-		common->Warning( "Ignoring fs_game_base '%s': %s", fs_game_base.GetString(), invalidReason.c_str() );
-		fs_game_base.SetString( "" );
-	}
 
 	if ( fs_game.GetString()[ 0 ] &&
 		 idStr::Icmp( fs_game.GetString(), BASE_GAMEDIR ) &&

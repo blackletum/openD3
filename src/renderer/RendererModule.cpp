@@ -1717,6 +1717,10 @@ void R_RendererModule_UseSavedSelectionOnReload() {
 	rm_selectionReloadPending = true;
 }
 
+bool R_RendererModule_SelectionReloadPending() {
+	return rm_selectionReloadPending;
+}
+
 bool R_RendererModule_FinishSelectionReload() {
 	if (!rm_selectionReloadPending) return true;
 	if (!RM_AllowImageModuleChange()) return false;

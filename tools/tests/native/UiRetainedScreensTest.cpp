@@ -76,6 +76,12 @@ struct ScreenHost final : Host {
 		Check(destination != 0,"the soft focus is drawn into a pushed layer");
 		softened.push_back({sigma,saturation,region}); return softFocus;
 	}
+	struct Glitched { float dither, strength, phase; Bounds region; };
+	std::vector<Glitched> glitched;
+	bool GlitchBackdrop(std::uint32_t destination, float dither, float strength, float phase, const Bounds& region) override {
+		Check(destination != 0,"the signal fault is drawn into a pushed layer");
+		glitched.push_back({dither,strength,phase,region}); return softFocus;
+	}
 	std::vector<float> streaks;
 	bool StreakBackdrop(std::uint32_t destination, float strength, const Bounds&) override {
 		Check(destination != 0,"the speed streak is drawn into a pushed layer");
@@ -273,7 +279,7 @@ static const std::set<std::string> SessionCommands = {"continue","singlePlayer",
 	"mpClose","mpMainMenu","mpDisconnect","mpStockPage","mpTeamAction","mpSelectPlayer","mpMute","mpFriend","mpWelcomeAction",
 	"mpVoteYes","mpVoteNo","mpCallVote","mpRail","mpSettingsControls","mpSettingsGame","mpSettingsSystem","mpMatch","mpMatchSelect",
 	"mpSummaryChat","mpAdminPass","mpAdminSelect","mpAdminKick","mpAdminBan","mpAdminSwitch","mpAdminBans","mpAdminBanPick","mpAdminUnban",
-	"mpAdminApply","mpAdminConsole","mpRefereeLogin","mpSettingsName","mpSettingsClan"};
+	"mpAdminApply","mpAdminConsole","mpRefereeLogin","mpSettingsName","mpSettingsClan","mpBuy"};
 // The value controls' verbs, which carry the control's new value.
 static const std::set<std::string> SessionValueCommands = {"mpVoteMap","mpVoteGameType","mpVoteTimeLimit","mpVoteFragLimit",
 	"mpVoteCaptureLimit","mpVoteTourneyLimit","mpVoteControlTime","mpVoteBalance","mpVoteShuffle","mpVoteRestart","mpVoteBuying","mpVoteKick",
@@ -285,7 +291,7 @@ static const std::set<std::string> SessionValueCommands = {"mpVoteMap","mpVoteGa
 	"createServerMods","createWeaponStay","createPure","createRate","createReady","createSpectators","createWarmup","createVoice",
 	"createBuying","createBots","createBotSkill","createShuffle","createOvertime","createMercy","createRoundLimit",
 	"audioVolume","audioMusic","audioDialogue","audioBackend","audioDevice","audioEax","audioSpeakers","audioHrtf",
-	"audioSubtitles","audioSubtitleSize","audioSubtitleBackground","audioSubtitleSpeakers",
+	"audioSubtitles","audioSubtitleSize","audioSubtitleBackground","audioSubtitleSpeakers","audioSubtitleUntranscribed",
 	"gameGunPosition","gameForceModel","gameCrosshair","gameCorpseTime","gameLanguage"};
 // The player settings the multiplayer card's Settings and Voice pages and the
 // GAME OPTIONS page change.
@@ -355,8 +361,10 @@ static void CheckSessionActions(const Document& document) {
 		const bool player = verb == "mpSelectPlayer" || verb == "mpMute" || verb == "mpFriend" ||
 			verb == "mpAdminSelect" || verb == "mpAdminKick" || verb == "mpAdminBan" || verb == "mpAdminSwitch";
 		const bool save = verb == "loadSelect" || verb == "saveSelect" || verb == "loadSave" || verb == "loadDelete";
+		const bool buy = verb == "mpBuy";
 		Check(!save || (action.arguments.at("index").type == 0 && action.arguments.at("generation").type == 0),"save command carries catalog operands");
-		Check(action.arguments.size() == (player || save || verb == "mpVoteKick" ? 3u : value ? 2u : 1u),"command carries exactly its typed operands");
+		Check(!buy || action.arguments.at("item").type == 0,"a purchase carries its catalog item");
+		Check(action.arguments.size() == (player || save || verb == "mpVoteKick" ? 3u : value || buy ? 2u : 1u),"command carries exactly its typed operands");
 		Check(!player || (action.arguments.at("client").type == 0 && action.arguments.at("identity").type == 2),"player command carries client and connection identity");
 		Check((value ? SessionValueCommands : SessionCommands).contains(std::get<std::string>(command->second.literal)),
 			"every command is in the session allowlist");
@@ -776,7 +784,7 @@ static void CheckVote(ScreenHost& host, const char* path) {
 		{"mp.vote.map_count",3.0},{"mp.vote.map0",std::string("The Fragging Yard")},{"mp.vote.map1",std::string("Lost Fleet")},
 		{"mp.vote.map2",std::string("Bloodwork")},{"mp.vote.map",1.0},{"mp.vote.gametype_count",12.0},
 		{"mp.vote.gametype2",std::string("Team DM")},{"mp.vote.gametype",2.0},{"mp.vote.timelimit",10.0},{"mp.vote.fraglimit",20.0},
-		{"mp.vote.balance",true},{"mp.vote.shuffle",false},{"mp.vote.restart",false},{"mp.vote.buying",false},
+		{"mp.vote.balance",true},{"mp.vote.shuffle",false},{"mp.vote.restart",false},{"mp.vote.buying",0.0},
 		{"mp.vote.kick_catalog",std::string("0,1:4097,2:4098")},{"mp.vote.kick_count",3.0},{"mp.vote.kick0",std::string("Anderson")},{"mp.vote.kick1",std::string("Rhodes")},{"mp.vote.kick",-1.0},
 		{"mp.vote.locked",true}};
 	const char* const keys[] = {"map","gametype","timelimit","fraglimit","capturelimit","tourneylimit","controltime","balance","shuffle",
@@ -2987,6 +2995,10 @@ static void CheckCreditsPage(ScreenHost& host, const char* path) {
 	runtime.Frame(viewport,6.0);
 	const float runes = value("screen1_ts_1","color",3);
 	Check(runes > .1f && runes < .8f && Near(value("screen1_t_1","color",3),0,.01f),"the heading's runes are fading in, its Latin not yet");
+	// In this 16:9 view the 4:3 frame's edge stands 160 dp inside the view:
+	// the waiting scan bar's head rests at the view's edge, not the frame's.
+	const auto resting = bounds("screen1_bar1");
+	Check(resting.x + resting.width < 8,"a waiting scan bar rests beyond the view's leading edge, not the 4:3 frame's");
 	runtime.Frame(viewport,7.5);
 	Check(value("screen1_t_1","color",3) > .2f && value("screen1_ts_1","color",3) < runes + .5f,"the heading translates from runes to Latin");
 	Check(value("screen1_bar1","opacity",0) > 0 && value("screen1_bar1","transform",0) > 0,"its scan bar has slid in from the leading edge");
@@ -4666,12 +4678,12 @@ static void CheckControlsPage(ScreenHost& host, const char* path) {
 	Check(diagnostics.empty() && document.Model().id == "opend3.controls" && document.Model().canvasHeight == 720,
 		"the CONTROLS page validates on the 4:3 canvas");
 	CheckSessionActions(document);
-	for (int row = 0; row < 49; ++row) {
+	for (int row = 0; row < 50; ++row) {
 		const auto* node = document.Model().FindNode("controls_bind_"+std::to_string(row));
 		Check(node && node->control && node->control->role == ControlRole::Button && node->control->action == "controlsBind",
 			"each binding row asks the session to wait for a key");
 	}
-	Check(!document.Model().FindNode("controls_bind_49"),"the stock page's 49 bindings, no more");
+	Check(!document.Model().FindNode("controls_bind_50"),"the stock page's 49 bindings and the Classic ruleset's hook, no more");
 	for (const char* tab : {"tab-move","tab-weapons","tab-attack","tab-other"}) Check(document.Model().FindNode(tab) != nullptr,"the stock tabs");
 	Runtime runtime(host);
 	Check(runtime.Initialize() && runtime.LoadDocument(source,"guis/menu/settings/controls.rui",diagnostics),"the page loads into a runtime");
@@ -4960,7 +4972,7 @@ static void CheckAudioPage(ScreenHost& host, const char* path) {
 		{"audio_dialogue","audioDialogue"},{"audio_backend","audioBackend"},{"audio_device","audioDevice"},{"audio_eax","audioEax"},
 		{"audio_speakers","audioSpeakers"},{"audio_hrtf","audioHrtf"},{"audio_subtitles","audioSubtitles"},
 		{"audio_subtitle_size","audioSubtitleSize"},{"audio_subtitle_background","audioSubtitleBackground"},
-		{"audio_subtitle_speakers","audioSubtitleSpeakers"}};
+		{"audio_subtitle_speakers","audioSubtitleSpeakers"},{"audio_subtitle_untranscribed","audioSubtitleUntranscribed"}};
 	for (const auto& [control, verb] : rows) {
 		const auto* node = document.Model().FindNode(control);
 		const auto found = document.Model().actions.find(verb);
@@ -4997,7 +5009,8 @@ static void CheckAudioPage(ScreenHost& host, const char* path) {
 	Check(runtime.SetState({{"audio.volume",70.0},{"audio.music",40.0},{"audio.dialogue",100.0},{"audio.backend",1.0},
 		{"audio.device.count",3.0},{"audio.device.0.label",std::string("Default device")},{"audio.device.1.label",std::string("Speakers")},
 		{"audio.device.2.label",std::string("Headset")},{"audio.device",1.0},{"audio.eax",true},{"audio.speakers",2.0},{"audio.hrtf",0.0},
-		{"audio.subtitles",true},{"audio.subtitleSize",150.0},{"audio.subtitleBackground",30.0},{"audio.subtitleSpeakers",false}},error,0.1),
+		{"audio.subtitles",true},{"audio.subtitleSize",150.0},{"audio.subtitleBackground",30.0},{"audio.subtitleSpeakers",false},
+		{"audio.subtitleUntranscribed",true}},error,0.1),
 		"the session publishes the values");
 	Check(runtime.RunEvent("onActivate",0.2,effects,error),"the page arrives");
 	runtime.Frame(viewport,0.5);
@@ -5029,20 +5042,23 @@ static void CheckAudioPage(ScreenHost& host, const char* path) {
 	Check(runtime.FocusControl("audio_subtitle_speakers",0.73),"focus Speaker Names");
 	press(MenuInput::Accept,0.74);
 	Check(std::get<bool>(taken("audioSubtitleSpeakers").arguments.at("value")),"Accept asks the session to name the speakers");
+	Check(runtime.FocusControl("audio_subtitle_untranscribed",0.75),"focus Untranscribed Speech");
+	press(MenuInput::Accept,0.76);
+	Check(!std::get<bool>(taken("audioSubtitleUntranscribed").arguments.at("value")),"Accept asks the session to stop marking untranscribed speech");
 	// The back input asks the session to return.
 	Check(runtime.RunEvent("onBack",0.8,effects,error) && effects.actions.size() == 1 &&
 		std::get<std::string>(effects.actions[0].arguments.at("command")) == "audioBack","Back asks the session to return");
 	// A portrait view: the panel and its rows stay inside the view.
 	const auto portrait = SettingsViewport(document,540,960);
 	runtime.Frame(portrait,1.0);
-	const auto panel = bounds("audio-panel"), last = bounds("audio_subtitle_speakers");
+	const auto panel = bounds("audio-panel"), last = bounds("audio_subtitle_untranscribed");
 	Check(panel.x >= -.5f && panel.x+panel.width <= 540.5f && panel.y+panel.height <= 960.5f && last.x+last.width <= 540.5f,
 		"the panel fits a portrait view");
-	CheckSettingsPortrait(runtime,document,"audio_device","audio_eax","audio_subtitle_speakers","audio-audio-rows",1.1);
+	CheckSettingsPortrait(runtime,document,"audio_device","audio_eax","audio_subtitle_untranscribed","audio-audio-rows",1.1);
 	runtime.Frame(portrait,1.2);
 	const auto band = runtime.PresentedValue("audio-header","display");
 	Check(band && band->text == "none","the tall column's headings stand in its rows, not the header band");
-	CheckSettingsTextScale(host,runtime,document,"audio-audio","audio_device","audio_eax","audio_subtitle_speakers",1.3);
+	CheckSettingsTextScale(host,runtime,document,"audio-audio","audio_device","audio_eax","audio_subtitle_untranscribed",1.3);
 	// The single column at a larger text size takes its headings into its rows too.
 	auto larger = SettingsViewport(document); larger.textScale = 1.5f;
 	runtime.Frame(larger,1.6);
@@ -5747,6 +5763,7 @@ static void CheckSafeAreas(ScreenHost& host, char** paths, int count) {
 #include "UiHudChecks.inl"
 #include "UiRemasteredHudChecks.inl"
 #include "UiRetainedSummaryChecks.inl"
+#include "UiRetainedBuyChecks.inl"
 // Each group of documents is its own meson test, so the suite runs the
 // groups side by side: together the checks take about 35 s of CPU, most of
 // it parsing and loading the documents (the 8 MB Escape card above all), and
@@ -6006,6 +6023,10 @@ int main(int argc, char** argv) {
  if (argc == 3 && std::string(argv[1]) == "--summary") {
      ScreenHost host; CheckSummary(host,argv[2]);
      std::printf("retained summary: %d checks passed\n",checks); return 0;
+ }
+ if (argc == 3 && std::string(argv[1]) == "--buy") {
+     ScreenHost host; CheckBuy(host,argv[2]);
+     std::printf("retained buy card: %d checks passed\n",checks); return 0;
  }
  if (argc == 3 && std::string(argv[1]) == "--settings") {
      ScreenHost host; CheckSettingsPage(host,argv[2]);
@@ -6311,7 +6332,7 @@ int main(int argc, char** argv) {
 			host.softFocus = true;
 			Runtime::EventEffects shown, hidden;
 			Check(runtime.RunEvent("exitModalShow",16.42,shown,error),"the exit confirmation opens over soft focus");
-			host.softened.clear();
+			host.softened.clear(); host.glitched.clear();
 			runtime.Frame(viewport,16.52);
 			const auto blur = runtime.PresentedValue("exitModal-softfocus","backdrop-blur");
 			const auto saturate = runtime.PresentedValue("exitModal-softfocus","backdrop-saturate");
@@ -6328,7 +6349,9 @@ int main(int argc, char** argv) {
 			const auto& region = host.softened[0].region;
 			Check(region.x <= 0 && region.y <= 0 && region.x+region.width >= 1920 && region.y+region.height >= 1080,
 				"the whole view beneath the modal is softened");
-			Check(runtime.Statistics().backdropComposites == 1 && runtime.Statistics().backdropFallbacks == 0,"the backdrop pass is counted");
+			// The field's signal passes, where the renderer can read the view, and the modal's soft focus.
+			Check(!host.glitched.empty() && runtime.Statistics().backdropComposites == 1+host.glitched.size() &&
+				runtime.Statistics().backdropFallbacks == 0,"the backdrop passes are counted");
 			runtime.Frame(viewport,16.64);
 			Check(host.softened.size() == 2 && Near(host.softened[1].sigma,11.25f,.01f) && Near(host.softened[1].saturation,.8f,.001f),
 				"modal.enter ends at a 7.5 dp blur and 0.80 saturation");
@@ -6340,9 +6363,10 @@ int main(int argc, char** argv) {
 			runtime.Frame(viewport,16.825);
 			Check(host.softened.size() == 4 && Near(host.softened[3].sigma,11.25f/2,.05f) && Near(host.softened[3].saturation,.9f,.005f),
 				"and releases it over 250 ms");
+			host.glitched.clear();
 			runtime.Frame(viewport,16.96);
 			const auto closed = runtime.PresentedValue("exitModal","display");
-			Check(closed && closed->text == "none" && host.softened.size() == 4 && runtime.Statistics().backdropComposites == 0,
+			Check(closed && closed->text == "none" && host.softened.size() == 4 && runtime.Statistics().backdropComposites == host.glitched.size(),
 				"a closed modal softens nothing");
 			host.softFocus = false;
 		}
@@ -6362,6 +6386,120 @@ int main(int argc, char** argv) {
 			const auto homeBack = runtime.PresentedValue("home","opacity");
 			Check(plinthBack && Near(static_cast<float>(plinthBack->data[0]),1,.001f) && homeBack && Near(static_cast<float>(homeBack->data[0]),1,.001f),
 				"the plinth returns with the home content");
+		}
+		// The signal (section 8): where the renderer can read the composed view,
+		// the dimmed pictures and their light reach it through an ordered dither
+		// at 0.60, over the whole view and under the reticle grid, drawn last.
+		// Each picture change is a fault on a layer beneath the dither that
+		// peaks at 0.85 and runs through its arrangements; between changes it
+		// rests and draws nothing, but for a slip. The menu's own moves fault a
+		// second such layer. Reduced flashing and reduced motion keep the dither
+		// and draw no fault.
+		{
+			runtime.Frame(viewport,18.8); host.glitched.clear();
+			runtime.Frame(viewport,18.85);
+			bool absent = true;
+			for (const char* layer : {"field-signal","field-burst","field-dither"}) {
+				const auto display = runtime.PresentedValue(layer,"display");
+				absent = absent && display && display->text == "none";
+			}
+			Check(absent && host.glitched.empty() && runtime.Statistics().backdropFallbacks == 0,
+				"without soft focus the signal layers are not there, and no backdrop pass runs");
+			const auto dim = runtime.PresentedValue("field-dim","background-color");
+			Check(dim && Near(static_cast<float>(dim->data[3]),.3f,.001f) && dim->data[0] == 0,"the pictures are dimmed by black at 0.30");
+			host.softFocus = true;
+			// Split one frame's passes: the dither (strength 0), then any faults (dither 0).
+			struct Passes { const ScreenHost::Glitched* dither = nullptr; std::vector<const ScreenHost::Glitched*> faults; bool ordered = true; };
+			const auto passes = [&]() {
+				Passes found;
+				for (const auto& drawn : host.glitched) {
+					if (drawn.dither > 0) { found.ordered = found.ordered && !found.dither && drawn.strength == 0; found.dither = &drawn; }
+					else { found.ordered = found.ordered && !found.dither && drawn.strength > 0; found.faults.push_back(&drawn); }
+				}
+				return found;
+			};
+			float peak = 0, slip = 0; int resting = 0, faulting = 0; std::set<int> arrangements;
+			bool dithered = true, whole = true, live = true, counted = true;
+			// One loop of the montage: five changes, 5000 ms apart.
+			for (int frame = 0; frame < 1010; ++frame) {
+				host.glitched.clear();
+				runtime.Frame(viewport,19.0+frame*.025);
+				const auto strength = runtime.PresentedValue("field-signal","backdrop-glitch");
+				const auto phase = runtime.PresentedValue("field-signal","backdrop-glitch-phase");
+				const auto found = passes();
+				if (!strength || !phase || !found.dither || !found.ordered || found.faults.size() > 1) { counted = false; break; }
+				dithered = dithered && Near(found.dither->dither,.6f,.001f);
+				for (const auto* drawn : {found.dither}) whole = whole && drawn->region.x <= 0 && drawn->region.y <= 0 &&
+					drawn->region.x+drawn->region.width >= 1920 && drawn->region.y+drawn->region.height >= 1080;
+				const float value = static_cast<float>(strength->data[0]);
+				live = live && (value > 0 ? found.faults.size() == 1 && Near(found.faults[0]->strength,value,.001f) &&
+					Near(found.faults[0]->phase,static_cast<float>(phase->data[0]),.001f) : found.faults.empty());
+				counted = counted && runtime.Statistics().backdropComposites == host.glitched.size() && runtime.Statistics().backdropFallbacks == 0;
+				peak = std::max(peak,value);
+				if (value > 0) { ++faulting; arrangements.insert(static_cast<int>(phase->data[0])); if (value < .31f) slip = std::max(slip,value); }
+				else ++resting;
+			}
+			Check(counted && dithered && whole,"the dither covers the whole view at 0.60, once a frame and last");
+			Check(live,"a fault draws beneath it at its live strength and phase, and a resting one draws nothing");
+			Check(peak > .8f && peak <= .851f && arrangements.size() >= 40,"each picture change faults to 0.85 through its arrangements");
+			Check(faulting >= 100 && faulting <= 180 && resting >= 800 && slip > .1f,"between changes the signal rests, but for a slip");
+			// The picture's reveal steps up and never falls back.
+			{
+				Check(runtime.PlayTimeline("montage",30),"restart the montage");
+				float last = -1; bool rising = true;
+				for (int frame = 0; frame <= 30; ++frame) {
+					runtime.Frame(viewport,35.0+frame*.02);
+					const auto shot = runtime.PresentedValue("shot-1","opacity");
+					if (!shot) { rising = false; break; }
+					rising = rising && static_cast<float>(shot->data[0]) >= last-.001f; last = static_cast<float>(shot->data[0]);
+				}
+				Check(rising && Near(last,1,.001f),"the next picture's reveal steps up without falling back");
+			}
+			// The menu's moves: the second layer resolves as the menu opens, breaks
+			// up as the bands leave for a page and is at rest by the hand-off.
+			const auto burstAt = [&](float value) {
+				for (const auto* drawn : passes().faults) if (Near(drawn->strength,value,.01f)) return true;
+				return false;
+			};
+			host.glitched.clear();
+			Check(runtime.PlayTimeline("depart",45),"depart under the signal");
+			runtime.Frame(viewport,45.4);
+			const auto leaving = runtime.PresentedValue("field-burst","backdrop-glitch");
+			Check(leaving && Near(static_cast<float>(leaving->data[0]),.85f,.01f) && burstAt(.85f),"the bands leave under a fault at 0.85");
+			runtime.Frame(viewport,45.56);
+			const auto handed = runtime.PresentedValue("field-burst","backdrop-glitch");
+			Check(handed && handed->data[0] == 0,"the fault is at rest by the hand-off");
+			Check(runtime.PlayTimeline("returnHome",46),"return home under the signal");
+			host.glitched.clear();
+			runtime.Frame(viewport,46.12);
+			const auto docking = runtime.PresentedValue("field-burst","backdrop-glitch");
+			Check(docking && Near(static_cast<float>(docking->data[0]),.7f,.01f) && burstAt(.7f),"the bands dock home under a settling fault");
+			runtime.Frame(viewport,46.7);
+			// Reduced flashing: the faults' layers go, the dither stays, and the
+			// pictures still change.
+			host.cvars["ui_reducedFlashing"] = true;
+			Check(runtime.PlayTimeline("open",47),"open under reduced flashing");
+			std::size_t faults = 0, dithers = 0;
+			for (int frame = 0; frame < 220; ++frame) {
+				host.glitched.clear();
+				runtime.Frame(viewport,47.0+frame*.025);
+				const auto found = passes(); faults += found.faults.size(); dithers += found.dither != nullptr;
+			}
+			const auto gone = runtime.PresentedValue("field-signal","display");
+			Check(faults == 0 && dithers == 220 && gone && gone->text == "none","reduced flashing keeps the dither and draws no fault");
+			host.cvars["ui_reducedFlashing"] = false;
+			// Reduced motion holds no fault either.
+			host.reducedMotion = true; runtime.SetReducedMotion(true,52.6);
+			Check(runtime.PlayTimeline("open",53),"open under reduced motion");
+			faults = dithers = 0;
+			for (int frame = 0; frame < 220; ++frame) {
+				host.glitched.clear();
+				runtime.Frame(viewport,53.0+frame*.025);
+				const auto found = passes(); faults += found.faults.size(); dithers += found.dither != nullptr;
+			}
+			Check(faults == 0 && dithers == 220,"reduced motion keeps the dither and draws no fault");
+			host.reducedMotion = false; runtime.SetReducedMotion(false,58.6);
+			host.softFocus = false;
 		}
 	}
 	// Pause: the level block binds the mission, difficulty, objectives and shot.

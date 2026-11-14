@@ -2409,7 +2409,7 @@ def validate_docs() -> None:
         "controller back action",
         "five tiers",
         "twenty",
-        "Mission",
+        "**Single Player → Arena**",
         "q4cmp",
         "do not yet pursue flags or map objectives",
         "Its bars always reach every screen edge",
@@ -2426,7 +2426,7 @@ def validate_docs() -> None:
         require(user_doc, token, "Arena Campaign player guide")
     require(
         readme,
-        "[Arena Campaign](https://github.com/themuffinator/openQ4/blob/v0.13.2/docs/user/arena-campaign.md)",
+        "[Arena Campaign](docs/user/arena-campaign.md)",
         "Arena Campaign README link",
     )
     for token in (
@@ -3169,7 +3169,9 @@ def validate_ceremony_flow() -> None:
     )
     require_regex(
         player_source,
-        r"MPGameTypeHasAny\( gameLocal\.gameType, GTF_FULLARSENAL \) \) \{\s*return;",
+        # Instagib, a fixed loadout too, shares the gate (mp_instagib_contract.py).
+        r"MPGameTypeHasAny\( gameLocal\.gameType, GTF_FULLARSENAL \)"
+        r"(?: \|\| gameLocal\.mpGame\.IsInstagib\(\) \))? \) \{\s*return;",
         "fixed-loadout modes must not drop weapons",
     )
     # Red Rover is a two-sided mode and needs the team panel, not the FFA one.
@@ -3462,7 +3464,7 @@ def validate_pause_menu() -> None:
     request = function_body(session_menu, "void idSessionLocal::HandleRetainedMultiplayerRequest( idUserInterface *gui, const char *request )")
     for verb, command in (("arenaRestart", "restart"), ("arenaLeave", "leave"), ("settings", "settings"), ("resume", "resume")):
         require(request, f'!idStr::Icmp( request, "{verb}" )', f"the card's {verb}")
-        require(request, f'"play main_menu_selection ; arenaPause {command}"', f"the card's {verb} is the stock menu's own command")
+        require(request, f'"arenaPause {command}"', f"the card's {verb} is the stock menu's own command; the card sounds its own press")
     for verb in ("arenaRestart", "arenaLeave"):
         require(adapter, f'"{verb}"', "the retained adapter allows the Arena pause verbs")
 

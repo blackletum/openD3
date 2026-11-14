@@ -292,6 +292,56 @@ bool R_WindowCarriesMultisampling( void ) {
 int R_WindowMultiSamplesForNewDevice( void );
 
 idCVar r_multiSamples( "r_multiSamples", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "MSAA sample count: 0 = off, 2/4/8/16 = supported quality steps", 0, 16, idCmdSystem::ArgCompletion_String<r_multiSamplesArgs> );
+idCVar r_multiSamplesEffective( "r_multiSamplesEffective", "-1", CVAR_RENDERER | CVAR_ROM | CVAR_INTEGER,
+	"samples the last main scene drew with (-1 before one has drawn); below r_multiSamples where the renderer clamps it" );
+
+/*
+====================
+R_PublishMainSceneSamples / R_CountMSAAResolve
+
+FPS-05: the sample count the main scene actually drew with, for the settings
+page and gfxInfo, written only when it changes; and the copies out of a
+multisampled target each frame (each one a full resolve), which gfxInfo
+reports for the last complete frame.
+====================
+*/
+void R_PublishMainSceneSamples( int samples ) {
+	samples = samples > 1 ? samples : 0;
+	if ( r_multiSamplesEffective.GetInteger() != samples ) {
+		r_multiSamplesEffective.SetInteger( samples );
+	}
+}
+
+static int rbMSAAResolveFrame = -1;
+static int rbMSAAResolves[2] = { 0, 0 };		// this frame: colour, depth
+static int rbMSAAResolvesLast[2] = { -1, -1 };	// the last complete frame
+
+void R_CountMSAAResolve( bool depth ) {
+	if ( rbMSAAResolveFrame != backEnd.frameCount ) {
+		if ( rbMSAAResolveFrame == backEnd.frameCount - 1 ) {
+			rbMSAAResolvesLast[0] = rbMSAAResolves[0];
+			rbMSAAResolvesLast[1] = rbMSAAResolves[1];
+		} else {
+			// frames in between had none
+			rbMSAAResolvesLast[0] = rbMSAAResolvesLast[1] = 0;
+		}
+		rbMSAAResolves[0] = rbMSAAResolves[1] = 0;
+		rbMSAAResolveFrame = backEnd.frameCount;
+	}
+	rbMSAAResolves[depth ? 1 : 0]++;
+}
+
+static void R_MSAAResolvesLastFrame( int &color, int &depth ) {
+	if ( rbMSAAResolveFrame < 0 || backEnd.frameCount - rbMSAAResolveFrame > 1 ) {
+		color = depth = 0;	// none for over a frame
+	} else if ( rbMSAAResolveFrame == backEnd.frameCount - 1 ) {
+		color = rbMSAAResolves[0];
+		depth = rbMSAAResolves[1];
+	} else {
+		color = rbMSAAResolvesLast[0];
+		depth = rbMSAAResolvesLast[1];
+	}
+}
 idCVar r_postAA( "r_postAA", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "post AA mode: 0 = off, 1 = SMAA 1x medium, 2 = SMAA 1x high, 3 = SMAA 1x ultra, 4 = SMAA 1x colour-edge prototype", 0, 4, idCmdSystem::ArgCompletion_Integer<0,4> );
 idCVar r_postAAStatePoisonTest( "r_postAAStatePoisonTest", "0", CVAR_RENDERER | CVAR_BOOL, "intentionally dirty GL texture/client state before SMAA post-AA draws for validation" );
 idCVar r_pbrMaterials( "r_pbrMaterials", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "draw explicitly PBR-authored materials as PBR; 0 keeps their classic stages. Stock materials are never PBR" );
@@ -336,7 +386,7 @@ idCVar r_ssaoMaxDistance( "r_ssaoMaxDistance", "220.0", CVAR_RENDERER | CVAR_ARC
 idCVar r_ssaoSamples( "r_ssaoSamples", "20", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "number of SSAO spiral samples", 4, 32, idCmdSystem::ArgCompletion_Integer<4,32> );
 idCVar r_ssaoDebug( "r_ssaoDebug", "0", CVAR_RENDERER | CVAR_BOOL, "visualize SSAO only" );
 idCVar r_ssaoResolution( "r_ssaoResolution", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER,
-	"Vulkan SSAO resolution: 0 automatic (full at the maximum r_ssaoSamples, half below), 1 full, 2 half", 0, 2,
+	"SSAO resolution: 0 automatic (full at the maximum r_ssaoSamples, half below), 1 full, 2 half", 0, 2,
 	idCmdSystem::ArgCompletion_Integer<0,2> );
 
 /*
@@ -347,6 +397,7 @@ Automatic keeps the maximum sample count (Ultra's 32) at full resolution and
 draws lower counts, such as Quality's 20, at half resolution: at native
 1440p the full-resolution pass was the largest single GPU cost of the Quality
 frame. The performance presets own r_ssaoSamples, so they select this too.
+Both renderers read it (OpenGL since FPS-04).
 ====================
 */
 bool R_SSAOHalfResolution() {
@@ -664,6 +715,7 @@ idCVar r_rendererSharedWorldInteraction( "r_rendererSharedWorldInteraction", "0"
 idCVar r_rendererSharedWorldFogBlend( "r_rendererSharedWorldFogBlend", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "execute the complete classic fog/blend light phase in an eligible 3D view from a backend-neutral sealed stream; any unsupported view uses the complete classic path" );
 idCVar r_rendererSharedSubview( "r_rendererSharedSubview", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "execute eligible direct mirror and capture-backed remote-camera, mirror, reflection, refraction, and x-ray subview transactions from backend-neutral sealed records; nested child trees commit atomically at their outermost special view, while 2D/cubemap color and depth captures retain exact type, aspect, and face; unsupported subviews use the complete classic path" );
 idCVar r_rendererSharedDeform( "r_rendererSharedDeform", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "enable optional, default-off backend-neutral material-deform ownership; incomplete or unsupported work retains the complete classic path" );
+idCVar r_rendererSharedFaultInject( "r_rendererSharedFaultInject", "0", CVAR_RENDERER | CVAR_INTEGER | CVAR_CHEAT, "qualification diagnostic: make the selected shared classic domains decline at their backend boundary with a named fallback, so the complete classic path runs (1 = subview, 2 = render-demo/Raven special frame, 4 = cinematic/authored post)", 0, 7, idCmdSystem::ArgCompletion_Integer<0,7> );
 idCVar r_rendererModernLightingParity( "r_rendererModernLightingParity", "0", CVAR_RENDERER | CVAR_INTEGER, "diagnostic override forcing modern lighting-ownership parity contracts proven for bring-up capture: 1 = interaction, 2 = fog/blend, 4 = light grid, 8 = shadow receivers; 0 keeps every unproven domain on the ARB2 bridge", 0, 15, idCmdSystem::ArgCompletion_Integer<0,15> );
 idCVar r_rendererModernAutoPromote( "r_rendererModernAutoPromote", "0", CVAR_RENDERER | CVAR_BOOL, "allow r_glTier auto and r_renderer best to request the guarded modern visible path after promotion evidence and sign-off; off keeps ARB2 default" );
 idCVar r_rendererPromotionEvidence( "r_rendererPromotionEvidence", "", CVAR_RENDERER, "Phase 8 validation evidence token required with r_rendererModernAutoPromote before automatic modern visible promotion" );
@@ -4831,7 +4883,10 @@ static void R_GfxInfoPrintAAState( void ) {
 #ifdef OPEND3_RENDERER_VK_MODULE
 		extern int VK_PostProcess_SceneSamples( void );
 		effectiveMSAA = VK_PostProcess_SceneSamples();
-		msaaReason = effectiveMSAA > 1 ? "vulkan-scene" : "vulkan-scene-single-sample";
+		// The Vulkan renderer draws at most 8 samples (VK_Image_SelectSampleCount),
+		// fewer where the device offers fewer for the scene's formats.
+		msaaReason = effectiveMSAA <= 1 ? "vulkan-scene-single-sample"
+			: effectiveMSAA < requestedMSAA ? "vulkan-clamp" : "vulkan-scene";
 #else
 		if ( modernVisiblePost ) {
 			const modernGLExecutorStats_t &modern = R_ModernGLExecutor_Stats();
@@ -4909,6 +4964,13 @@ static void R_GfxInfoPrintAAState( void ) {
 		screenFraction,
 		supersamplingText,
 		r_resolutionScaleMode.GetInteger() );
+	// Each copy out of a multisampled target resolves every sample of the
+	// copied rectangle (FPS-05). A frame with post-processing resolves the
+	// scene for bloom/tone map, SSAO depth and presentation.
+	int colorResolves = 0, depthResolves = 0;
+	R_MSAAResolvesLastFrame( colorResolves, depthResolves );
+	common->Printf( "Renderer AA: MSAA resolves last frame: color=%d depth=%d (scene samples %d)\n",
+		colorResolves, depthResolves, effectiveMSAA );
 }
 
 
@@ -5109,6 +5171,42 @@ void GfxInfo_f( const idCmdArgs &args ) {
 			guiDomain.backend[CLASSIC_GUI_DOMAIN_BACKEND_GL].fallbackViews,
 			guiDomain.backend[CLASSIC_GUI_DOMAIN_BACKEND_VULKAN].ownedViews,
 			guiDomain.backend[CLASSIC_GUI_DOMAIN_BACKEND_VULKAN].fallbackViews );
+		// Name each view's outcome, as the world domains do, so a fallback
+		// is attributable without a debugger.
+		for ( int viewIndex = 0; viewIndex < R_ClassicGuiDomain_NumViews();
+				++viewIndex ) {
+			const classicGuiDomainView_t *view =
+				R_ClassicGuiDomain_ViewByIndex( viewIndex );
+			if ( view == NULL ) {
+				continue;
+			}
+			common->Printf(
+				"Renderer shared classic GUI view[%d]: scene=%d scope=%s ready=%d failure=%s detail=%d guiPass=%s surface=%d stage=%d surfaces=%d/%d passes=%d GL=%d/%s/%d/%d+%d VK=%d/%s/%d/%d+%d\n",
+				viewIndex,
+				view->scenePacketIndex,
+				view->scope == CLASSIC_GUI_DOMAIN_SCOPE_IN_WORLD ? "world" : "root",
+				view->ready ? 1 : 0,
+				ClassicGuiDomainFailure_Name( view->failure ),
+				view->failureDetail,
+				MaterialResourceGuiPassFailure_Name( view->guiPassFailure ),
+				view->failureSourceSurfaceIndex,
+				view->failureSourceStageIndex,
+				view->drawableSurfaceCount,
+				view->sourceSurfaceCount,
+				view->drawablePassCount,
+				view->backendOutcome[CLASSIC_GUI_DOMAIN_BACKEND_GL],
+				ClassicGuiDomainFailure_Name(
+					view->backendFailure[CLASSIC_GUI_DOMAIN_BACKEND_GL] ),
+				view->backendFailureDetail[CLASSIC_GUI_DOMAIN_BACKEND_GL],
+				view->backendDrawnPasses[CLASSIC_GUI_DOMAIN_BACKEND_GL],
+				view->backendNoopPasses[CLASSIC_GUI_DOMAIN_BACKEND_GL],
+				view->backendOutcome[CLASSIC_GUI_DOMAIN_BACKEND_VULKAN],
+				ClassicGuiDomainFailure_Name(
+					view->backendFailure[CLASSIC_GUI_DOMAIN_BACKEND_VULKAN] ),
+				view->backendFailureDetail[CLASSIC_GUI_DOMAIN_BACKEND_VULKAN],
+				view->backendDrawnPasses[CLASSIC_GUI_DOMAIN_BACKEND_VULKAN],
+				view->backendNoopPasses[CLASSIC_GUI_DOMAIN_BACKEND_VULKAN] );
+		}
 	}
 	{
 		const classicCinematicPostDomainStats_t &cinematicPost =

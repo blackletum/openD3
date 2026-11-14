@@ -28,7 +28,9 @@ The branch history, oldest first:
 1. **Merge openQ4** through `55bbe166a`, taking the upstream tree unchanged.
    openQ4's history is now part of openD3's, so later syncs are ordinary
    merges of `openq4-upstream/main`. The latest sync merged upstream through
-   `7c74cd712` (2026-11-11), which brought its shadow-mapping fixes.
+   `f3b2f9583` (2026-11-14), which brought its later shadow-mapping fixes
+   (FPS-03, REN-01); the one before it, through `7c74cd712` (2026-11-11), the
+   earlier ones.
 2. **Remove the Quake 4 game library and content.** `src/game` and
    `src/mpgame` (Quake 4 SDK), the SDK licence and the Quake 4 runtime content
    leave the tree. The engine-side content moves to `content/baseod3`.
@@ -155,8 +157,24 @@ release of Doom 3 (1.3.1 packs):
   million pixels on both backends (the contact edges of the soft shadows),
   `hell1` in 0 (OpenGL) and 182 (Vulkan), and no mapped pixel is brighter than
   the unshadowed picture. Before the specular fix below, OpenGL differed in
-  311,739 pixels there. On `hell1` three lights with nothing to cast keep
-  entering and leaving the stencil fallback; see "Open items".
+  311,739 pixels there.
+- Shadow maps again after the `f3b2f9583` sync, on the same six starting views
+  on OpenGL and Vulkan, against the build before the sync (`6a720672f`). Each
+  launch freezes one frame (`+g_stopTime 1`, view weapon hidden, mouse off)
+  and captures it mapped, stencilled, unshadowed and mapped again. On
+  `mc_underground`, `alphalabs1` and `recycling1` the merged build's mapped
+  and stencil pictures differ in the same pixels as before the sync, by more
+  than 8 levels in 28,843, 6,867 and 29,947 of 3.7 million (Vulkan; OpenGL
+  within 120 of those), along the soft shadows' contact edges; on Vulkan its
+  mapped `mc_underground` and `recycling1` frames are identical to the old
+  build's. `hell1`'s mapped, stencil and unshadowed frames are identical on
+  both backends. `delta2a` and `site3` keep animated lights while frozen, so
+  their frames differ between two mapped captures as much as between mapped
+  and stencil, before the sync and after. The old build marked `hell1`'s
+  lights with nothing to cast for the stencil fallback 30 times (OpenGL) and
+  6 times (Vulkan) in one launch; the merged build marks none, in any capture.
+  With time running, `mc_underground` and `alphalabs4`, whose lights swing on
+  binds, render mapped on both backends with no shadow-map error or fallback.
 - Stock specular follows Doom 3 on every path. `r_correctspecular` and
   `r_normalizebumpmap` default to 0 (they came from Prey at 1), and the OpenGL
   ARB path passes the specular constant unscaled, as id's `draw_arb2.cpp`
@@ -287,10 +305,10 @@ Listed roughly by how much they block a player.
       and Doom 3's point lights, most of its lighting, keep stencil shadows.
       Quality and above shadow-map every light. The split was measured by
       upstream on Quake 4 content, not on Doom 3.
-    - A light whose pass has nothing to cast (three lights at the start of
-      `hell1`) is treated as a failed pass: the engine restores its stencil
-      volumes, which are empty too, lets it leave the fallback after 240 views
-      and repeats. Nothing changes on screen. The rule is upstream's.
+    - Upstream's startup system check, which offers the detected preset when
+      the preset table changes, is skipped (`OPEND3` in
+      `Session_presetcheck.cpp`): its two screens are drawn from Quake 4's
+      menu art, and openD3 has none of its own yet. The check stays due.
     - Stale profiles keep old values: a config written before these defaults
       changed still holds `g_showPlayerShadow 0` and `r_correctspecular 1`,
       `r_normalizebumpmap 1`. There is no config migration.
@@ -301,8 +319,9 @@ Listed roughly by how much they block a player.
       pixels), the same with shadow maps, stencil or no shadows. Not
       investigated.
     - Not covered: Resurrection of Evil, subviews (mirrors, remote cameras),
-      moving lights, cascaded shadow maps (`r_shadowMapCSM`), other players'
-      shadows as a client.
+      moving lights compared against stencil (they have only been seen
+      rendering, with time running), cascaded shadow maps (`r_shadowMapCSM`),
+      other players' shadows as a client.
 
 ## Naming
 
@@ -348,3 +367,21 @@ or `content/baseoq4`. Where new upstream engine code calls a Quake 4-only
 `idGame` method, adapt it to Doom 3's API or gate it as D9. Regenerate the
 Vulkan SPIR-V headers if both sides touched the shader sources, then rebuild
 and repeat the checks under "Verified".
+
+Upstream also lands Quake 4 game features in engine files: the session, the
+file system, the user-command buttons, the retained adapter and the engine
+string tables. On the `f3b2f9583` sync these were The Awakening as a mod base
+(`7926e2a42`), the multiplayer buy card (`eb6b5d399`), the Classic ruleset and
+its grappling-hook button (`2a36515de`, `3ddce1949`) and Instagib
+(`26c58d1cf`). Where they merge cleanly they arrive unnoticed, so after
+resolving, reverse those commits' engine hunks (rebranded) and grep the engine
+for their symbols (`FS_AwakeningActive`, `q4xbase`, `RETAINED_MP_BUY`,
+`BUTTON_HOOK`, `Instagib`). A three-way merge of each conflicted file against
+the rebranded base and upstream side (`git merge-file` on the converted
+blobs) leaves only the real conflicts. The script also rewrites openD3's own
+prose in `docs/` and `assets/` and a few tools that the merge did not touch,
+and the legacy `openq4-ui` format names in `src/ui/retained`: restore those.
+
+When testing from the command line, remember that every `+set` is applied at
+startup wherever it stands on the line. A setting meant to change later in the
+command sequence (`g_stopTime 1` after a `waitMsec`) is written `+g_stopTime 1`.

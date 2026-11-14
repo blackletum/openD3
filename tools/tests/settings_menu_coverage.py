@@ -223,11 +223,11 @@ def registry_setting(registry: dict, setting_id: str) -> dict:
 
 
 def performance_doc_preset_order(display_docs: str) -> list[str]:
-    try:
-        section = display_docs.split("## Performance Presets", 1)[1].split("## Core Display Settings", 1)[0]
-    except IndexError as exc:
-        raise AssertionError("Display settings guide is missing the Performance Presets section") from exc
-    return re.findall(r"^\| `([^`]+)` \|", section, re.MULTILINE)
+    # The section runs from its heading to the next level-2 heading.
+    match = re.search(r"^## Performance presets[ \t]*\r?\n(.*?)(?=^## |\Z)", display_docs, re.MULTILINE | re.DOTALL | re.IGNORECASE)
+    if match is None:
+        raise AssertionError("Display settings guide is missing the Performance presets section")
+    return re.findall(r"^\| `([^`]+)` \|", match.group(1), re.MULTILINE)
 
 
 def validate_performance_preset_wiring(
@@ -893,7 +893,7 @@ def validate_dedicated_conversion() -> None:
         [
             "if ( dedicatedSpawnDeferred ) {\n\t\tdedicatedSpawnDeferred = false;\n\t\tserverDedicated.SetInteger( 1 );",
             "serverDedicated.GetInteger() == 1 && renderSystem->IsOpenGLRunning()",
-            '"q4xbase"',
+            "Net_LeaveAwakening()",
             "dedicatedSpawnDeferred = true;\n            serverDedicated.SetInteger( 0 );",
             "cmdSystem->SetupReloadEngineMenu( args );",
             hold,
@@ -946,6 +946,24 @@ def validate_dedicated_conversion() -> None:
         ],
         "dedicated console across an engine reload",
     )
+    # A reload the menus ask for (the Awakening campaign, a mod) keeps the game
+    # window, as a game-module swap does: a replacement window may come up
+    # without the focus, and an unfocused window's menus ignore the mouse. A
+    # rendering API or device change still gets a new window.
+    require_order(
+        reload,
+        [
+            "const bool preserveWindow = menu && idAsyncNetwork::serverDedicated.GetInteger() != 1 &&",
+            "!R_RendererModule_SelectionReloadPending();",
+            "preserveWindowScope_t preserveWindowScope( preserveWindow );",
+            "commonLocal.ShutdownGame( true );",
+            "R_RendererModule_FinishSelectionReload()",
+            "commonLocal.InitGame();",
+        ],
+        "menu engine reload keeps the game window",
+    )
+    require(reload, "~preserveWindowScope_t() { GLimp_PreserveWindowOnShutdown( false ); }",
+            "menu engine reload window preservation scope")
     # A launch with net_serverDedicated 1 shows its console quitting on close, and
     # hidden with the game window. r_hiddenWindow is NOCHEAT, so a spawn's reset of
     # cheat CVars cannot show the window or the console afterwards.
@@ -1140,6 +1158,7 @@ def main() -> None:
         "ui_subtitleScale",
         "ui_subtitleBackground",
         "ui_subtitleSpeakers",
+        "ui_subtitleUntranscribed",
     ]
     for cvar in audio_cvars:
         require(audio_gui, cvar, "Audio settings include")
@@ -1153,7 +1172,7 @@ def main() -> None:
         "#str_229962",
         "#str_229963",
         "rect\t0,104,640,250",
-        "rect\t-24,-84,640,474",
+        "rect\t-24,-84,640,498",
         "rect\t245,142,361,20",
         "rect\t245,318,361,20",
     ):

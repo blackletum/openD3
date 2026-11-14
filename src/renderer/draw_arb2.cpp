@@ -4361,15 +4361,19 @@ static void RB_ShadowMapCountCacheSlots( void ) {
 // ownerships with the same resident content, and they share one entry too.
 // Only a cube that bakes its dynamics in must keep the two apart.
 static shadowMapPassKind_t RB_ShadowMapCachePassKind( const viewLight_t *vLight, const shadowMapPassKind_t passKind ) {
-	if ( vLight == NULL || vLight->localShadowMapCasters != NULL || vLight->localTranslucentShadowMapCasters != NULL ) {
+	if ( vLight == NULL ) {
 		return passKind;
 	}
-	if ( vLight->localShadowMapDynamicCasters == NULL ) {
-		return SHADOWMAP_PASS_GLOBAL;
-	}
-	const bool bakesDynamics = R_ClassifyShadowMapLight( vLight ).pointLight
+	// a point cube that cannot compose bakes its live casters into the map
+	const bool bakesDynamics = vLight->localShadowMapDynamicCasters != NULL
+		&& R_ClassifyShadowMapLight( vLight ).pointLight
 		&& !RB_ShadowMapPointComposeAvailable();
-	return bakesDynamics ? passKind : SHADOWMAP_PASS_GLOBAL;
+	return R_ShadowMapOwnershipsShareResidentDepth(
+			vLight->localShadowMapCasters != NULL,
+			vLight->localTranslucentShadowMapCasters != NULL,
+			vLight->localShadowMapDynamicCasters != NULL,
+			!bakesDynamics )
+		? SHADOWMAP_PASS_GLOBAL : passKind;
 }
 
 static bool RB_ShadowMapUpdateAdmitted( const int lightIndex ) {
@@ -12669,11 +12673,16 @@ static void RB_ShadowMapRunPass( const viewLight_t *vLight, shadowMapPassKind_t 
 	const bool haveStencilShadowSurfs = primaryShadowSurfs != NULL || secondaryShadowSurfs != NULL;
 
 	if ( !haveOpaqueCasters && !haveStencilShadowSurfs && !haveTranslucentCasters ) {
-		// The front end may have elided stencil volumes this light could still
-		// need (e.g. its only casters are translucent/forceShadows materials the
-		// map path cannot draw). Restore volume generation so the next frame can
-		// take the stencil-only path instead of rendering unshadowed.
-		if ( vLight != NULL && R_ShadowMapLightWillUseShadowMaps( vLight->lightDef ) ) {
+		// Nothing casts in this ownership, in the map or in stencil. That is
+		// a map that failed only if the front end left a stencil volume out
+		// for it: restore volume generation then, so the next frame can take
+		// the stencil-only path instead of rendering unshadowed. A light with
+		// no such volume has nothing to shadow here. Marked all the same, it
+		// built volumes for 240 views, was let go, and was marked again.
+		if ( R_ShadowMapEmptyPassHasStencilVolumes( vLight,
+				passKind == SHADOWMAP_PASS_LOCAL
+					? SHADOWMAP_RECEIVER_MASK_LOCAL
+					: SHADOWMAP_RECEIVER_MASK_GLOBAL ) ) {
 			RB_ShadowMapMarkStencilFallbackSticky( vLight );
 		}
 		if ( passKind == SHADOWMAP_PASS_LOCAL ) {
@@ -13707,14 +13716,21 @@ typedef struct rbSharedWorldInteractionGLPreparedView_s {
 static rbSharedWorldInteractionGLPreparedView_t
 	rbSharedWorldInteractionGLPreparedView;
 
+// The detail reads as decimal RR LLL IIII: the reject reason, then the light
+// plus one, then the innermost item plus one (the primitive or shadow caster
+// when one is named, else the surface); zero means none. Indexes saturate at
+// 999 and 9999, and the reason field holds up to 213 before the value leaves
+// int. The old layout multiplied the reason by 10^8, so every reason from
+// SHADOW_MAP_ALPHA (22) on overflowed, and its light and surface fields
+// overlapped the fields above them.
 static int RB_SharedWorldInteractionGLFailureDetail(
 		rbSharedWorldInteractionGLReject_t reason, int lightIndex = -1,
 		int surfaceIndex = -1, int primitiveIndex = -1 ) {
-	const int lightDetail = lightIndex >= 0 ? Min( lightIndex + 1, 255 ) : 0;
-	const int surfaceDetail = surfaceIndex >= 0 ? Min( surfaceIndex + 1, 4095 ) : 0;
-	const int primitiveDetail = primitiveIndex >= 0 ? Min( primitiveIndex + 1, 4095 ) : 0;
-	return static_cast<int>( reason ) * 100000000
-		+ lightDetail * 1000000 + surfaceDetail * 4096 + primitiveDetail;
+	const int lightDetail = lightIndex >= 0 ? Min( lightIndex + 1, 999 ) : 0;
+	const int itemIndex = primitiveIndex >= 0 ? primitiveIndex : surfaceIndex;
+	const int itemDetail = itemIndex >= 0 ? Min( itemIndex + 1, 9999 ) : 0;
+	return static_cast<int>( reason ) * 10000000
+		+ lightDetail * 10000 + itemDetail;
 }
 
 static bool RB_SharedWorldInteractionGLFinite( float value ) {
@@ -14013,7 +14029,10 @@ static bool RB_SharedWorldInteractionGLMapPassValuesValid(
 		const classicInteractionDomainLight_t &light,
 		const classicInteractionDomainShadowMapPass_t &pass,
 		classicInteractionDomainReceiver_t receiver, int domainLightIndex ) {
-	const bool pointLight = light.pointLight;
+	// Classic draws a cube only for an enclosing point light; a distant point
+	// light renders into a projected frustum (R_ClassifyShadowMapLight).
+	const bool pointLight = light.legacyViewLight != NULL
+		&& R_ClassifyShadowMapLight( light.legacyViewLight ).pointLight;
 	const bool hybrid = pass.disposition
 		== CLASSIC_INTERACTION_SHADOW_MAP_PASS_HYBRID;
 	if ( pass.legacyViewLight != light.legacyViewLight
@@ -14483,6 +14502,18 @@ static bool RB_SharedWorldInteractionGLScheduleSealedMapPass(
 	return true;
 }
 
+// Cache records are shared with the classic walker, which stamps them with its
+// classification's light class (RB_ShadowMapLightClass). That class names the
+// light, not the map form: a distant point light is POINT there although it
+// renders a projected map, while the sealed pass class names the form and says
+// PROJECTED. Stamping or matching records with the pass class made every record
+// classic published for such a light a mismatch, so the sealed schedule found
+// the entry and then declined the view (shadowMapTransaction).
+static int RB_SharedWorldInteractionGLCacheLightClass(
+		const classicInteractionDomainShadowMapPass_t &pass ) {
+	return static_cast<int>( RB_ShadowMapLightClass( pass.legacyViewLight ) );
+}
+
 static void RB_SharedWorldInteractionGLCompleteSealedCacheUpdate(
 		const rbSharedWorldInteractionGLPreparedMapPass_t &preparedPass,
 		const shadowMapSchedule_t &schedule, bool renderOk ) {
@@ -14502,7 +14533,7 @@ static void RB_SharedWorldInteractionGLCompleteSealedCacheUpdate(
 		entry->valid = true;
 		entry->lightIndex = preparedPass.cacheLightIndex;
 		entry->passKind = preparedPass.cachePassKind;
-		entry->lightClass = static_cast<int>( pass.lightClass );
+		entry->lightClass = RB_SharedWorldInteractionGLCacheLightClass( pass );
 		entry->signature = schedule.signature;
 		entry->size = pass.point.faceSize;
 		entry->highPrecision = pass.point.highPrecision;
@@ -14533,7 +14564,7 @@ static void RB_SharedWorldInteractionGLCompleteSealedCacheUpdate(
 	entry->valid = true;
 	entry->lightIndex = preparedPass.cacheLightIndex;
 	entry->passKind = preparedPass.cachePassKind;
-	entry->lightClass = static_cast<int>( pass.lightClass );
+	entry->lightClass = RB_SharedWorldInteractionGLCacheLightClass( pass );
 	entry->signature = schedule.signature;
 	entry->tileSize = pass.projected.state.tileSize;
 	entry->atlasDiv = pass.projected.state.atlasDiv;
@@ -14579,7 +14610,7 @@ static bool RB_SharedWorldInteractionGLProjectedEntryMatches(
 	return entry != NULL && entry->valid
 		&& entry->lightIndex == preparedPass.cacheLightIndex
 		&& entry->passKind == preparedPass.cachePassKind
-		&& entry->lightClass == static_cast<int>( pass.lightClass )
+		&& entry->lightClass == RB_SharedWorldInteractionGLCacheLightClass( pass )
 		&& entry->signature == preparedPass.signature
 		&& entry->atlasStorageGeneration != 0
 		&& entry->atlasStorageGeneration
@@ -14642,7 +14673,7 @@ static bool RB_SharedWorldInteractionGLPointEntryMatches(
 	return entry != NULL && entry->valid
 		&& entry->lightIndex == preparedPass.cacheLightIndex
 		&& entry->passKind == preparedPass.cachePassKind
-		&& entry->lightClass == static_cast<int>( pass.lightClass )
+		&& entry->lightClass == RB_SharedWorldInteractionGLCacheLightClass( pass )
 		&& entry->signature == preparedPass.signature
 		&& entry->size == pass.point.faceSize
 		&& entry->highPrecision == pass.point.highPrecision
@@ -15089,7 +15120,8 @@ static bool RB_SharedWorldInteractionGLPrepareMappedPass(
 	const classicInteractionDomainLight_t &light = *preparedLight.light;
 	const classicInteractionDomainShadowMapPass_t &pass = *preparedPass.pass;
 	viewLight_t *viewLight = const_cast<viewLight_t *>( light.legacyViewLight );
-	const bool pointLight = light.pointLight;
+	const bool pointLight = viewLight != NULL
+		&& R_ClassifyShadowMapLight( viewLight ).pointLight;
 	const shadowMapPassKind_t requestedPassKind = receiver
 		== CLASSIC_INTERACTION_RECEIVER_LOCAL
 			? SHADOWMAP_PASS_LOCAL : SHADOWMAP_PASS_GLOBAL;
@@ -15357,8 +15389,7 @@ static bool RB_ARB2_SharedInteractionPreflight( const viewDef_t *viewDef,
 			|| ( viewDef->renderFlags & ~allowedRenderFlags ) != 0
 			|| viewDef->numOutlineDrawSurfs != 0
 			|| viewDef->renderView.globalMaterial != NULL
-			|| backEnd.renderTexture != NULL
-			|| backEnd.feedbackRenderTexture != NULL
+			|| !RB_SharedDomainTargetAllowed()
 			|| r_skipRender.GetBool() || r_skipRenderContext.GetBool()
 			|| r_skipInteractions.GetBool() || r_skipBump.GetBool()
 			|| r_skipDiffuse.GetBool() || r_skipSpecular.GetBool()

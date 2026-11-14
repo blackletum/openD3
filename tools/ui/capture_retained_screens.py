@@ -937,6 +937,13 @@ SCENARIOS = {
         'screenshot "screenshots/createserver-banlist-removed.tga"',
         'opend3_retainedGui focus banModal_no', 'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 600',
         'opend3_retainedGui report',
+        # RULES: Instagib turned on sets si_instagib and dims Weapon Stay and
+        # buying, which have nothing to act on under it; turned off again after.
+        'opend3_retainedGui event advancedTab2', 'waitMsec 400', 'opend3_retainedGui focus "create-instagib"',
+        'screenshot "screenshots/createserver-rules.tga"',
+        'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 400', 'si_instagib',
+        'screenshot "screenshots/createserver-instagib.tga"',
+        'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 300', 'si_instagib',
         'opend3_retainedGui event advancedModalHide', 'waitMsec 600',
         'opend3_retainedGui focus create_back', 'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0',
         'waitMsec 150', 'screenshot "screenshots/createserver-back.tga"', 'waitMsec 1200', 'opend3_retainedGui report',

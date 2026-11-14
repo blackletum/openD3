@@ -3,7 +3,8 @@
 
 Pins what keeps VR safe to ship without a headset in CI:
 - the Khronos loader is pinned, built statically and only into the SDL3 client
-  on Windows and Linux; dedicated servers and the test runtime never install it;
+  on Windows and Linux, and on Android into the Meta Quest flavor and the
+  diagnostic emulator; dedicated servers and the test runtime never install it;
 - the renderer and game ABIs grew append-only (render API 21, game API 50)
   and renderView_t's off-axis fields default to a symmetric view;
 - on Vulkan (render API 32) the runtime creates the renderer's instance and
@@ -12,6 +13,15 @@ Pins what keeps VR safe to ship without a headset in CI:
   before the engine destroys a swapchain, and the test runtime speaks it too;
 - an OpenGL renderer on EGL (native Wayland, render API 32) binds through
   XR_MNDX_egl_enable, which the test runtime speaks on Linux;
+- on Android (AND-05, Meta Quest) the loader is upstream's JNI runtime-broker
+  build, initialized with the app's Java handles; the GLES module presents
+  through XR_KHR_opengl_es_enable with its program and texture caches told of
+  the sRGB decode draw, and the test runtime speaks it for the emulator;
+- optional runtime services: the refresh rate (XR_FB_display_refresh_rate,
+  vr_refreshRate), CPU/GPU levels and thermal reports
+  (XR_EXT_performance_settings, vr_performanceLevel) and, on Android, the
+  frame thread (XR_KHR_android_thread_settings), all offered by the test
+  runtime only on request;
 - engines without OpenXR, and dedicated servers, run the null VR system;
 - controller input enters through the gamepad key path, never synthesised OS
   input, and every action name the runtime shows is localised;
@@ -60,9 +70,10 @@ def check_build() -> None:
     require(options, "'openxr',\n  type: 'feature',", "meson_options.txt declares the openxr feature")
 
     meson = read("meson.build")
-    require(meson, "build_openxr = build_engine and use_sdl3_backend and not openxr_option.disabled() \\\n"
-                   "  and (host_system == 'windows' or host_system == 'linux')",
-            "OpenXR is limited to the SDL3 client on Windows and Linux")
+    require(meson, "openxr_android = host_system == 'android' and (get_option('android_headset') or host_cpu_family == 'x86_64')\n"
+                   "build_openxr = build_engine and use_sdl3_backend and not openxr_option.disabled() \\\n"
+                   "  and (host_system == 'windows' or host_system == 'linux' or openxr_android)",
+            "OpenXR is limited to the SDL3 client on Windows and Linux and Android's Quest flavor and emulator")
     snapshot = meson.index("opend3_dedicated_sources = opend3_engine_sources")
     client_sources = meson.index("opend3_engine_sources += files('src/sys/openxr/OpenXRSystem.cpp')")
     if client_sources < snapshot:
@@ -188,11 +199,83 @@ def check_egl() -> None:
     require(openxr, '#define VR_EGL_ENABLE_EXTENSION_NAME\t\t"XR_MNDX_egl_enable"',
             "the engine asks the runtime for XR_MNDX_egl_enable")
     require(openxr, "eglBinding.type = XR_TYPE_GRAPHICS_BINDING_EGL_MNDX;", "an EGL context binds through XR_MNDX_egl_enable")
-    require(openxr, "if ( binding.kind == RENDER_VR_BINDING_EGL && !haveEGL ) {",
+    require(openxr, "if ( binding.kind == RENDER_VR_BINDING_EGL && !haveEGL && !VR_GL_IS_ES ) {",
             "a runtime without XR_MNDX_egl_enable gets a clear warning, not a failed session")
     runtime = read("tools/tests/openxr/OpenXRTestRuntime.cpp")
     require(runtime, "\tTR_MNDX_EGL_ENABLE_EXTENSION_NAME,", "the test runtime offers XR_MNDX_egl_enable on Linux")
     require(runtime, 'bindingName = "opengl_egl";', "the test runtime reports an EGL session")
+
+
+def check_android() -> None:
+    loader = read("subprojects/packagefiles/openxr/meson.build")
+    require(loader, "loader_args += ['-DXR_OS_ANDROID', '-DXR_USE_PLATFORM_ANDROID']",
+            "the Android loader is upstream's: XR_OS_ANDROID with the platform defines")
+    require(loader, "'src/loader/android_utilities.cpp',", "the Android loader asks the runtime broker")
+    require(loader, "'src/external/jnipp/jnipp.cpp'", "the Android loader reaches Java through jnipp")
+    openxr = read("src/sys/openxr/OpenXRSystem.cpp")
+    for token, label in (
+            ("loaderInfo.type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR;", "the Android loader is initialized with the app's Java handles"),
+            ("properties.type = XR_TYPE_LOADER_INIT_INFO_PROPERTIES_EXT;", "vr_runtimeJson reaches the Android loader as a property"),
+            ("androidInfo.type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR;", "the Android instance names the Java VM and activity"),
+            ("glesBinding.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR;", "the GLES renderer binds through XR_KHR_opengl_es_enable"),
+            ("images[i].type = VR_GL_IS_ES ? XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR : XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR;",
+             "Android swapchains enumerate OpenGL ES images"),
+            ("haveVulkan = !VR_GL_IS_ES;", "Android builds have no Vulkan renderer to bind"),
+            ("haveEGLBinding = !VR_GL_IS_ES;", "Android's GLES context binds through the ES extension, not XR_MNDX_egl_enable")):
+        require(openxr, token, label)
+    require(read("src/sys/android/android_sdl3.cpp"), "activityRef = env->NewGlobalRef( local );",
+            "the activity outlives the call that found it")
+    gl = read("src/renderer/OpenGL/gl_VRPresentation.cpp")
+    require(gl, "#elif defined( OPEND3_RENDERER_GLES_MODULE ) && defined( __ANDROID__ )\n#define OPEND3_VR_GL_PRESENTATION 1",
+            "the GLES module presents to OpenXR on Android")
+    require(gl, "idStr::Cmp( name, \"GL_EXT_sRGB_write_control\" ) == 0",
+            "OpenGL ES turns sRGB writes off before copying gamma-encoded eyes")
+    require(gl, "copied = encoding == GL_SRGB && RB_VR_DecodeCopy( source, width, height );",
+            "without write control, sRGB images are written through a decoding draw")
+    decode = gl[gl.index("static bool RB_VR_DecodeCopy("):]
+    decode = decode[:decode.index("\n}\n")]
+    for token in ("R_GLESD3_InvalidateProgramState();", "backEnd.glState.tmu[0].current2DMap = -1;",
+                  "R_GLStateCache_InvalidateAll( \"VR sRGB decode\" );"):
+        require(decode, token, "the decode draw tells the GLES caches what it changed")
+    for path in ("src/renderer/GLES_D3/gles_d3_backend.cpp", "src/renderer/GLES_D3/gles_shaderpasses.cpp"):
+        require(read(path), "(GLuint)R_DefaultFramebufferHandle()", "the GLES_D3 scene present honours a VR target")
+    runtime = read("tools/tests/openxr/OpenXRTestRuntime.cpp")
+    for token in ("TR_EXT_ENTRY( xrGetOpenGLESGraphicsRequirementsKHR, XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME ),",
+                  'bindingName = "opengl_es_android";', "LoadAndroidEnvironmentFile();"):
+        require(runtime, token, "the test runtime speaks XR_KHR_opengl_es_enable on Android")
+    meson = read("meson.build")
+    require(meson, "openxr_test_runtime_prefix = host_system == 'android' ? 'lib' : ''",
+            "Android loads the test runtime as a lib*.so")
+    gradle = read("mobile/android/app/build.gradle")
+    require(gradle, "throw new GradleException('Only the diagnostic x86_64 emulator APK may carry the OpenXR test runtime.')",
+            "only the debuggable emulator APK may pack the test runtime")
+    activity = read("mobile/android/app/src/main/java/com/darkmatter/opend3/openD3Activity.java")
+    require(activity, '"+set", "vr_enable", "1",', "a headset build starts in VR")
+
+
+def check_runtime_services() -> None:
+    openxr = read("src/sys/openxr/OpenXRSystem.cpp")
+    for token, label in (
+            ('#define VR_REFRESH_RATE_EXTENSION_NAME\t\t\t"XR_FB_display_refresh_rate"', "the refresh rate extension"),
+            ('#define VR_PERFORMANCE_SETTINGS_EXTENSION_NAME\t"XR_EXT_performance_settings"', "the performance settings extension"),
+            ("VR_ChooseRefreshRate( vr_refreshRate.GetFloat(), rates, static_cast<int>( count ) )",
+             "vr_refreshRate picks among the rates the headset offers"),
+            ("VR_PerformanceSettingsLevel( vr_performanceLevel.GetInteger() )", "vr_performanceLevel maps to an OpenXR level"),
+            ("case XR_TYPE_EVENT_DATA_DISPLAY_REFRESH_RATE_CHANGED_FB:", "the headset's rate change is followed"),
+            ("case XR_TYPE_EVENT_DATA_PERF_SETTINGS_EXT:", "thermal reports are logged"),
+            ("setAndroidThread( session, VR_ANDROID_THREAD_TYPE_RENDERER_MAIN, thread )", "a standalone headset learns the frame thread")):
+        require(openxr, token, label)
+    math = read("src/framework/VRMathCore.h")
+    require(math, "inline float VR_ChooseRefreshRate(", "the refresh rate choice is testable without a headset")
+    require(read("tools/tests/native/VRMathCoreTest.cpp"), "TestHeadsetServices();", "the VR math test covers the choices")
+    runtime = read("tools/tests/openxr/OpenXRTestRuntime.cpp")
+    for token in ("OPEND3_XR_TEST_REFRESH_RATES", "OPEND3_XR_TEST_PERF_SETTINGS",
+                  "TR_EXT_ENTRY( xrRequestDisplayRefreshRateFB, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME ),",
+                  "TR_EXT_ENTRY( xrPerfSettingsSetPerformanceLevelEXT, XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME ),",
+                  'command == "thermal"'):
+        require(runtime, token, "the test runtime offers the services on request")
+    require(runtime, "if ( std::strcmp( name, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME ) == 0 && !G().refreshRates.empty() ) {",
+            "the refresh rate extension is offered only when a harness asks for it")
 
 
 def check_play_space() -> None:
@@ -309,6 +392,49 @@ def check_engine() -> None:
     # a vehicle's turns carry the seat from boarding: scripts turn vehicles as they seat the player
     require(player, "// the seat follows the vehicle's turns from here, not from the first",
             "the seat's turn carry starts when the player boards")
+    require(player, "\t\tFaceVRVehicleSeat( entered, seat, vrFrame );",
+            "boarding faces the seat along the vehicle's eye")
+    # a seat restored from a save faces the vehicle's eye again: its facing is
+    # not saved, and the body yaw a load resets returns with the first VR usercmd
+    require(player, "\tvrVehicleSeatPending = true;\n\tvrRoomScaleStepTime = -1;",
+            "a restored seat waits to face the vehicle's eye")
+    require(player, "if ( stereo && vrVehicleSeatPending && ( usercmd.buttons & BUTTON_VRAIM ) != 0 ) {\n\t\tFaceVRVehicleSeat( vehicle, position, frame );",
+            "the restored seat faces the vehicle's eye once VR drives the usercmd")
+    # room scale moves the tracking space a whole step at once; the eye drawn a
+    # tic behind the body carries the rest of the step (both game modules)
+    for module in ("src/game/Player.cpp", "src/mpgame/Player.cpp"):
+        source = read(module)
+        require(source, "\t\torigin += VRRoomScaleLag( fraction );\n\t}\n\tApplyPresentationLookToView( origin, axis );",
+                f"{module}: the interpolated eye carries the room-scale step it has not covered")
+        require(source, "vrSystem->ShiftTrackingOrigin(", f"{module}: room scale shifts the tracking space")
+        require(source, "vrRoomScaleStepTime = gameLocal.time;", f"{module}: a taken step belongs to its tic's sample")
+    require(read("src/mpgame/PlayerView.cpp"),
+            "player->VRRoomScaleStepping() ? idMath::Fabs( velocity * physics->GetGravityNormal() ) : velocity.Length()",
+            "multiplayer's vignette leaves a room-scale step's speed out")
+    # VR damage numbers project through the headset's HUD layer, not the last eye
+    require(read("src/mpgame/mp/HitFeedback.cpp"), "objectiveMarker::ProjectOnHud(",
+            "damage numbers in the headset project through the HUD layer")
+    # demos recorded in VR keep the eyes' 2D out and play the left eye
+    require(read("src/renderer/GuiModel.cpp"), "tr.guiRecursionLevel != 0 || R_VR_FrontEndEye() >= 0 ) {",
+            "a demo records no eye's 2D")
+    require(read("src/renderer/RenderWorld.cpp"), "if ( session->writeDemo && !independent && R_VR_FrontEndEye() != 1 ) {",
+            "a demo recorded in VR plays the left eye")
+    # checkpoint previews in VR read the left eye, not the desktop mirror
+    require(read("src/renderer/OpenGL/gl_VRPresentation.cpp"),
+            "RB_QueueSavePreviewFromFramebuffer( tr.vrTargets[1]->GetDeviceHandle(), tr.vrFrame.eyeWidth, tr.vrFrame.eyeHeight );\n\t}\n\n\tRB_VR_DrawMirror();",
+            "an OpenGL VR frame's preview is read from the left eye before the mirror")
+    require(read("src/renderer/Vulkan/vk_VRPresentation.cpp"),
+            "VK_QueueSavePreviewFromImage( cmd, left.color, left.format, left.width, left.height );",
+            "a Vulkan VR frame's preview is copied from the left eye")
+    # OpenGL submits no layer for an image the frame did not write, as Vulkan
+    gl_present = read("src/renderer/OpenGL/gl_VRPresentation.cpp")
+    require(gl_present, "\tif ( rb_vrTarget == -2 ) {\n\t\t// nothing reached the targets: submit no layers\n"
+                        "\t\ttr.vrFrameResult.presented = false;\n"
+                        "\t\ttr.vrFrameResult.eyeRendered[0] = tr.vrFrameResult.eyeRendered[1] = false;",
+            "an OpenGL VR frame that reached no target submits no layers")
+    require(gl_present, "if ( !rb_vrCleared[0] || !RB_VR_BlitToImage( tr.vrTargets[0], tr.vrFrame.screenImage, "
+                        "tr.vrFrame.screenWidth, tr.vrFrame.screenHeight ) ) {\n\t\ttr.vrFrameResult.presented = false;",
+            "an OpenGL virtual screen the frame did not draw or copy is not presented")
     # world GUIs, characters and usable things answer the weapon hand where it points
     require(player, "start = GetEyePosition();\n\t// openD3 VR: the weapon hand points at world GUIs",
             "the focus trace starts where the weapon hand aims")
@@ -401,7 +527,8 @@ def check_documents() -> None:
             raise AssertionError(f"missing {relative}")
     guide = read("docs/user/vr.md")
     for cvar in ("vr_enable", "vr_aimMode", "vr_aimLaser", "vr_hapticStrength", "vr_turnMode", "vr_recenter",
-                 "vr_restart", "vr_twoHanded", "vr_comfortVignette", "vr_physicalCrouch", "vr_vehicleStereo"):
+                 "vr_restart", "vr_twoHanded", "vr_comfortVignette", "vr_physicalCrouch", "vr_vehicleStereo",
+                 "vr_refreshRate", "vr_performanceLevel"):
         require(guide, cvar, "the VR guide documents the settings players use")
 
 
@@ -410,6 +537,8 @@ def main() -> int:
     check_abi()
     check_vulkan()
     check_egl()
+    check_android()
+    check_runtime_services()
     check_play_space()
     check_temporal()
     check_stereo_sharing()

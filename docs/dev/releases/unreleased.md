@@ -76,6 +76,14 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
 - The VS Code compile task reconfigures `builddir` when source files are
   added or removed.
 - Merge openQ4 through `7c74cd712`, with its shadow-mapping fixes.
+- Merge openQ4 through `f3b2f9583`, with its later shadow-mapping fixes: a
+  light with nothing to cast no longer cycles through the stencil fallback,
+  moving lights skip stencil volumes they do not draw, Vulkan keeps one
+  resident map for both ownerships of a light, and the shared interaction
+  domain draws every shadow-map form. Quake 4's multiplayer buy card, Classic
+  ruleset, Instagib and The Awakening campaign support stay out of the engine.
+- Skip upstream's startup system check, which offers the detected performance
+  preset, until openD3 ships a screen for it.
 - Default `g_showPlayerShadow` to 1 in both game modules.
 - Shade stock specular as Doom 3 does: `r_correctspecular` and
   `r_normalizebumpmap` default to 0, and the OpenGL ARB path no longer doubles

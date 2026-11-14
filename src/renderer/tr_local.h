@@ -292,6 +292,12 @@ typedef struct viewLight_s {
 	// usable volume.
 	int						shadowMapIncompleteMapMask;
 	int						shadowMapIncompleteStencilMask;
+	// Receiver ownerships a stencil volume would have shadowed in this view
+	// and does not, because the light is going to render shadow maps: the
+	// volume exists and was not linked, or was never built. A back end that
+	// finds nothing to cast in a pass reads it to tell a map that failed
+	// from a light with nothing to shadow.
+	int						shadowMapElidedStencilMask;
 	// A hybrid receiver samples the partial map while stencil supplies the
 	// casters absent from it. This mask is narrower than either completeness
 	// mask: it records only ownership for which at least one required caster
@@ -1506,6 +1512,11 @@ extern idCVar r_rendererSharedWorldInteraction;	// opt-in backend-neutral whole-
 extern idCVar r_rendererSharedWorldFogBlend;	// opt-in backend-neutral whole-view fog/blend ownership
 extern idCVar r_rendererSharedSubview;	// opt-in backend-neutral direct/capture special-subview ownership
 extern idCVar r_rendererSharedDeform;	// opt-in backend-neutral material-deform ownership
+extern idCVar r_rendererSharedFaultInject;	// diagnostic: selected shared domains decline at their backend boundary
+const int SHARED_FAULT_INJECT_SUBVIEW = 1;
+const int SHARED_FAULT_INJECT_SPECIAL_FRAME = 2;
+const int SHARED_FAULT_INJECT_CINEMATIC_POST = 4;
+const int SHARED_FAULT_INJECT_DETAIL = 9000;	// failure detail recorded for an injected decline
 extern idCVar r_vkShadowFallbackTest;	// diagnostic-only forced Vulkan unshadowed receiver fallback
 extern idCVar r_rendererModernLightingParity;	// diagnostic override forcing lighting-ownership parity contracts proven
 extern idCVar r_rendererModernAutoPromote;	// allow gated default modern-visible promotion
@@ -2316,6 +2327,11 @@ void RB_ApplyFlatDiffuseStage( const drawSurf_t *surf, idImage **diffuseImage, f
 const shaderStage_t *RB_SetLightTexture( const idRenderLightLocal *light );
 
 void RB_DrawView( const void *data );
+// True when the active GL target is one a shared classic domain may draw into:
+// the window, or the renderer's own scene target that the classic walker is
+// drawing the same view into. Game-owned feedback targets and every other
+// render texture keep the complete classic path (REN-01).
+bool RB_SharedDomainTargetAllowed( void );
 bool RB_DrawSharedGuiView( const viewDef_t *viewDef );
 bool RB_DrawSharedInWorldGuiView( const viewDef_t *viewDef );
 bool RB_DrawSharedCinematicRootView( const viewDef_t *viewDef );
@@ -2331,6 +2347,7 @@ bool RB_UnderwaterViewAvailable( void );
 void RB_DetermineLightScale( void );
 void RB_STD_LightScale( void );
 void RB_HDRPrintGfxInfo( void );
+bool RB_FrameClearColor( float color[4] );
 void RB_BeginDrawingView (void);
 
 /*

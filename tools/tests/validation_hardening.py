@@ -854,6 +854,8 @@ def validate_validation_wiring() -> None:
         # LAN discovery, successive reconnects and retail 2.85 refusal launch a
         # staged dedicated server and client (and the retail Quake4Ded.exe).
         "mp_lan_reconnect_smoke.py",
+        # A 12-player match over a simulated small path MTU.
+        "mp_path_mtu_soak.py",
         "mp_mod_admission_smoke.py",
         "mp_retail_protocol_smoke.py",
         "openxr_lifecycle_runtime.py",
@@ -868,6 +870,9 @@ def validate_validation_wiring() -> None:
         "audio_dialogue_coverage.py",
         "audio_memory_runtime.py",
         "audio_output_recovery_runtime.py",
+        # Plays on, and records the loopback of, real output devices the operator names.
+        "audio_surround_endpoint.py",
+        "endpoint_loopback.py",
         "audio_mod_reverb.py",
         "audio_scene_audit.py",
         "audio_streaming.py",
@@ -940,7 +945,9 @@ def validate_validation_wiring() -> None:
         "mp_match_edges_smoke.py",
         "mp_match_side_ballot_smoke.py",
         "mp_liquid_effects_capture.py",
+        "mp_liquid_swim_probe.py",
         "mp_remote_weapon_capture.py",
+        "mp_firing_view_capture.py",
         "mp_match_flow_smoke.py",
         "mp_mvd_smoke.py",
         "mp_pause_lifecycle_smoke.py",
@@ -996,6 +1003,9 @@ def validate_validation_wiring() -> None:
         "mp_bot_rim_replay.py",
         # Stock sound distance measurements launch a staged client on retail assets.
         "sound_distance_runtime.py",
+        # The retail comparison also launches retail Quake4.exe on Windows;
+        # sound_distance_retail.py exercises its analysis without assets.
+        "sound_distance_retail_compare.py",
         # Drives a rooted x86_64 Android emulator; the workflows py_compile it.
         "android_emulator_smoke.py",
         # Drives a USB-connected debug phone; the workflows py_compile it.
@@ -1055,6 +1065,7 @@ def validate_validation_wiring() -> None:
         "renderer_hdr_stock_fallback.py",
         "renderer_motion_blur_qualification.py",
         "renderer_screen_space_effects_qualification.py",
+        "renderer_shared_domain_qualification.py",
         "renderer_shadow_motion_qualification.py",
         "renderer_temporal_qualification.py",
         "renderer_temporal_stability.py",

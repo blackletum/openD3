@@ -74,7 +74,8 @@ You need the expansion's own data in `d3xp/` beside `base/`. openD3 does not inc
 
 - Doom 3's saves go under `baseod3/` in your save folder; see [Client Settings](client-settings.md#where-settings-are-saved).
 - A save loads only in the build that wrote it. openD3 does not yet stamp saves with a version it can check, so a save from another build is not accepted. Expect to start again after updating.
-- Loading a saved game has not been tested at all. The first level writes its autosave; nothing has read one back.
+- Saving and loading work in the same build. This has been tried from the console on two levels, `game/alphalabs1` and the opening of `game/mars_city1`. Loading from the menus, autosaves and quicksaves have not been tried yet.
+- A save that is damaged or cut short is refused with a message, and the game you are playing carries on. If a save passes that check and still cannot be restored, you are returned to the main menu with a LOAD FAILED message.
 
 ## Console use
 

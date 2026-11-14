@@ -527,6 +527,9 @@ public:
 	void					SetGibTime( int _time ) { nextGibTime = _time; };
 	int						GetGibTime() { return nextGibTime; };
 
+							// drops every reference to the objects of an unfinished restore
+	void					ForgetRestoredObjects( void );
+
 
 
 private:
@@ -595,6 +598,8 @@ private:
 							// commons used by init, shutdown, and restart
 	void					MapPopulate( void );
 	void					MapClear( bool clearClients );
+							// the body of InitFromSaveGame, which cleans up after it on an error
+	bool					RestoreSaveGame( idRestoreGame &savegame, const char *mapName );
 
 	pvsHandle_t				GetClientPVS( idPlayer *player, pvsType_t type );
 	void					SetupPlayerPVS( void );

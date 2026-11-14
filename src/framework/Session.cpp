@@ -1035,6 +1035,51 @@ struct sessionSaveGamePayload_t {
 	bool	otherPlatform;	// refused because another platform's build wrote it
 };
 
+#if defined( OPEND3 )
+// Doom 3's unstamped payload has no footer of its own, but the session appends
+// its integrity trailer to every save it writes. Check the file against it, so
+// that a damaged or cut-short save is refused before the running map is torn
+// down and the game reads it.
+static bool Session_ValidateUnstampedSaveGameIntegrity( idFile *file, const idStr &savePath, int fileLength, int payloadOffset,
+		const sessionVerifiedSaveChecksum_t *verifiedChecksum ) {
+	const int integrityOffset = fileLength - SESSION_OPEND3_SAVEGAME_INTEGRITY_BYTES;
+	int integrityMarker = 0;
+	int integrityVersion = 0;
+	int savedProtectedLength = 0;
+	unsigned int savedChecksum = 0;
+	if ( integrityOffset <= payloadOffset || file->Seek( integrityOffset, FS_SEEK_SET ) != 0 ||
+		 !Session_ReadSaveGameInt( file, integrityMarker, "integrity marker", savePath.c_str() ) ||
+		 !Session_ReadSaveGameInt( file, integrityVersion, "integrity version", savePath.c_str() ) ||
+		 !Session_ReadSaveGameInt( file, savedProtectedLength, "integrity protected length", savePath.c_str() ) ||
+		 !Session_ReadSaveGameUnsignedInt( file, savedChecksum, "integrity checksum", savePath.c_str() ) ) {
+		common->Warning( "Savegame '%s' is too short for its integrity trailer (payload offset %d, length %d)",
+			savePath.c_str(), payloadOffset, fileLength );
+		return false;
+	}
+	if ( integrityMarker != SESSION_OPEND3_SAVEGAME_INTEGRITY_MAGIC ||
+		 integrityVersion != SESSION_OPEND3_SAVEGAME_INTEGRITY_VERSION ||
+		 savedProtectedLength != integrityOffset ) {
+		common->Warning( "Savegame '%s' has no valid integrity trailer (marker 0x%08x, version %d, length %d, trailer offset %d)",
+			savePath.c_str(), integrityMarker, integrityVersion, savedProtectedLength, integrityOffset );
+		return false;
+	}
+
+	unsigned int calculatedChecksum = 0;
+	if ( verifiedChecksum != NULL && verifiedChecksum->file == file &&
+			verifiedChecksum->protectedLength == savedProtectedLength ) {
+		calculatedChecksum = verifiedChecksum->checksum;
+	} else if ( !Session_CalculateSaveGameChecksum( file, savedProtectedLength, calculatedChecksum, savePath ) ) {
+		return false;
+	}
+	if ( calculatedChecksum != savedChecksum ) {
+		common->Warning( "Savegame '%s' failed its integrity check (stored 0x%08x, calculated 0x%08x)",
+			savePath.c_str(), savedChecksum, calculatedChecksum );
+		return false;
+	}
+	return true;
+}
+#endif
+
 static bool Session_ValidateSaveGamePayload( idFile *file, const idStr &savePath, bool allowLegacyPayload, sessionSaveGamePayload_t *payloadOut = NULL,
 		const sessionVerifiedSaveChecksum_t *verifiedChecksum = NULL ) {
 	if ( payloadOut != NULL ) {
@@ -1063,11 +1108,26 @@ static bool Session_ValidateSaveGamePayload( idFile *file, const idStr &savePath
 	if ( marker != SESSION_OPEND3_SAVEGAME_COMPATIBILITY_MAGIC ) {
 #if defined( OPEND3 )
 		// Doom 3's game library does not write the stamped payload yet: its
-		// payload starts with the build number and carries no footer or
-		// integrity trailer, as the original game's did. Accept it for the
-		// build that wrote it (docs/dev/doom3-rebase.md, savegames).
+		// payload starts with the build number and carries no footer, as the
+		// original game's did. Accept it for the build that wrote it, when
+		// the file matches the integrity trailer the session appended
+		// (docs/dev/doom3-rebase.md, savegames).
 		(void)allowLegacyPayload;
-		const bool legacyCompatible = marker == BUILD_NUMBER;
+		if ( marker == BUILD_NUMBER ) {
+			// The GUI records inside the payload are the engine's own, written in
+			// its current encodings. Reported as version 0, the restore read them
+			// as the raw records of an old payload and lost its place in the file.
+			if ( payloadOut != NULL ) {
+				payloadOut->version = SESSION_OPEND3_SAVEGAME_COMPATIBILITY_VERSION;
+			}
+			const bool intact = Session_ValidateUnstampedSaveGameIntegrity( file, savePath, fileLength, payloadOffset, verifiedChecksum );
+			if ( file->Seek( payloadOffset, FS_SEEK_SET ) != 0 ) {
+				common->Warning( "Savegame '%s' failed to rewind to payload offset %d", savePath.c_str(), payloadOffset );
+				return false;
+			}
+			return intact;
+		}
+		const bool legacyCompatible = false;
 #else
 		const bool legacyCompatible = allowLegacyPayload && marker == BUILD_NUMBER &&
 			idStr::Icmp( Session_GetSaveGameWireABI(), SESSION_LEGACY_SAVEGAME_WIRE_ABI ) == 0;

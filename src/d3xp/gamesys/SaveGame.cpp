@@ -781,6 +781,8 @@ idRestoreGame::RestoreGame
 */
 idRestoreGame::idRestoreGame( idFile *savefile ) {
 	file = savefile;
+	numRestoresBegun = 1;
+	objectsRestored = false;
 }
 
 /*
@@ -836,8 +838,10 @@ void idRestoreGame::RestoreObjects( void ) {
 
 	// restore all the objects
 	for( i = 1; i < objects.Num(); i++ ) {
+		numRestoresBegun = i + 1;
 		CallRestore_r( objects[ i ]->GetType(), objects[ i ] );
 	}
+	objectsRestored = true;
 
 	// regenerate render entities and render lights because are not saved
 	for( i = 1; i < objects.Num(); i++ ) {
@@ -871,6 +875,41 @@ void idRestoreGame::DeleteObjects( void ) {
 }
 
 /*
+====================
+idRestoreGame::Abandon
+
+Ends a restore that cannot be finished, before the error leaves the game. The
+session then shuts the map down.
+
+Every object of the save is created before anything is read into it. An object
+that was never restored is still as its constructor left it and is deleted
+here. One whose Restore has run points at other objects of the save, restored
+or not, and its destructor would follow those pointers into objects that hold
+nothing yet. Those are left allocated and never used again, and the game drops
+every reference it read to the save's objects, so that the map shutdown finds
+none of them. Threads are the exception: they stay on the thread list, which
+the shutdown empties.
+
+Once every object has been restored the map is whole, and the shutdown frees it
+the usual way.
+====================
+*/
+void idRestoreGame::Abandon( void ) {
+	int i;
+
+	if ( !objectsRestored && objects.Num() > 0 ) {
+		// take each object off the list first, so a second call cannot delete it again
+		for( i = numRestoresBegun; i < objects.Num(); i++ ) {
+			idClass *obj = objects[ i ];
+			objects[ i ] = NULL;
+			delete obj;
+		}
+		gameLocal.ForgetRestoredObjects();
+	}
+	objects.Clear();
+}
+
+/*
 ================
 idRestoreGame::Error
 ================
@@ -883,7 +922,7 @@ void idRestoreGame::Error( const char *fmt, ... ) {
 	vsprintf( text, fmt, argptr );
 	va_end( argptr );
 
-	objects.DeleteContents( true );
+	Abandon();
 
 	gameLocal.Error( "%s", text );
 }

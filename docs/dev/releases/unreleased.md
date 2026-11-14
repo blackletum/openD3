@@ -38,8 +38,8 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
 
 - There is no earlier openD3 release to upgrade from. Builds from the
   pre-rebase tree do not share saves or configs with this one.
-- Saves load only in the build that wrote them; loading a save has not been
-  tested.
+- Saves load only in the build that wrote them. A damaged save is refused
+  with a message instead of being loaded.
 - Launch with `ui_retained 0`. openQ4's retained interface has no Doom 3 pages.
 - Only Windows x64 has been built and run.
 - A settings file written by an earlier build keeps `g_showPlayerShadow 0`,
@@ -88,3 +88,8 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
 - Shade stock specular as Doom 3 does: `r_correctspecular` and
   `r_normalizebumpmap` default to 0, and the OpenGL ARB path no longer doubles
   the specular constant that Doom 3's `interaction.vfp` doubles itself.
+- Make saved games load: fix the 64-bit read of a script object's size and
+  of a queued event's trace, read the GUI state inside a save in the encoding
+  it was written in, check every save against its integrity trailer before
+  loading it, and return to the menu instead of crashing when a restore
+  fails.

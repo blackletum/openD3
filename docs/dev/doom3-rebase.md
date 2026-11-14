@@ -187,17 +187,39 @@ release of Doom 3 (1.3.1 packs):
   and initialises the game. On the test machine, which has only the
   expansion's patch pack, startup then stops with a parse error in the
   expansion's `guis/mainmenu.gui`.
+- Saving and loading in the same build (2026-11-14, OpenGL, console
+  `saveGame` and `loadGame`, an isolated `fs_savepath`). On `game/alphalabs1`
+  (`devmap`), with `god`, `noclip` and `give all` set, the player moved with
+  `setviewpos` and a `monster_zombie_fat` spawned: after moving away and
+  loading, `getviewpos` reports the saved position and yaw, and captures taken
+  before the save and five seconds after the load show the same view, the
+  zombie still advancing and the same armour, health and ammunition on the
+  HUD. The game ran ten more seconds and quit cleanly, and the load logs only
+  the warnings an ordinary load of the map does. The same save loads from the
+  main menu of a fresh process. A save made 500 frames into the opening
+  cinematic of `game/mars_city1` loads back into the cinematic. Before these
+  fixes no save loaded; see "Savegames are not stamped" under "Open items".
+- Saves that cannot be loaded. A save with one byte changed, one cut to half
+  its length and a missing one are each refused before the running map is
+  touched, and play continues. Two saves damaged inside the game's payload and
+  given a matching integrity trailer by hand, one naming an unknown class and
+  one with 64 bytes overwritten halfway, each end with "could not restore
+  saved state" and the LOAD FAILED message at the main menu, and a good save
+  then loads in the same process.
 
 That is all that has been run. In particular, nothing here is evidence for:
 playing past the first cinematic, combat, AI, the PDA beyond its first page,
-video playback, level transitions, loading a savegame, a multiplayer client
-joining a server,
+video playback, level transitions, a multiplayer client joining a server,
 Linux, macOS, Android, ARM64 or VR. The TrueType text was not compared
 screen by screen with the bitmap path, and was not checked on Vulkan, in the
 PDA, on in-world screens or in a language other than English. The wide and
 tall layouts were not checked in a multiplayer match, with the HUD's
 objective, inventory and pickup notices showing, on the message boxes, intro
-and credits as the game raises them, or in Resurrection of Evil.
+and credits as the game raises them, or in Resurrection of Evil. Saves were
+loaded only in the states listed above: not from the menus, not an autosave or
+quicksave, not during combat or with projectiles in flight, not on Vulkan and
+not in Resurrection of Evil, whose module carries the same fixes but has not
+run a map.
 
 ## Open items
 
@@ -215,8 +237,43 @@ Listed roughly by how much they block a player.
    library writes its original unstamped payload, which `Session.cpp` accepts
    under `OPEND3` for the build that wrote it. Writing the stamped payload is
    game-side work; it must be written for openD3, not copied from openQ4's or
-   openPREY's game trees, which are under their SDK licences. Loading a save
-   has not been tested.
+   openPREY's game trees, which are under their SDK licences.
+
+   A save now loads in the build that wrote it (see "Verified"). Four things
+   stood in the way, fixed in `src/game` and `src/d3xp` alike where they are
+   the game's:
+   - `idScriptObject::Restore` read the object's size, an `int`, through a
+     cast into a `size_t`. On a 64-bit build half of it stayed unset, so the
+     first script object, the player's, was refused. `idEvent`'s trace
+     argument stored a material pointer the same way; it now stores whether
+     there was one. The same pass made queued events keep their string
+     arguments and a trace's entity number, which were never written, and
+     made the clip system's own models keep their trace models across a
+     restore, which had left a warning at every shutdown after a load.
+   - The session (`Session.cpp`, `OPEND3`) reported the unstamped payload as
+     version 0, so the engine read the GUI state inside it as an old payload's
+     raw records while the save had written the current encoding. The payload
+     is this build's own and is now read as the current version.
+   - A failed restore crashed. `idRestoreGame::Error` deleted every object of
+     the save and `idGameLocal::MapClear` then deleted `frameCommandThread`
+     again; deleting half-restored objects could also crash earlier, because a
+     restored object's destructor reaches into objects that hold nothing yet.
+     `idRestoreGame::Abandon` now ends a failed restore whatever raised the
+     error: objects never restored are deleted, the others are left allocated
+     and unreferenced, and the game forgets every pointer it read. A failed
+     restore therefore leaks the objects it had already restored.
+   - The unstamped payload had no integrity check. The session already appends
+     its integrity trailer to every save; under `OPEND3` the unstamped payload
+     is now held to it, so a damaged or truncated file is refused before the
+     map is torn down.
+
+   Still open: the stamped payload itself, and with it saves that survive a
+   new build. The game's readers trust what they read, so a file that passes
+   the integrity check and is wrong inside (a deliberately built one, or a
+   save and restore that disagree) can still restore into a wrong state
+   without an error. Only the 64-bit mistakes that the tested states reached,
+   or that a search for casts in the save code found, are fixed; other entity
+   classes may hold more.
 3. **Engine features with no stock Doom 3 content.** Kept deliberately,
    because custom content and mods could use them: BSE effects, MD5R models,
    light grids, the retained RmlUi interface, the Arena ladder (it loads only

@@ -17,6 +17,7 @@ On Windows x64, against the Steam release of Doom 3 with the 1.3.1 packs:
 - The same map loads and renders on the Vulkan renderer.
 - Doom 3's own main menu starts and plays the intro video.
 - The dedicated server starts the deathmatch map `game/mp/d3dm1`.
+- Saving and loading a game from the console, in the same build, on `game/alphalabs1` and in the opening cinematic of `game/mars_city1`. A damaged save is refused with a message.
 - Shadow maps on OpenGL and Vulkan, compared with stencil shadows on the opening views of six campaign maps, and your own shadow in first person, in single player and in a `d3dm1` listen server. See [Client Settings](client-settings.md#shadows).
 
 ## What has not been run
@@ -25,7 +26,7 @@ Nothing in this list is known to be broken. Nobody has tried it yet:
 
 - Playing past the first cinematic: combat, AI, the PDA and video playback.
 - Moving from one level to the next.
-- Loading a saved game.
+- Loading a saved game from the menus, and loading an autosave or quicksave.
 - A multiplayer client joining a server.
 - Linux, macOS, Android, ARM64 and VR.
 

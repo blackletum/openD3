@@ -40,7 +40,7 @@ Where Doom 3's formats differ from Quake 4's, the engine reads Doom 3's:
 
 The `OPEND3` compile define marks the engine sites that choose Doom 3 behaviour.
 
-**Savegames.** The engine writes its own header, screenshot and atomic commit. The Doom 3 game library writes its original game payload inside it, which the engine accepts for the build that wrote it. Saves are therefore not portable across builds, the game payload has no integrity check yet, and loading a save has not been tested.
+**Savegames.** The engine writes its own header, screenshot and atomic commit. The Doom 3 game library writes its original game payload inside it, which the engine accepts for the build that wrote it. Saves are therefore not portable across builds. The whole file is checked against the engine's integrity trailer before it is loaded. Saving and loading in the same build has been run on two maps; see the rebase record.
 
 So far only the first campaign map and a dedicated-server start have been run; the [rebase record](docs/dev/doom3-rebase.md#verified) lists exactly what. Please report anything that breaks on the [issue tracker](https://github.com/themuffinator/openD3/issues).
 

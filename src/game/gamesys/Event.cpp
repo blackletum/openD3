@@ -646,6 +646,11 @@ void idEvent::Save( idSaveGame *savefile ) {
 					savefile->WriteVec3( *reinterpret_cast<idVec3 *>( dataPtr ) );
 					size += sizeof( idVec3 );
 					break;
+				case D_EVENT_STRING :
+					// a string argument was not saved at all, and came back as unset memory
+					savefile->WriteString( reinterpret_cast<char *>( dataPtr ) );
+					size += MAX_STRING_LEN;
+					break;
 				case D_EVENT_TRACE :
 					validTrace = *reinterpret_cast<bool *>( dataPtr );
 					savefile->WriteBool( validTrace );
@@ -738,6 +743,11 @@ void idEvent::Restore( idRestoreGame *savefile ) {
 						savefile->ReadVec3( *reinterpret_cast<idVec3 *>( dataPtr ) );
 						size += sizeof( idVec3 );
 						break;
+					case D_EVENT_STRING :
+						savefile->ReadString( name );
+						idStr::Copynz( reinterpret_cast<char *>( dataPtr ), name, MAX_STRING_LEN );
+						size += MAX_STRING_LEN;
+						break;
 					case D_EVENT_TRACE :
 						savefile->ReadBool( *reinterpret_cast<bool *>( dataPtr ) );
 						size += sizeof( bool );
@@ -772,6 +782,8 @@ void idEvent::Restore( idRestoreGame *savefile ) {
  ================
  */
 void idEvent::RestoreTrace( idRestoreGame *savefile, trace_t &trace ) {
+	int hasMaterial;
+
 	savefile->ReadFloat( trace.fraction );
 	savefile->ReadVec3( trace.endpos );
 	savefile->ReadMat3( trace.endAxis );
@@ -780,8 +792,14 @@ void idEvent::RestoreTrace( idRestoreGame *savefile, trace_t &trace ) {
 	savefile->ReadVec3( trace.c.normal );
 	savefile->ReadFloat( trace.c.dist );
 	savefile->ReadInt( trace.c.contents );
-	savefile->ReadInt( (int&)trace.c.material );
-	savefile->ReadInt( trace.c.contents );
+	// Only whether the trace had a material is stored. Its name follows the
+	// trace in the event's data and is looked up again when the event is
+	// serviced, so any material stands for "there is one" until then. (Read
+	// through a cast to int, half of a 64-bit pointer was left unset, and the
+	// name was then read or skipped by chance.)
+	savefile->ReadInt( hasMaterial );
+	trace.c.material = hasMaterial ? declManager->FindMaterial( "_default" ) : NULL;
+	savefile->ReadInt( trace.c.entityNum );
 	savefile->ReadInt( trace.c.modelFeature );
 	savefile->ReadInt( trace.c.trmFeature );
 	savefile->ReadInt( trace.c.id );
@@ -804,8 +822,9 @@ void idEvent::SaveTrace( idSaveGame *savefile, const trace_t &trace ) {
 	savefile->WriteVec3( trace.c.normal );
 	savefile->WriteFloat( trace.c.dist );
 	savefile->WriteInt( trace.c.contents );
-	savefile->WriteInt( (int&)trace.c.material );
-	savefile->WriteInt( trace.c.contents );
+	savefile->WriteInt( trace.c.material != NULL );
+	// contents was written here a second time, and entityNum never
+	savefile->WriteInt( trace.c.entityNum );
 	savefile->WriteInt( trace.c.modelFeature );
 	savefile->WriteInt( trace.c.trmFeature );
 	savefile->WriteInt( trace.c.id );

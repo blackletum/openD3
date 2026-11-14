@@ -178,6 +178,21 @@ idClipModel::RestoreTraceModels
 void idClipModel::RestoreTraceModels( idRestoreGame *savefile ) {
 	int i, num;
 
+	// The clip system's own two models are not saved. They hold trace models
+	// from the cache replaced here, so keep those and take them again from
+	// the restored cache. Otherwise their indices would name entries whose
+	// reference counts never included them.
+	idClipModel *clipOwned[2] = { &gameLocal.clip.defaultClipModel, &gameLocal.clip.temporaryClipModel };
+	idTraceModel clipOwnedTrm[2];
+	bool clipOwnedCached[2];
+	for ( i = 0; i < 2; i++ ) {
+		clipOwnedCached[i] = ( clipOwned[i]->traceModelIndex != -1 );
+		if ( clipOwnedCached[i] ) {
+			clipOwnedTrm[i] = *GetCachedTraceModel( clipOwned[i]->traceModelIndex );
+			clipOwned[i]->traceModelIndex = -1;
+		}
+	}
+
 	ClearTraceModelCache();
 
 	savefile->ReadInt( num );
@@ -195,6 +210,12 @@ void idClipModel::RestoreTraceModels( idRestoreGame *savefile ) {
 
 		traceModelCache[i] = entry;
 		traceModelHash.Add( GetTraceModelHashKey( entry->trm ), i );
+	}
+
+	for ( i = 0; i < 2; i++ ) {
+		if ( clipOwnedCached[i] ) {
+			clipOwned[i]->traceModelIndex = AllocTraceModel( clipOwnedTrm[i] );
+		}
 	}
 }
 

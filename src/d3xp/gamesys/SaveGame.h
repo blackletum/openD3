@@ -104,6 +104,7 @@ public:
 	void					CreateObjects( void );
 	void					RestoreObjects( void );
 	void					DeleteObjects( void );
+	void					Abandon( void );
 
 	void					Error( const char *fmt, ... ) id_attribute((format(printf,2,3)));
 
@@ -157,6 +158,8 @@ private:
 	idFile *				file;
 
 	idList<idClass *>		objects;
+	int						numRestoresBegun;		// objects whose Restore has been called, counting objects[0]
+	bool					objectsRestored;		// every object has been restored
 
 	void					CallRestore_r( const idTypeInfo *cls, idClass *obj );
 };

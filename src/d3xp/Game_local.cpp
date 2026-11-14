@@ -1347,11 +1347,6 @@ idGameLocal::InitFromSaveGame
 =================
 */
 bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWorld, idSoundWorld *soundWorld, idFile *saveGameFile ) {
-	int i;
-	int num;
-	idEntity *ent;
-	idDict si;
-
 	if ( mapFileName.Length() ) {
 		MapShutdown();
 	}
@@ -1364,6 +1359,28 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 	gameSoundWorld = soundWorld;
 
 	idRestoreGame savegame( saveGameFile );
+
+	// An error in the restore passes through here as an exception on its way to
+	// the session, which shuts the map down and returns to the menu. Whatever
+	// raised it, the restore is abandoned first.
+	try {
+		return RestoreSaveGame( savegame, mapName );
+	} catch ( ... ) {
+		savegame.Abandon();
+		throw;
+	}
+}
+
+/*
+=================
+idGameLocal::RestoreSaveGame
+=================
+*/
+bool idGameLocal::RestoreSaveGame( idRestoreGame &savegame, const char *mapName ) {
+	int i;
+	int num;
+	idEntity *ent;
+	idDict si;
 
 	savegame.ReadBuildNumber();
 
@@ -1593,6 +1610,40 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 	Printf( "--------------------------------------\n" );
 
 	return true;
+}
+
+/*
+=================
+idGameLocal::ForgetRestoredObjects
+
+Called by idRestoreGame::Abandon when a restore has ended early. The objects of
+the save are deleted or abandoned by then, so nothing here may point at them
+when the map is shut down: MapClear deletes whatever is left in the entity
+list, and frameCommandThread.
+=================
+*/
+void idGameLocal::ForgetRestoredObjects( void ) {
+	memset( entities, 0, sizeof( entities ) );
+	memset( spawnIds, -1, sizeof( spawnIds ) );
+	spawnedEntities.Clear();
+	activeEntities.Clear();
+	numEntitiesToDeactivate = 0;
+	sortPushers = false;
+	sortTeamMasters = false;
+	entityHash.Clear( 1024, MAX_GENTITIES );
+
+	// a restored thread is deleted with the thread list, an unrestored one already is
+	frameCommandThread = NULL;
+	world = NULL;
+	camera = NULL;
+	lastGUIEnt = NULL;
+	lastAIAlertEntity = NULL;
+
+	delete[] locationEntities;
+	locationEntities = NULL;
+
+	// no object of the save is left to receive the events read for it
+	idEvent::ClearEventList();
 }
 
 /*

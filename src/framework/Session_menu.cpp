@@ -102,7 +102,8 @@ idCVar ui_retainedMultiplayer( "ui_retainedMultiplayer", "0", CVAR_GUI | CVAR_BO
 // so an explicit player preference persists across launches.
 // openD3: the stock interface is the default. Doom 3 has retained documents
 // for the title, the single-player pause, the message box, the death screen's
-// choices and the Load Game,
+// choices, the level loading screens' furniture, the in-game multiplayer
+// menu's Main and Exit panels and the Load Game,
 // Save Game, Controls, Game Options, System, Mods, Credits, Game Browser,
 // Create Server and Multiplayer Settings pages only
 // (docs/dev/ui/retained-menus.md).
@@ -267,10 +268,18 @@ static const char *const RETAINED_MP_MATCH_SERIES_PROFILES[] = { "best_of_one", 
 static const int RETAINED_MP_MATCH_RULE_VALUE_MAX = 10000;
 // The stock menu buttons the card's hand-offs press, by the card's page
 // index (card.stock_page), in the generator's order.
+#if defined( OPEND3 )
+// Doom 3's menu (guis/mpmain.gui): the tabs of the pages the card has no
+// panel for yet.
+static const char *const RETAINED_MP_STOCK_PAGES[] = {
+	"NewVote", "Multiplayer", "Controls", "Options", "System"
+};
+#else
 static const char *const RETAINED_MP_STOCK_PAGES[] = {
 	"main_b_jointeam", "main_b_players", "main_b_vote", "main_b_matchcontrol",
 	"main_b_settings", "main_b_voiceconfig", "main_b_serverinfo", "main_b_admin"
 };
+#endif
 // The buttons the Welcome card's hand-offs press, by its page index: the join
 // panel's while the join offer stands (the stock menu's initial_join), the
 // menu column's once the panel has closed; NULL for a page with no stock
@@ -7273,6 +7282,20 @@ static const char *const RETAINED_DEATH_FURNITURE[] = {
 };
 static const int RETAINED_DEATH_FURNITURE_COUNT = static_cast<int>( sizeof( RETAINED_DEATH_FURNITURE ) / sizeof( RETAINED_DEATH_FURNITURE[0] ) );
 
+// A level's own loading screen (guis/map/<map>.gui) draws its picture and
+// scan lines under the retained one, and its opening fade from black. Its
+// bands, its text, its bar and the word LOADING are the retained screen's.
+static const char *const RETAINED_LOADING_FURNITURE[] = {
+	"bgBlackTop", "bgBlackBottom", "TitleBar", "TextDescription", "TextTitle", "TextSubTitle",
+	"LoadingFillClip", "LoadingLine", "TextLoading", "FlareBox"
+};
+static const int RETAINED_LOADING_FURNITURE_COUNT = static_cast<int>( sizeof( RETAINED_LOADING_FURNITURE ) / sizeof( RETAINED_LOADING_FURNITURE[0] ) );
+// The stock screen drawing under the retained loading screen, and that
+// retained screen (SelectRetainedLoadingGui); NULL while the stock screen
+// presents alone.
+static idUserInterface *retainedLoadingScene = NULL;
+static idUserInterface *retainedLoadingOver = NULL;
+
 // Draws a stock GUI's scene alone, without the windows `furniture` names and
 // without its pointer, for a retained screen to draw over.
 static void Session_DrawRetainedScene( idUserInterface *menu, int presentationTime, const char *const *furniture, int count ) {
@@ -8918,6 +8941,14 @@ title.
 void idSessionLocal::DrawRetainedPageHome( int presentationTime ) {
 #ifndef ID_DEDICATED
 #if defined( OPEND3 )
+	// A level loading: its own stock screen's picture, under the retained
+	// bands, word, bar and text.
+	if ( insideExecuteMapChange ) {
+		if ( retainedLoadingScene != NULL && guiLoading != NULL && guiLoading == retainedLoadingOver ) {
+			Session_DrawRetainedScene( retainedLoadingScene, presentationTime, RETAINED_LOADING_FURNITURE, RETAINED_LOADING_FURNITURE_COUNT );
+		}
+		return;
+	}
 	// The death screen: the stock screen's scene, under the retained choices.
 	if ( guiRetainedRestartMenu != NULL && guiActive == guiRetainedRestartMenu ) {
 		if ( guiRestartMenu != NULL ) {
@@ -11345,6 +11376,57 @@ idUserInterface *idSessionLocal::SelectRetainedLoadingGui( idUserInterface *lega
 #ifdef ID_DEDICATED
 	return legacy;
 #else
+#if defined( OPEND3 )
+	// Doom 3's level loading screens are one composition, a GUI for each map
+	// (guis/map/<map>.gui): the level's picture, two bands, the word LOADING
+	// over a bar, and the level's title and briefing. The stock screen goes
+	// on drawing its picture (DrawRetainedPageHome) and the retained screen
+	// draws the rest, with the level's words and the bottom band's place
+	// read from the stock screen. A screen built another way keeps the stock
+	// presentation: the first level's and the hell screen's have no title,
+	// and the fallback has no word.
+	retainedLoadingScene = NULL;
+	retainedLoadingOver = NULL;
+	if ( !Session_RetainedScreensEnabled() || legacy == NULL ) {
+		return legacy;
+	}
+	idStr word, title, titleRect, bandRect, stepRect;
+	if ( !legacy->GetPresentationValue( "TextLoading::text", word ) || !legacy->GetPresentationValue( "TextTitle::text", title ) ||
+			!legacy->GetPresentationValue( "TextTitle::rect", titleRect ) || !legacy->GetPresentationValue( "bgBlackBottom::rect", bandRect ) ||
+			!legacy->GetPresentationValue( "bgBlackBottom2::rect", stepRect ) ) {
+		return legacy;
+	}
+	if ( Session_ModSuppliesFile( legacy->Name() ) ) {
+		common->DPrintf( "retained UI: the mod supplies its own '%s', so it presents instead of the retained loading screen\n", legacy->Name() );
+		return legacy;
+	}
+	idUserInterface *page = FindRetainedGui( RETAINED_LOADING_GUI, true, false );
+	if ( page == NULL ) {
+		return legacy;
+	}
+	// A rect reads back as "x y w h" (or with commas).
+	const auto rectField = []( idStr rect, int field ) {
+		float values[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		rect.Replace( ",", " " );
+		sscanf( rect.c_str(), "%f %f %f %f", &values[0], &values[1], &values[2], &values[3] );
+		return values[ field ];
+	};
+	idStr subtitle, briefing;
+	const bool text = legacy->GetPresentationValue( "TextSubTitle::text", subtitle ) && legacy->GetPresentationValue( "TextDescription::text", briefing );
+	page->SetStateString( "load.title", common->GetLanguageDict()->GetString( title.c_str() ) );
+	page->SetStateString( "load.subtitle", text ? common->GetLanguageDict()->GetString( subtitle.c_str() ) : "" );
+	page->SetStateString( "load.briefing", text ? common->GetLanguageDict()->GetString( briefing.c_str() ) : "" );
+	page->SetStateBool( "load.text", text );
+	page->SetStateFloat( "load.band_y", rectField( bandRect, 1 ) );
+	page->SetStateFloat( "load.step_x", rectField( stepRect, 0 ) );
+	page->SetStateFloat( "load.title_y", rectField( titleRect, 1 ) );
+	page->SetStateFloat( "map_loading", 0.0f );
+	page->StateChanged( common->GetPresentationTime() );
+	page->HandleNamedEvent( "present" );
+	retainedLoadingScene = legacy;
+	retainedLoadingOver = page;
+	return page;
+#else
 	if ( !Session_RetainedScreensEnabled() || legacy == NULL ) {
 		return legacy;
 	}
@@ -11374,6 +11456,7 @@ idUserInterface *idSessionLocal::SelectRetainedLoadingGui( idUserInterface *lega
 	// Whole again after the last join's hand-off faded it out.
 	retained->HandleNamedEvent( "present" );
 	return retained;
+#endif
 #endif
 }
 
@@ -11895,6 +11978,34 @@ document that cannot present falls back for the session. A stock page the
 card hands off to keeps the menu until it closes.
 ===============
 */
+#if defined( OPEND3 ) && !defined( ID_DEDICATED )
+// Doom 3's game answers no cover protocol and publishes nothing to a card: its
+// menu (guis/mpmain.gui) holds what a player sees in it, and the card shows a
+// copy. True when the copy changed.
+static bool Session_CopyGameMenuState( idUserInterface *menu, idUserInterface *card ) {
+	const idDict &state = menu->State();
+	const idStr say = Session_RetainedChoiceName( "#str_04240", state.GetInt( "messagemode" ) != 0 ? 1 : 0, "" );
+	idStr signature = va( "%d|%d|%d|%d|", state.GetInt( "readyon" ), state.GetInt( "teamon" ), state.GetInt( "team" ), state.GetInt( "voteon" ) );
+	signature += state.GetString( "ui_ready" );
+	signature += "|";
+	signature += state.GetString( "spectext" );
+	signature += "|";
+	signature += say;
+	if ( !signature.Cmp( card->State().GetString( "mp.copied" ) ) ) {
+		return false;
+	}
+	card->SetStateString( "mp.copied", signature.c_str() );
+	card->SetStateBool( "mp.warmup", state.GetInt( "readyon" ) != 0 );
+	card->SetStateString( "mp.ready_text", state.GetString( "ui_ready" ) );
+	card->SetStateString( "mp.spec_text", state.GetString( "spectext" ) );
+	card->SetStateBool( "mp.teams", state.GetInt( "teamon" ) != 0 );
+	card->SetStateInt( "mp.team", state.GetInt( "team" ) );
+	card->SetStateBool( "mp.vote", state.GetInt( "voteon" ) != 0 );
+	card->SetStateString( "mp.say", say.c_str() );
+	return true;
+}
+#endif
+
 void idSessionLocal::UpdateRetainedMultiplayer() {
 #ifndef ID_DEDICATED
 	const int now = common->GetPresentationTime();
@@ -11928,6 +12039,14 @@ void idSessionLocal::UpdateRetainedMultiplayer() {
 			retainedMultiplayerHandoff = -1;
 		}
 	}
+#if defined( OPEND3 )
+	// Doom 3's game draws its menu itself (idMultiplayerGame::Draw), so a
+	// covered menu is hidden, not merely skipped. While no card covers it, it
+	// shows: the stock menu presenting alone, or a page the card handed off.
+	if ( guiRetainedMultiplayer == NULL && Session_IsGameMenu( guiActive ) ) {
+		UI_SetLegacyWindowHidden( guiActive, "Desktop", false );
+	}
+#endif
 	const bool context = ( Session_RetainedMultiplayerEnabled( false ) || Session_RetainedMultiplayerEnabled( true ) ||
 		Session_RetainedSummaryEnabled() ) && game != NULL && mapSpawned && IsMultiplayer() && Session_IsCoveredGameGui( guiActive ) &&
 		guiTest == NULL && !RetainedUI_IsOpen() && !retainedMultiplayerUncovered;
@@ -11982,6 +12101,13 @@ void idSessionLocal::UpdateRetainedMultiplayer() {
 		if ( card == NULL ) {
 			return;
 		}
+#if defined( OPEND3 )
+		// Doom 3's game keeps no cover protocol. The card covers its menu
+		// whenever that menu is the active GUI, showing a copy of its state.
+		card->SetStateString( "mp.copied", "" );
+		Session_CopyGameMenuState( guiActive, card );
+		UI_SetLegacyWindowHidden( guiActive, "Desktop", true );
+#else
 		card->SetStateInt( "mp.protocol", 0 );
 		card->SetStateBool( "mp.cover_allowed", false );
 		Doom3Game_HandleMainMenuCommands( "retainedMultiplayerCover", card );
@@ -11994,6 +12120,7 @@ void idSessionLocal::UpdateRetainedMultiplayer() {
 		if ( !card->State().GetBool( "mp.cover_allowed" ) ) {
 			return;
 		}
+#endif
 		retainedMultiplayerUncovered = false;
 		guiRetainedMultiplayer = card;
 		retainedMultiplayerWelcome = welcome;
@@ -12026,6 +12153,12 @@ void idSessionLocal::UpdateRetainedMultiplayer() {
 		PumpApplicationActions( card );
 		return;
 	}
+#if defined( OPEND3 )
+	// The card follows the game's menu, which the game keeps up to date.
+	if ( Session_CopyGameMenuState( guiActive, guiRetainedMultiplayer ) ) {
+		guiRetainedMultiplayer->StateChanged( now );
+	}
+#else
 	// The game writes only what changed, under a new revision.
 	Doom3Game_HandleMainMenuCommands( "retainedMultiplayerState", guiRetainedMultiplayer );
 	const int revision = guiRetainedMultiplayer->State().GetInt( "mp.revision" );
@@ -12033,6 +12166,7 @@ void idSessionLocal::UpdateRetainedMultiplayer() {
 		retainedMultiplayerRevision = revision;
 		guiRetainedMultiplayer->StateChanged( now );
 	}
+#endif
 #endif
 }
 
@@ -12161,6 +12295,51 @@ void idSessionLocal::HandleRetainedMultiplayerRequest( idUserInterface *gui, con
 		}
 		return;
 	}
+#if defined( OPEND3 )
+	{
+		// Doom 3's card: a request is the stock menu's own command, sent to
+		// the game with the menu's click as the stock button sends it. The
+		// chat field's text and the Say Global or Say Team switch go through
+		// the game's menu, where the game reads them.
+		static const char *const stockCommands[][2] = {
+			{ "mpClose", "close" }, { "mpDisconnect", "disconnect" }, { "quit", "quit" }, { "mpReady", "readytoggle" },
+			{ "mpSpectate", "spectate" }, { "mpTeamToggle", "teamtoggle" }, { "mpVoteYes", "voteyes" }, { "mpVoteNo", "voteno" }
+		};
+		const char *const click = "play guisounds_menuclickup";
+		if ( !idStr::Icmp( request, "mpClick" ) ) {
+			game->HandleGuiCommands( click );
+			return;
+		}
+		if ( !idStr::Icmp( request, "mpChatMode" ) ) {
+			guiActive->SetStateInt( "messagemode", guiActive->State().GetInt( "messagemode" ) != 0 ? 0 : 1 );
+			game->HandleGuiCommands( click );
+			return;
+		}
+		if ( !idStr::Icmp( request, "mpChat" ) ) {
+			idStr text = Session_RetainedCreateText( gui, "mp.chat", 80 );
+			text.Replace( "\"", "'" );		// the game quotes the text in a console command
+			gui->SetStateString( "mp.chat", "" );
+			gui->StateChanged( common->GetPresentationTime() );
+			if ( text.Length() > 0 ) {
+				guiActive->SetStateString( "chattext", text.c_str() );
+				HandleGameMenuReturn( game->HandleGuiCommands( "chatmessage" ) );
+				if ( !Session_IsCoveredGameGui( guiActive ) ) {
+					RetireRetainedMultiplayer( guiActive == NULL && mapSpawned );
+				}
+			}
+			return;
+		}
+		for ( int i = 0; i < static_cast<int>( sizeof( stockCommands ) / sizeof( stockCommands[0] ) ); ++i ) {
+			if ( !idStr::Icmp( request, stockCommands[i][0] ) ) {
+				HandleGameMenuReturn( game->HandleGuiCommands( va( "%s ; %s", click, stockCommands[i][1] ) ) );
+				if ( !Session_IsCoveredGameGui( guiActive ) ) {
+					RetireRetainedMultiplayer( guiActive == NULL && mapSpawned );
+				}
+				return;
+			}
+		}
+	}
+#endif
 	const char *command = NULL;
 	idStr gameCommand;
 	int voteField = -1, voteValue = 0;

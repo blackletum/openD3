@@ -28,6 +28,8 @@ from doom3_menu_kit import (
 
 from doom3_menu_credits import credits_document, mods_panel
 from doom3_menu_death import death_document
+from doom3_menu_loading import loading_document
+from doom3_menu_mpmenu import multiplayer_menu_document
 from doom3_menu_multiplayer import create_server_document, join_game_document, mp_settings_panel
 from doom3_menu_options import controls_document, game_options_document
 from doom3_menu_pages import FIRST_PLACE, SECOND_PLACE, load_game_document, save_game_document
@@ -48,6 +50,8 @@ OUTPUTS = {
     "joingame": PAK0 / "guis" / "menu" / "joingame.rui",
     "createserver": PAK0 / "guis" / "menu" / "createserver.rui",
     "restartmenu": PAK0 / "guis" / "menu" / "restartmenu.rui",
+    "loading": PAK0 / "guis" / "loading" / "loading.rui",
+    "mp_escape": PAK0 / "guis" / "menu" / "mp_escape.rui",
 }
 
 # Stock strings (strings/english.lang in the installation).
@@ -497,7 +501,8 @@ def main() -> int:
                  "loadgame": load_game_document(), "savegame": save_game_document(),
                  "controls": controls_document(), "game": game_options_document(), "system": system_document(),
                  "credits": credits_document(), "joingame": join_game_document(),
-                 "createserver": create_server_document(), "restartmenu": death_document()}
+                 "createserver": create_server_document(), "restartmenu": death_document(),
+                 "loading": loading_document(), "mp_escape": multiplayer_menu_document()}
     stale = []
     for name, document in documents.items():
         output = OUTPUTS[name]

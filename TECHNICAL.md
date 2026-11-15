@@ -109,7 +109,7 @@ The stock Doom 3 menus cover the usual options. These settings are the ones that
 
 - `r_renderApi gl|vulkan`: the renderer, read at startup.
 - `r_fullscreen 0|1`, `r_mode`, `r_customWidth`, `r_customHeight`, `r_screen`: window and display mode.
-- `ui_retained 0`: keep at `0`. openD3 uses Doom 3's own GUIs. `1` previews the vector title, pause, message box, death screen and the Load Game, Save Game, Controls, Game Options, System, Mods, Credits, Game Browser, Create Server and Multiplayer Settings pages ([retained Doom 3 menus](docs/dev/ui/retained-menus.md)); the retained HUD and the other pages have no Doom 3 documents.
+- `ui_retained 0`: keep at `0`. openD3 uses Doom 3's own GUIs. `1` previews the vector title, pause, message box, death screen, level loading screens, the in-game multiplayer menu's Main and Exit panels and the Load Game, Save Game, Controls, Game Options, System, Mods, Credits, Game Browser, Create Server and Multiplayer Settings pages ([retained Doom 3 menus](docs/dev/ui/retained-menus.md)); the retained HUD and the other pages have no Doom 3 documents.
 - `fs_basepath`, `fs_savepath`, `fs_game`, `fs_game_base`: filesystem roots and mod selection (see [File System Paths](#file-system-paths)).
 - `fs_validateOfficialPaks`: retail pack validation.
 - `logFile 2`, `logFileName`: write a log under the save path.

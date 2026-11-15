@@ -776,6 +776,13 @@ bool idUserInterfaceLocal::RunWindowAction( const char *windowName, bool back, i
 	if ( !window->RunScript( back ? idWindow::ON_BACKACTION : idWindow::ON_ACTION ) ) {
 		return false;
 	}
+#if defined( OPEND3 )
+	// A click is a press and a release. Doom 3's in-game multiplayer menu
+	// switches its tabs on the release.
+	if ( !back ) {
+		window->RunScript( idWindow::ON_ACTIONRELEASE );
+	}
+#endif
 	command = window->cmd;
 	window->cmd = "";
 	return true;

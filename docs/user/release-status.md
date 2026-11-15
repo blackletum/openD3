@@ -34,7 +34,7 @@ Nothing in this list is known to be broken. Nobody has tried it yet:
 
 - **Resurrection of Evil is unverified.** `+set fs_game d3xp` loads the expansion's game module, but no expansion map has been run, and the one attempt so far stopped at the expansion's main menu. See [Campaigns](campaigns.md#resurrection-of-evil).
 - **Saves are tied to the build that wrote them.** See [Campaigns](campaigns.md#saves-and-switching).
-- **The newer menus and HUD are a preview.** Only the title screen, the pause menu, the message box, the death screen and the Load Game, Save Game, Controls, Game Options, System, Mods, Credits, Game Browser, Create Server and Multiplayer Settings pages have Doom 3 pages. Launch with `+set ui_retained 0` to use Doom 3's own.
+- **The newer menus and HUD are a preview.** Only the title screen, the pause menu, the message box, the death screen, the level loading screens, the in-game multiplayer menu's Main and Exit panels and the Load Game, Save Game, Controls, Game Options, System, Mods, Credits, Game Browser, Create Server and Multiplayer Settings pages have Doom 3 pages. Launch with `+set ui_retained 0` to use Doom 3's own.
 - **Startup logs warnings.** A `mars_city1` load currently logs about 25 distinct warnings, some of them from the retail content itself.
 
 ## These guides follow the source tree

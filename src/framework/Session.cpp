@@ -7393,7 +7393,15 @@ void idSessionLocal::LoadLoadingGui( const char *mapName ) {
 	// ui_retained replaces the stock loading screens; map-specific GUIs stay.
 	idUserInterface *legacyLoading = guiLoading;
 	guiLoading = SelectRetainedLoadingGui( guiLoading, isMultiplayerLoad );
+#if defined( OPEND3 )
+	// Doom 3's retained loading screen is the stock screen's furniture over
+	// its picture and says nothing more: openQ4's loading card extras (its
+	// phases, tips, arsenal and server roster) do not apply.
+	const bool retainedLoading = false;
+	(void)legacyLoading;
+#else
 	const bool retainedLoading = guiLoading != legacyLoading;
+#endif
 
 	if ( guiLoading ) {
 		guiLoading->SetStateFloat( "map_loading", 0.0f );
@@ -10612,6 +10620,11 @@ void idSessionLocal::Draw() {
 	bool drawingFallbackLoadingScreen = false;
 
 	if ( insideExecuteMapChange ) {
+#if defined( OPEND3 )
+		// Doom 3's loading screens: the level's own stock screen draws its
+		// picture under the retained furniture.
+		DrawRetainedPageHome( presentationTime );
+#endif
 		if ( guiLoading ) {
 			guiLoading->Redraw( presentationTime );
 		}

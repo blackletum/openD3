@@ -223,7 +223,11 @@ release of Doom 3 (1.3.1 packs):
   page; and the Multiplayer Settings panel, on which the data rate, Always
   Run, the player's name and skin were changed and read back from the
   written config; and the death screen, from which a killed player
-  restarted the map, opened the Load Game page and returned to the title.
+  restarted the map, opened the Load Game page and returned to the title;
+  and the level loading screen over the stock pictures of `alphalabs1`,
+  `admin` and `d3dm1`, at 4:3, 16:9 and 21:9; and the in-game multiplayer
+  menu on a local server, from which a player set ready, spectated,
+  changed team, said a line of team chat and disconnected.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
   what was not seen.
 - Saving and loading in the same build (2026-11-14, OpenGL, console
@@ -335,15 +339,18 @@ Listed roughly by how much they block a player.
    game both declare `r_showSkel`; sound shader volumes above +10 dB are
    clamped. A `mars_city1` load currently logs about 25 distinct warnings,
    some of them the retail content's own.
-5. **The retained interface has twelve Doom 3 documents.** The title, the
-   single-player pause, the message box, the death screen's choices and the
-   Load Game, Save Game,
+5. **The retained interface has fourteen Doom 3 documents.** The title, the
+   single-player pause, the message box, the death screen's choices, the
+   level loading screens' furniture, the in-game multiplayer menu's strip
+   with its Main and Exit panels, and the Load Game, Save Game,
    Controls, Game Options, System, Credits, Game Browser and Create Server
    pages, with the Mods and Multiplayer Settings panels in the title, are
    built to the
    [visual design specification](ui-visual-design.md) and present with
    `ui_retained 1` ([retained Doom 3 menus](ui/retained-menus.md)). Every
-   other page, the HUD and the loading screens have none, so launches still
+   other page and the HUD have none, and the first level's, the hell
+   level's and the fallback loading screens keep the stock one, so launches
+   still
    pin `ui_retained 0` and the stock Doom 3 GUIs remain the interface. With
    `ui_retained 1` the pages without a document are the stock ones, reached
    from the retained home, and a map load warns that the retained HUD

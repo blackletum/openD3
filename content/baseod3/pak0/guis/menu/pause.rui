@@ -4411,19 +4411,19 @@
     },
     "children": [
      {
-      "id": "stage",
+      "id": "stage-top",
       "type": "group",
       "properties": {
        "position": {"type": "keyword", "value": "absolute"},
        "left": {"type": "length", "value": 0, "unit": "dp"},
        "width": {"type": "length", "value": 100, "unit": "%"},
        "height": {"type": "length", "value": 720.0, "unit": "dp"},
-       "top": {"type": "length", "value": 50, "unit": "%"},
-       "margin-top": {"type": "length", "value": -360.0, "unit": "dp"}
+       "top": {"type": "length", "value": 0, "unit": "dp"},
+       "pointer-events": {"type": "keyword", "value": "none"}
       },
       "children": [
        {
-        "id": "frame",
+        "id": "frame-top",
         "type": "group",
         "properties": {
          "position": {"type": "keyword", "value": "absolute"},
@@ -4435,7 +4435,7 @@
         },
         "children": [
          {
-          "id": "frame-bands",
+          "id": "frame-bar",
           "type": "vector",
           "properties": {
            "position": {"type": "keyword", "value": "absolute"},
@@ -4467,68 +4467,6 @@
              {"id": "close", "op": "close"}
             ],
             "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.6, 0.698, 0.2]}}
-           },
-           {
-            "id": "strip",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[{"fraction": 0, "dp": 0.0}, 702.0]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -403.5}, 702.0]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -378.0}, 676.5]]},
-             {"id": "p3", "op": "line", "points": [[{"fraction": 1, "dp": 0.0}, 676.5]]},
-             {"id": "p4", "op": "line", "points": [[{"fraction": 1, "dp": 0.0}, 720.0]]},
-             {"id": "p5", "op": "line", "points": [[{"fraction": 0, "dp": 0.0}, 720.0]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.549, 0.698, 0.11]}}
-           },
-           {
-            "id": "strip-chamfer",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[{"fraction": 0, "dp": 0.0}, 670.5]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 0, "dp": 30.0}, 702.0]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 0, "dp": 0.0}, 702.0]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.549, 0.698, 0.11]}}
-           },
-           {
-            "id": "band",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[{"fraction": 0, "dp": 355.5}, 696.0]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 0, "dp": 388.5}, 660.0]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": 0.0}, 660.0]]},
-             {"id": "p3", "op": "line", "points": [[{"fraction": 1, "dp": 0.0}, 670.5]]},
-             {"id": "p4", "op": "line", "points": [[{"fraction": 1, "dp": -366.0}, 670.5]]},
-             {"id": "p5", "op": "line", "points": [[{"fraction": 1, "dp": -391.5}, 696.0]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [0.6, 0.851, 0.8, 0.08]}}
-           }
-          ]
-         },
-         {
-          "id": "frame-band-plug",
-          "type": "vector",
-          "properties": {
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0, "unit": "dp"},
-           "top": {"type": "length", "value": 0, "unit": "dp"},
-           "width": {"type": "length", "value": 100, "unit": "%"},
-           "height": {"type": "length", "value": 100, "unit": "%"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 1}
-          },
-          "paths": [
-           {
-            "id": "plug",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[{"fraction": 0, "dp": 280.5}, 696.0]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 0, "dp": 313.5}, 660.0]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 0, "dp": 388.5}, 660.0]]},
-             {"id": "p3", "op": "line", "points": [[{"fraction": 0, "dp": 355.5}, 696.0]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [0.6, 0.851, 0.8, 0.08]}}
            }
           ]
          },
@@ -4614,9 +4552,24 @@
           ]
          }
         ]
-       },
+       }
+      ]
+     },
+     {
+      "id": "stage-middle",
+      "type": "group",
+      "properties": {
+       "position": {"type": "keyword", "value": "absolute"},
+       "left": {"type": "length", "value": 0, "unit": "dp"},
+       "width": {"type": "length", "value": 100, "unit": "%"},
+       "height": {"type": "length", "value": 720.0, "unit": "dp"},
+       "top": {"type": "length", "value": 50, "unit": "%"},
+       "margin-top": {"type": "length", "value": -360.0, "unit": "dp"},
+       "pointer-events": {"type": "keyword", "value": "none"}
+      },
+      "children": [
        {
-        "id": "canvas",
+        "id": "canvas-middle",
         "type": "group",
         "properties": {
          "position": {"type": "keyword", "value": "absolute"},
@@ -4642,7 +4595,124 @@
            "image-color": {"type": "color", "value": [1, 1, 1, 1]},
            "opacity": {"type": "number", "value": 1}
           }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "stage",
+      "type": "group",
+      "properties": {
+       "position": {"type": "keyword", "value": "absolute"},
+       "left": {"type": "length", "value": 0, "unit": "dp"},
+       "width": {"type": "length", "value": 100, "unit": "%"},
+       "height": {"type": "length", "value": 720.0, "unit": "dp"},
+       "bottom": {"type": "length", "value": 0, "unit": "dp"}
+      },
+      "children": [
+       {
+        "id": "frame",
+        "type": "group",
+        "properties": {
+         "position": {"type": "keyword", "value": "absolute"},
+         "left": {"type": "length", "value": 0, "unit": "dp"},
+         "top": {"type": "length", "value": 0, "unit": "dp"},
+         "width": {"type": "length", "value": 100, "unit": "%"},
+         "height": {"type": "length", "value": 100, "unit": "%"},
+         "pointer-events": {"type": "keyword", "value": "none"}
+        },
+        "children": [
+         {
+          "id": "frame-bands",
+          "type": "vector",
+          "properties": {
+           "position": {"type": "keyword", "value": "absolute"},
+           "left": {"type": "length", "value": 0, "unit": "dp"},
+           "top": {"type": "length", "value": 0, "unit": "dp"},
+           "width": {"type": "length", "value": 100, "unit": "%"},
+           "height": {"type": "length", "value": 100, "unit": "%"},
+           "pointer-events": {"type": "keyword", "value": "none"}
+          },
+          "paths": [
+           {
+            "id": "strip",
+            "commands": [
+             {"id": "p0", "op": "move", "points": [[{"fraction": 0, "dp": 0.0}, 702.0]]},
+             {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -403.5}, 702.0]]},
+             {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -378.0}, 676.5]]},
+             {"id": "p3", "op": "line", "points": [[{"fraction": 1, "dp": 0.0}, 676.5]]},
+             {"id": "p4", "op": "line", "points": [[{"fraction": 1, "dp": 0.0}, 720.0]]},
+             {"id": "p5", "op": "line", "points": [[{"fraction": 0, "dp": 0.0}, 720.0]]},
+             {"id": "close", "op": "close"}
+            ],
+            "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.549, 0.698, 0.11]}}
+           },
+           {
+            "id": "strip-chamfer",
+            "commands": [
+             {"id": "p0", "op": "move", "points": [[{"fraction": 0, "dp": 0.0}, 670.5]]},
+             {"id": "p1", "op": "line", "points": [[{"fraction": 0, "dp": 30.0}, 702.0]]},
+             {"id": "p2", "op": "line", "points": [[{"fraction": 0, "dp": 0.0}, 702.0]]},
+             {"id": "close", "op": "close"}
+            ],
+            "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.549, 0.698, 0.11]}}
+           },
+           {
+            "id": "band",
+            "commands": [
+             {"id": "p0", "op": "move", "points": [[{"fraction": 0, "dp": 355.5}, 696.0]]},
+             {"id": "p1", "op": "line", "points": [[{"fraction": 0, "dp": 388.5}, 660.0]]},
+             {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": 0.0}, 660.0]]},
+             {"id": "p3", "op": "line", "points": [[{"fraction": 1, "dp": 0.0}, 670.5]]},
+             {"id": "p4", "op": "line", "points": [[{"fraction": 1, "dp": -366.0}, 670.5]]},
+             {"id": "p5", "op": "line", "points": [[{"fraction": 1, "dp": -391.5}, 696.0]]},
+             {"id": "close", "op": "close"}
+            ],
+            "fill": {"type": "solid", "color": {"type": "color", "value": [0.6, 0.851, 0.8, 0.08]}}
+           }
+          ]
          },
+         {
+          "id": "frame-band-plug",
+          "type": "vector",
+          "properties": {
+           "position": {"type": "keyword", "value": "absolute"},
+           "left": {"type": "length", "value": 0, "unit": "dp"},
+           "top": {"type": "length", "value": 0, "unit": "dp"},
+           "width": {"type": "length", "value": 100, "unit": "%"},
+           "height": {"type": "length", "value": 100, "unit": "%"},
+           "pointer-events": {"type": "keyword", "value": "none"},
+           "opacity": {"type": "number", "value": 1}
+          },
+          "paths": [
+           {
+            "id": "plug",
+            "commands": [
+             {"id": "p0", "op": "move", "points": [[{"fraction": 0, "dp": 280.5}, 696.0]]},
+             {"id": "p1", "op": "line", "points": [[{"fraction": 0, "dp": 313.5}, 660.0]]},
+             {"id": "p2", "op": "line", "points": [[{"fraction": 0, "dp": 388.5}, 660.0]]},
+             {"id": "p3", "op": "line", "points": [[{"fraction": 0, "dp": 355.5}, 696.0]]},
+             {"id": "close", "op": "close"}
+            ],
+            "fill": {"type": "solid", "color": {"type": "color", "value": [0.6, 0.851, 0.8, 0.08]}}
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": "canvas",
+        "type": "group",
+        "properties": {
+         "position": {"type": "keyword", "value": "absolute"},
+         "top": {"type": "length", "value": 0, "unit": "dp"},
+         "width": {"type": "length", "value": 960.0, "unit": "dp"},
+         "height": {"type": "length", "value": 0, "unit": "dp"},
+         "left": {"type": "length", "value": 50, "unit": "%"},
+         "margin-left": {"type": "length", "value": -480.0, "unit": "dp"}
+        },
+        "children": [
          {
           "id": "nav_second",
           "type": "group",

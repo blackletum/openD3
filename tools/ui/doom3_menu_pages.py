@@ -21,7 +21,7 @@ from doom3_menu_kit import (
     CANVAS_H, CANVAS_W, DECEL, FACE_AN, FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour,
     control, dialog, down, edge_glow, far, font, group, hairline, item_outline, keyword, label, length, linear,
     nav_button, number, outset, outset_box, path, picture, radial, rgb, solid, stroke, token, track, transform,
-    typeface, vector, held, nav_modes,
+    typeface, vector, held, nav_modes, pinned,
 )
 
 ROWS = 64           # RETAINED_LOAD_ROWS: the saves the list holds at a time
@@ -358,8 +358,14 @@ def page_frame(doc: Document, shell: list, content: list, owner: dict, modals: l
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)},
                    [*shell, inner, *([owner] if on_canvas else [])])
     sides = [] if on_canvas else [group("lead-side", {**absolute(left=0, top=0, height=0), "width": length(50, "%")}, [owner])]
-    stage = group("stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),
-                            "margin-top": length(-CANVAS_H / 2)}, [canvas, *sides, doc.hint_line()])
+    # Section 3: a page grows out of the nav band, so on a tall view it
+    # stands on the bottom edge with the band, its bridge still reaching its
+    # button. page.lift (dp) raises it by the view's extra height, for the
+    # SYSTEM page under the in-game menu's strip at the top edge; the session
+    # sets it.
+    doc.state["page.lift"] = {"type": "number", "initial": 0}
+    stage = group("stage", {**pinned("bottom"), "transform": transform()}, [canvas, *sides, doc.hint_line()])
+    doc.bind("stage.transform", "stage", "transform", [0, {"op": "*", "args": [{"state": "page.lift"}, -1]}, 1, 1, 0])
     doc.events["onActivate"] = [{"op": "setState", "values": {"page.shown": False, "page.closing": False}},
                                 {"op": "playTimeline", "timeline": "pageEnter"},
                                 {"op": "playTimeline", "timeline": "pageContent"}, {"op": "playTimeline", "timeline": "edgeGlow"}]

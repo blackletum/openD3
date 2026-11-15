@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from doom3_menu_kit import (
     CANVAS_H, CANVAS_W, FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour, font, group, hairline,
-    keyword, label, length, number, path, rgb, solid, stroke, track, typeface, vector,
+    keyword, label, length, number, path, rgb, solid, stroke, track, typeface, vector, pinned,
 )
 from doom3_menu_multiplayer import SKINS, edit_row, flag_row, skin_swatch, step_row
 from doom3_menu_options import CATEGORIES, STR as OPTION_STR, bind_row, choice_row, slider_row
@@ -477,8 +477,12 @@ def multiplayer_menu_document() -> dict:
     doc.timeline("mpFlicker", 400, [track(f"{node['id']}-frame", "opacity", [(0, number(1)), (200, number(0.825)), (400, number(1))])
                                     for node in panels], iterations=0)
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)},
-                   [*strip(), *tabs, *panels, hint])
-    stage = group("stage", {**FULL, "display": keyword("none")}, [canvas])
+                   [*strip(), *tabs, *panels])
+    # Rule 7: the strip and its panels hang from the top edge; the hint line
+    # keeps its 55 u above the bottom edge on a tall view.
+    low = group("stage-low", {**pinned("bottom"), **NO_POINTER}, [
+        group("canvas-low", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)}, [hint])])
+    stage = group("stage", {**FULL, "display": keyword("none")}, [low, canvas])
     doc.bind("stage.display", "stage", "display", {"op": "select", "args": [{"state": "mp.shown"}, "block", "none"]})
     # The session raises `open` as the card covers the game's menu and
     # `release` as the menu closes.

@@ -236,7 +236,9 @@ release of Doom 3 (1.3.1 packs):
   `hell1` and `mars_city1`; and, in stills taken mid-motion, the menus'
   choreography: the nav band standing aside and dimming, sub-lists and
   pages closing, the top bar's slide, the hint's wipe, the bindings' row
-  flash and the grid lighting under the pointer.
+  flash and the grid lighting under the pointer; and the same screens in a
+  720x1280 window, where the retained furniture goes to the top and bottom
+  edges.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
   what was not seen.
 - Saving and loading in the same build (2026-11-14, OpenGL, console

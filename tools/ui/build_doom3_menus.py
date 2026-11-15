@@ -23,7 +23,7 @@ from pathlib import Path
 from doom3_menu_kit import (
     CANVAS_H, CANVAS_W, DECEL, FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour,
     dialog, edge_glow, font, footer_link, group, keyword, label, lead, length, menu_item, mid, nav_button, number,
-    path, picture, render, solid, stroke, token, track, trail, transform, typeface, vector, walk, held, nav_modes, SLIDE, far,
+    path, picture, render, solid, stroke, token, track, trail, transform, typeface, vector, walk, held, nav_modes, SLIDE, far, pinned,
 )
 
 from doom3_menu_credits import credits_document, mods_panel
@@ -86,7 +86,7 @@ LOGO = "guis/assets/mainmenu/doom3"   # the stock logo bitmap (a bitmap exceptio
 
 # ----------------------------------------------------------------- the frame
 
-def frame(doc: Document) -> dict:
+def frame(doc: Document) -> tuple:
     """Section 6.8's frame pieces in the Remastered layout (section 9.11):
     the top bar from the leading edge to the flare at the top-trailing
     corner; the bottom strips to both edges with their step at its stock
@@ -96,14 +96,19 @@ def frame(doc: Document) -> dict:
     Section 8.4 (TopBarSlideOut, TopBarSlideIn): while a page is open the
     top bar runs the full width and the flare has left the screen, over 300
     ms each way (`barOut`, `barIn`). The second band's leading 50 u goes
-    while OPTIONS' list is open and the buttons stand aside (`frame-band-plug`)."""
+    while OPTIONS' list is open and the buttons stand aside (`frame-band-plug`).
+
+    Returns the top pieces and the bottom pieces: on a tall view the bar and
+    the flare stay under the top edge and the strips on the bottom edge."""
     bar, strip, band = "chrome.bar", "chrome.strip", "chrome.band"
-    paths = [
+    top_paths = [
         # Top bar: a 12 u band at 60 % of the colour over a 4 u line at 100 %.
         path("bar-band", [(lead(0), U * -1), (trail(542), U * -1), (trail(542), U * 11), (lead(0), U * 11)],
              fill=solid(token(bar, 0.12))),
         path("bar-line", [(lead(0), U * 11), (trail(542), U * 11), (trail(542), U * 15), (lead(0), U * 15)],
              fill=solid(token(bar))),
+    ]
+    paths = [
         # Bottom strips: 12 u at the leading side, 29 u at the trailing side.
         path("strip", [(lead(0), U * 468), (trail(371), U * 468), (trail(388), U * 451), (trail(640), U * 451),
                        (trail(640), U * 480), (lead(0), U * 480)], fill=solid(token(strip))),
@@ -136,7 +141,8 @@ def frame(doc: Document) -> dict:
                                  track("frame-flare", "transform", [(0, transform(), DECEL), (300, transform(tx=U * 98))])])
     doc.timeline("barIn", 300, [track("frame-bar-ext", "transform", [(0, transform(), DECEL), (300, folded)]),
                                 track("frame-flare", "transform", [(0, transform(tx=U * 98), DECEL), (300, transform())])])
-    return group("frame", {**FULL, **NO_POINTER}, [vector("frame-bands", {**FULL, **NO_POINTER}, paths), plug, extension, flare])
+    return (group("frame-top", {**FULL, **NO_POINTER}, [vector("frame-bar", {**FULL, **NO_POINTER}, top_paths), extension, flare]),
+            group("frame", {**FULL, **NO_POINTER}, [vector("frame-bands", {**FULL, **NO_POINTER}, paths), plug]))
 
 
 def sub_list(doc: Document, name: str, tab: str, rows: list, height: float, enter: list, focus_open: str, focus_close: str,
@@ -413,10 +419,10 @@ def home_document(pause: bool) -> dict:
             doc.events[f"{name}Open"][0:0] = [{"op": "call", "event": f"{other}Hide"} for other in lists if other != name]
     # Zero-height holders carry the anchors: their own boxes take no pointer.
     lead_side = group("lead-side", {**absolute(left=0, top=0, height=0), "width": length(50, "%")}, leading)
-    canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)}, [
-        picture("logo", LOGO, {**box(212, 155, 256, 128), **NO_POINTER, "image-color": colour([1, 1, 1, 1]), "opacity": number(1)}),
-        second,
-    ])
+    on_canvas = {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)}
+    logo = group("canvas-middle", on_canvas, [
+        picture("logo", LOGO, {**box(212, 155, 256, 128), **NO_POINTER, "image-color": colour([1, 1, 1, 1]), "opacity": number(1)})])
+    canvas = group("canvas", on_canvas, [second])
     trail_side = group("trail-side", {**absolute(top=0, height=0), "left": length(50, "%"), "width": length(50, "%")},
                        [third, *links, *([] if pause else [trailing_list])])
 
@@ -462,9 +468,15 @@ def home_document(pause: bool) -> dict:
                                                      "else": [{"op": "call", "event": "exitAsk"}]}]}]}]
 
     hint = doc.hint_line()
-    stage = group("stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),
-                            "margin-top": length(-CANVAS_H / 2)}, [frame(doc), canvas, lead_side, trail_side, hint])
-    furniture = group("furniture", {**FULL, "opacity": number(0)}, [stage])
+    # Section 3: on a view taller than 4:3 the top bar and its flare stay
+    # under the top edge; the nav band with its lists, the bottom strips, the
+    # footer links and the hint line stand on the bottom edge; the logo
+    # stays with the planet, centred.
+    frame_top, frame_bottom = frame(doc)
+    stage = group("stage", pinned("bottom"), [frame_bottom, canvas, lead_side, trail_side, hint])
+    furniture = group("furniture", {**FULL, "opacity": number(0)}, [
+        group("stage-top", {**pinned("top"), **NO_POINTER}, [frame_top]), group("stage-middle", {**pinned("middle"), **NO_POINTER}, [logo]),
+        stage])
     glow = edge_glow(doc)
     root = group("screen", {**FULL, "font-family": font(FACE_DEFAULT), "font-size": length(18), "color": colour([1, 1, 1, 1])},
                  [furniture, glow, *modals])

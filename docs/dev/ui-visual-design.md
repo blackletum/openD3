@@ -304,9 +304,28 @@ Every screen has two layouts built from the same components.
 
 On a view narrower than 4:3 the canvas spans the width. The HUD's top-anchored
 elements go to the top of the view and its bottom-anchored elements to the bottom.
-The front end stays centred vertically as a whole: its panels park just above and
-below the canvas before they slide in, so the menu is clipped to the canvas height
-and only the backdrop, the scan lines and the grid fill the rest.
+The stock front end stays centred vertically as a whole: its panels park just above
+and below the canvas before they slide in, so the menu is clipped to the canvas
+height and only the backdrop, the scan lines and the grid fill the rest.
+
+The replacement has no parked panels and expands vertically. Each element keeps its
+stock offset from the edge it belongs to, and the height between is the backdrop's.
+
+| Element | Tall-view anchor |
+| --- | --- |
+| Top bar and flare | The view's top edge |
+| Navigation band, OPTIONS tab, sub-lists, bottom strips, second band, footer links, hint line | The view's bottom edge |
+| Page plates with their bridge, flair and apply bar; the Multiplayer Settings panel | The bottom edge, with the band they grow out of |
+| Logo, planet and halo; dialogs and message boxes; the Mods panel; the death screen's logo and choices | The centred canvas |
+| Multiplayer page: frame, title, tabs and the panel hanging from them | The top edge (its frame is the title's mirrored to the top); its hint line the bottom edge |
+| Credits | The letterbox keeps its opening on the centred canvas and its bars run on to the top and bottom edges; BACK TO MENU and the copyright keep the bottom corners |
+| In-game multiplayer menu | Strip and panels the top edge; hint line the bottom edge. The SYSTEM page its tab opens hangs under the strip |
+| Loading screens | Top band and progress group the top edge; bottom band and text block the bottom edge; the first level's word and bar the view's centre |
+| Stars, scan lines, grid, edge glow, modal dim | The whole view |
+
+Text keeps its u size, so on a phone held upright it is small: the canvas spans the
+width at 1.125 dp to the u. The one-column Compact width structure of section 12.3
+is the answer to that and is not built.
 
 **Stock GUIs today.** The layout patches in `guis/layouts/` apply these anchors to
 the stock GUIs as they are parsed, without copies of id's scripts;
@@ -1404,7 +1423,7 @@ Opened in a game the same screen changes as follows.
 | Dialogs, message boxes | stock rects | centred in the view; the dim covers the view |
 | Edge glow | 30 and 20 u outside the canvas | hugs the real view edges with the same visible falloff, about 14 u at the sides and 12.5 u top and bottom (derived)  |
 | Scene pans | 480 u | one view height |
-| Tall views | letterboxed | the menu stays centred vertically and is clipped to the canvas height, so no parked panel shows; stars, scan lines and the grid fill the height |
+| Tall views | letterboxed | the stock menu stays centred vertically and is clipped to the canvas height, so no parked panel shows; the replacement puts the top bar on the top edge and the nav band, its lists, the strips, the footer, the hint line and page plates on the bottom edge, with the logo and dialogs centred (section 3); stars, scan lines and the grid fill the height |
 
 The layout patch for `guis/mainmenu.gui` implements the Remastered column for the stock menu
 (section 3).

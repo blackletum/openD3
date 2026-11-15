@@ -32,7 +32,7 @@ from __future__ import annotations
 from doom3_menu_kit import (
     CANVAS_H, CANVAS_W, FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour, control, dialog,
     edge_glow, far, font, footer_link, group, keyword, label, lead, length, nav_button, number, path, picture, rgb, solid,
-    stroke, token, trail, typeface, vector,
+    stroke, token, trail, typeface, vector, pinned,
 )
 from doom3_menu_options import row_plate
 from doom3_menu_pages import EDGE, PLACEHOLDER, WHOLE, glow_button, name_field, page_shell, row_parts, scroll_bar
@@ -65,6 +65,15 @@ def top_frame() -> dict:
                       (lead(209), U * 40)], fill=solid(token("chrome.band"))),
     ]
     return vector("frame", {**FULL, **NO_POINTER}, paths)
+
+
+def tall_stage(doc: Document, canvas: dict, trail_side: dict) -> dict:
+    """A multiplayer page's stage (section 3): its frame is the title's
+    mirrored to the top, so on a tall view the frame, the title, the tabs and
+    the panel that hangs from them stay under the top edge, and the hint line
+    stands on the bottom edge."""
+    low = group("stage-low", {**pinned("bottom"), **NO_POINTER}, [doc.hint_line()])
+    return group("stage", FULL, [low, group("stage-top", pinned("top"), [top_frame(), canvas, trail_side])])
 
 
 def page_furniture(doc: Document, open_tab: str, browser: dict, create: dict, back: str) -> tuple:
@@ -172,8 +181,7 @@ def join_game_document() -> dict:
     canvas_parts, trail_side = page_furniture(doc, "tab_browser", {"action": "joinRefresh"}, {"action": "joinCreate"}, "joinBack")
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)},
                    [*canvas_parts, panel])
-    stage = group("stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),
-                            "margin-top": length(-CANVAS_H / 2)}, [top_frame(), canvas, trail_side, doc.hint_line()])
+    stage = tall_stage(doc, canvas, trail_side)
     doc.events["onActivate"] = [{"op": "playTimeline", "timeline": "edgeGlow"}]
     root = group("screen", {**FULL, "font-family": font(FACE_DEFAULT), "font-size": length(18), "color": colour([1, 1, 1, 1])},
                  [stage, edge_glow(doc)])
@@ -414,8 +422,7 @@ def create_server_document() -> dict:
     canvas_parts, trail_side = page_furniture(doc, "tab_create", {"action": "createBrowser"}, {"event": "createTab"}, "createBack")
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)},
                    [*shell, content, *canvas_parts])
-    stage = group("stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),
-                            "margin-top": length(-CANVAS_H / 2)}, [top_frame(), canvas, trail_side, doc.hint_line()])
+    stage = tall_stage(doc, canvas, trail_side)
     doc.events["onActivate"] = [{"op": "setState", "values": {"page.shown": False}}, {"op": "playTimeline", "timeline": "pageEnter"},
                                 {"op": "playTimeline", "timeline": "pageContent"}, {"op": "playTimeline", "timeline": "edgeGlow"}]
     root = group("screen", {**FULL, "font-family": font(FACE_DEFAULT), "font-size": length(18), "color": colour([1, 1, 1, 1])},
@@ -504,8 +511,8 @@ def mp_settings_panel(doc: Document) -> dict:
     content = group("mpset-content", box(50, 122, 340, 270), [title, rule, rate, run, name, skins, skins_title, *swatches, save])
     canvas = group("mpset-canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)},
                    [bridge, plate, flash, content])
-    stage = group("mpset-stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),
-                                  "margin-top": length(-CANVAS_H / 2)}, [canvas])
+    # The panel is bridged to MULTIPLAYER's list, so it stands with the band.
+    stage = group("mpset-stage", pinned("bottom"), [canvas])
     node = group("mpSettingsModal", {**FULL, "display": keyword("none")}, [stage], modal={"initialFocus": "mpset_save", "back": "mpSettingsModalHide"})
     doc.bind("mpSettingsModal.display", "mpSettingsModal", "display", {"op": "select", "args": [{"state": "mpSettingsModal.visible"}, "block", "none"]})
     doc.timeline("mpSettingsEnter", 400, [

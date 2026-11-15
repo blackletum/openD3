@@ -145,6 +145,23 @@ def box(x: float, y: float, w: float, h: float) -> dict:
 
 
 FULL = {**absolute(left=0, top=0), "width": length(100, "%"), "height": length(100, "%")}
+
+
+def pinned(where: str) -> dict:
+    """The box of a band across the view, one canvas high (720 dp), that its
+    children measure their stock positions in: "top" stands under the view's
+    top edge, "bottom" on its bottom edge and "middle" is centred. On a view
+    no taller than 4:3 the view is one canvas high and the three are the same
+    box. On a taller view (section 3) what belongs to an edge goes there with
+    its band, and the height between is the backdrop's."""
+    place = {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H)}
+    if where == "top":
+        place["top"] = length(0)
+    elif where == "bottom":
+        place["bottom"] = length(0)
+    else:
+        place.update({"top": length(50, "%"), "margin-top": length(-CANVAS_H / 2)})
+    return place
 NO_POINTER = {"pointer-events": keyword("none")}
 
 

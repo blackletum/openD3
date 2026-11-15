@@ -2626,6 +2626,16 @@ bool idSessionLocal::OpenSystemSettings() {
 	// Over a game the page stands alone under the card's strip: no bridge to
 	// a list, no flair, no edge glow and no hint line of its own.
 	child->SetStateBool( "page.ingame", overGameMenu );
+	// A page stands on the bottom edge with the main menu's nav band. Under
+	// the in-game menu's strip it hangs from the top edge instead: on a view
+	// taller than 4:3 it is raised by the height the view has beyond its
+	// 720 dp canvas (the document's 960 dp spans the width there).
+	float lift = 0.0f;
+	const int viewWidth = renderSystem->GetScreenWidth(), viewHeight = renderSystem->GetScreenHeight();
+	if ( overGameMenu && viewWidth > 0 && viewHeight * 4 > viewWidth * 3 ) {
+		lift = 960.0f * viewHeight / viewWidth - 720.0f;
+	}
+	child->SetStateFloat( "page.lift", lift );
 	child->StateChanged( common->GetPresentationTime() );
 #endif
 	guiSystemParent = guiActive;

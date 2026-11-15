@@ -21,7 +21,7 @@ from __future__ import annotations
 from doom3_menu_kit import (
     CANVAS_H, CANVAS_W, FACE_AN, FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour, edge_glow,
     font, group, keyword, label, length, nav_button, number, path, picture, radial, rgb, solid, token, track, transform,
-    typeface, vector,
+    typeface, vector, pinned,
 )
 from doom3_menu_pages import EDGE, PLACEHOLDER, WHOLE, glow_button, row_parts, scroll_bar, title_and_rule
 
@@ -110,14 +110,24 @@ def credits_document() -> dict:
     # from the bottom, closing in over 1800 ms.
     edge = token("chrome.bar", 0.6)
     w = {"fraction": 1}
+
+    def beyond(ident: str, top: float) -> dict:
+        """Black past a bar's outer edge, moving with the bar: on a tall view
+        the letterbox keeps its opening on the centred canvas and the bars
+        run on to the view's top and bottom edges (section 3)."""
+        return group(ident, {**absolute(left=0, top=top, height=U * 3000), "width": length(100, "%"), "background-color": colour([0, 0, 0, 1]),
+                             **NO_POINTER})
+
     upper = vector("credits-upper", {**absolute(left=0, top=0, height=U * 204), "width": length(100, "%"), **NO_POINTER, "transform": transform()}, [
         path("bar", [(0, 0), (w, 0), (w, U * 200), (0, U * 200)], fill=solid([0, 0, 0, 1])),
         path("edge", [(0, U * 200), ({"fraction": 0.62}, U * 200), ({"fraction": 0.62, "dp": U * 4}, U * 204), (w, U * 204), (w, U * 200),
-                      (0, U * 200)], fill=solid(edge))])
+                      (0, U * 200)], fill=solid(edge))],
+        children=[beyond("credits-upper-beyond", top=-U * 3000)])
     lower = vector("credits-lower", {**absolute(left=0, top=U * 337, height=U * 143), "width": length(100, "%"), **NO_POINTER, "transform": transform()}, [
         path("bar", [(0, U * 4), (w, U * 4), (w, U * 143), (0, U * 143)], fill=solid([0, 0, 0, 1])),
         path("edge", [(0, U * 4), ({"fraction": 0.38}, U * 4), ({"fraction": 0.38, "dp": U * 4}, 0), (w, 0), (w, U * 4), (0, U * 4)],
-             fill=solid(edge))])
+             fill=solid(edge))],
+        children=[beyond("credits-lower-beyond", top=U * 143)])
     logo = picture("credits-logo", LOGO, {**box(370, 207, 256, 128), **NO_POINTER, "image-color": colour([1, 1, 1, 1]), "opacity": number(0)})
     heading = label("credits-heading", "#str_02225", {**box(10, 112, 400, 21), **typeface(FACE_BANK, 0.40, 21, token("text.active")), **NO_POINTER,
                                                       "opacity": number(0)})
@@ -137,8 +147,9 @@ def credits_document() -> dict:
     trail_side = group("trail-side", {**absolute(top=0, height=0), "left": length(50, "%"), "width": length(50, "%")}, [back])
     notice = label("credits-copyright", "#str_04851", {**box(7, 452, 450, 28), **typeface(FACE_BANK, 0.20, 12, rgb("#FFFFFF", 0.3)),
                                                         "white-space": keyword("pre-wrap"), **NO_POINTER})
-    stage = group("stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),
-                            "margin-top": length(-CANVAS_H / 2)}, [upper, lower, canvas, trail_side, notice])
+    # BACK TO MENU and the copyright keep to the view's bottom corners.
+    stage = group("stage", FULL, [group("stage-middle", {**pinned("middle"), **NO_POINTER}, [upper, lower, canvas]),
+                                  group("stage-low", pinned("bottom"), [trail_side, notice])])
     doc.events["onActivate"] = [{"op": "playTimeline", "timeline": "creditsEnter"}, {"op": "playTimeline", "timeline": "creditsRoll"},
                                 {"op": "playTimeline", "timeline": "edgeGlow"}]
     root = group("screen", {**FULL, "font-family": font(FACE_DEFAULT), "font-size": length(18), "color": colour([1, 1, 1, 1])},

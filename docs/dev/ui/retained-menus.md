@@ -48,8 +48,22 @@ no furniture to replace and stays the stock GUI.
 All three documents use the Remastered layout of section 3: the frame, the
 OPTIONS tab, the hint line and the footer links anchor to the real edges, NEW
 GAME lengthens to the leading edge and MULTIPLAYER to the trailing edge, and
-the logo, LOAD GAME and dialogs stay on the centred 4:3 canvas. On a view
-narrower than 4:3 the menu stays centred vertically.
+the logo, LOAD GAME and dialogs stay on the centred 4:3 canvas.
+
+On a view narrower than 4:3 the documents expand vertically (section 3's
+tall-view anchors). A document lays its furniture out in bands one canvas
+high (`pinned` in the kit: 720 dp under the top edge, centred, or standing
+on the bottom edge), and each piece keeps its stock position in its band;
+on a view no taller than 4:3 the three bands are the same box, so nothing
+moves there. The top bar and flare take the top band; the nav band, the
+OPTIONS tab, the sub-lists, the strips, the footer links, the hint line and
+every page plate take the bottom band; the logo and the dialogs take the
+middle. The multiplayer pages hang from the top, the credits' bars run on
+to both edges, and the in-game menu's hint line stands on the bottom while
+its strip stays on the top. The SYSTEM page opened from that menu is raised
+to the top by `page.lift`, which the session sets to the view's height
+beyond its canvas. The stock menu itself still centres on a tall view,
+because its panels park above and below the canvas.
 
 ## How a document is presented
 
@@ -686,6 +700,21 @@ from the window.
   frame's flicker (too slight for a still), reduced motion, a pointer
   moved by a mouse, and a controller.
 
+- Tall views (15 November), in a 720x1280 window, the upright phone shape:
+  the title with the bar on the top edge and the band, links and hint on
+  the bottom; OPTIONS', NEW GAME's and MULTIPLAYER's lists rising from the
+  band; CONTROLS, SYSTEM and Load Game standing on the band with their
+  bridges meeting their buttons; the exit dialog and the Mods panel
+  centred; Multiplayer Settings beside MULTIPLAYER's list; Create Server
+  and the Game Browser under the top edge; the credits with their bars
+  out to both edges; the pause and its Save Game page; the death screen
+  centred; and the in-game menu on a LAN listen server with its strip on
+  the top, its hint on the bottom and the SYSTEM page under the strip.
+  NEW GAME's list and Load Game also in a 900x1200 window. At 1280x720 the
+  title, CONTROLS, Load Game and the credits were where they were before.
+  Not seen at a tall shape: the loading screens, GAME OPTIONS, a message
+  box, and anything on a real phone.
+
 Not verified: Resurrection of Evil, Vulkan, a controller, touch, reduced
 motion, languages other than English, the multiplayer pause, a mod's menu, and
 every platform but Windows.
@@ -760,6 +789,14 @@ every platform but Windows.
   only the selected save's date and time. The list's sort and filter verbs
   have no controls. More than 64 saves page through NEWER SAVES and OLDER
   SAVES rows, which were not exercised.
+- **Tall views.** The furniture goes to the edges but nothing grows: the
+  save lists, the server list and the map list keep their canvas heights,
+  with empty backdrop above or below them. Text keeps its u size, which on
+  a 720 pixel wide phone is about 13 pixels to the em, and targets keep
+  their u size too; section 12.3's one-column layout is not built. The
+  lift for the in-game SYSTEM page assumes an interface scale of 1. A
+  stock page reached from the retained home (the update check's answer)
+  still draws on the centred canvas.
 - **Choreography.** The band stands aside for OPTIONS' list only: while a
   page is open the stock also keeps the three buttons narrowed at the
   trailing side (section 9.3), and here they stand at rest, dim. The

@@ -2583,1356 +2583,1294 @@
     "properties": {
      "position": {"type": "keyword", "value": "absolute"},
      "left": {"type": "length", "value": 0, "unit": "dp"},
+     "top": {"type": "length", "value": 0, "unit": "dp"},
      "width": {"type": "length", "value": 100, "unit": "%"},
-     "height": {"type": "length", "value": 720.0, "unit": "dp"},
-     "top": {"type": "length", "value": 50, "unit": "%"},
-     "margin-top": {"type": "length", "value": -360.0, "unit": "dp"}
+     "height": {"type": "length", "value": 100, "unit": "%"}
     },
     "children": [
      {
-      "id": "credits-upper",
-      "type": "vector",
-      "properties": {
-       "position": {"type": "keyword", "value": "absolute"},
-       "left": {"type": "length", "value": 0, "unit": "dp"},
-       "top": {"type": "length", "value": 0, "unit": "dp"},
-       "height": {"type": "length", "value": 306.0, "unit": "dp"},
-       "width": {"type": "length", "value": 100, "unit": "%"},
-       "pointer-events": {"type": "keyword", "value": "none"},
-       "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-      },
-      "paths": [
-       {
-        "id": "bar",
-        "commands": [
-         {"id": "p0", "op": "move", "points": [[0, 0]]},
-         {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 0]]},
-         {"id": "p2", "op": "line", "points": [[{"fraction": 1}, 300.0]]},
-         {"id": "p3", "op": "line", "points": [[0, 300.0]]},
-         {"id": "close", "op": "close"}
-        ],
-        "fill": {"type": "solid", "color": {"type": "color", "value": [0, 0, 0, 1]}}
-       },
-       {
-        "id": "edge",
-        "commands": [
-         {"id": "p0", "op": "move", "points": [[0, 300.0]]},
-         {"id": "p1", "op": "line", "points": [[{"fraction": 0.62}, 300.0]]},
-         {"id": "p2", "op": "line", "points": [[{"fraction": 0.62, "dp": 6.0}, 306.0]]},
-         {"id": "p3", "op": "line", "points": [[{"fraction": 1}, 306.0]]},
-         {"id": "p4", "op": "line", "points": [[{"fraction": 1}, 300.0]]},
-         {"id": "p5", "op": "line", "points": [[0, 300.0]]},
-         {"id": "close", "op": "close"}
-        ],
-        "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.6, 0.698, 0.6]}}
-       }
-      ]
-     },
-     {
-      "id": "credits-lower",
-      "type": "vector",
-      "properties": {
-       "position": {"type": "keyword", "value": "absolute"},
-       "left": {"type": "length", "value": 0, "unit": "dp"},
-       "top": {"type": "length", "value": 505.5, "unit": "dp"},
-       "height": {"type": "length", "value": 214.5, "unit": "dp"},
-       "width": {"type": "length", "value": 100, "unit": "%"},
-       "pointer-events": {"type": "keyword", "value": "none"},
-       "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-      },
-      "paths": [
-       {
-        "id": "bar",
-        "commands": [
-         {"id": "p0", "op": "move", "points": [[0, 6.0]]},
-         {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 6.0]]},
-         {"id": "p2", "op": "line", "points": [[{"fraction": 1}, 214.5]]},
-         {"id": "p3", "op": "line", "points": [[0, 214.5]]},
-         {"id": "close", "op": "close"}
-        ],
-        "fill": {"type": "solid", "color": {"type": "color", "value": [0, 0, 0, 1]}}
-       },
-       {
-        "id": "edge",
-        "commands": [
-         {"id": "p0", "op": "move", "points": [[0, 6.0]]},
-         {"id": "p1", "op": "line", "points": [[{"fraction": 0.38}, 6.0]]},
-         {"id": "p2", "op": "line", "points": [[{"fraction": 0.38, "dp": 6.0}, 0]]},
-         {"id": "p3", "op": "line", "points": [[{"fraction": 1}, 0]]},
-         {"id": "p4", "op": "line", "points": [[{"fraction": 1}, 6.0]]},
-         {"id": "p5", "op": "line", "points": [[0, 6.0]]},
-         {"id": "close", "op": "close"}
-        ],
-        "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.6, 0.698, 0.6]}}
-       }
-      ]
-     },
-     {
-      "id": "canvas",
+      "id": "stage-middle",
       "type": "group",
       "properties": {
        "position": {"type": "keyword", "value": "absolute"},
-       "top": {"type": "length", "value": 0, "unit": "dp"},
-       "width": {"type": "length", "value": 960.0, "unit": "dp"},
-       "height": {"type": "length", "value": 0, "unit": "dp"},
-       "left": {"type": "length", "value": 50, "unit": "%"},
-       "margin-left": {"type": "length", "value": -480.0, "unit": "dp"}
+       "left": {"type": "length", "value": 0, "unit": "dp"},
+       "width": {"type": "length", "value": 100, "unit": "%"},
+       "height": {"type": "length", "value": 720.0, "unit": "dp"},
+       "top": {"type": "length", "value": 50, "unit": "%"},
+       "margin-top": {"type": "length", "value": -360.0, "unit": "dp"},
+       "pointer-events": {"type": "keyword", "value": "none"}
       },
       "children": [
        {
-        "id": "credits-logo",
-        "type": "image",
+        "id": "credits-upper",
+        "type": "vector",
         "properties": {
-         "image": {"type": "image", "value": "guis/assets/mainmenu/doom3"},
-         "image-fit": {"type": "keyword", "value": "fill"},
          "position": {"type": "keyword", "value": "absolute"},
-         "left": {"type": "length", "value": 555.0, "unit": "dp"},
-         "top": {"type": "length", "value": 310.5, "unit": "dp"},
-         "width": {"type": "length", "value": 384.0, "unit": "dp"},
-         "height": {"type": "length", "value": 192.0, "unit": "dp"},
+         "left": {"type": "length", "value": 0, "unit": "dp"},
+         "top": {"type": "length", "value": 0, "unit": "dp"},
+         "height": {"type": "length", "value": 306.0, "unit": "dp"},
+         "width": {"type": "length", "value": 100, "unit": "%"},
          "pointer-events": {"type": "keyword", "value": "none"},
-         "image-color": {"type": "color", "value": [1, 1, 1, 1]},
-         "opacity": {"type": "number", "value": 0}
-        }
+         "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+        },
+        "paths": [
+         {
+          "id": "bar",
+          "commands": [
+           {"id": "p0", "op": "move", "points": [[0, 0]]},
+           {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 0]]},
+           {"id": "p2", "op": "line", "points": [[{"fraction": 1}, 300.0]]},
+           {"id": "p3", "op": "line", "points": [[0, 300.0]]},
+           {"id": "close", "op": "close"}
+          ],
+          "fill": {"type": "solid", "color": {"type": "color", "value": [0, 0, 0, 1]}}
+         },
+         {
+          "id": "edge",
+          "commands": [
+           {"id": "p0", "op": "move", "points": [[0, 300.0]]},
+           {"id": "p1", "op": "line", "points": [[{"fraction": 0.62}, 300.0]]},
+           {"id": "p2", "op": "line", "points": [[{"fraction": 0.62, "dp": 6.0}, 306.0]]},
+           {"id": "p3", "op": "line", "points": [[{"fraction": 1}, 306.0]]},
+           {"id": "p4", "op": "line", "points": [[{"fraction": 1}, 300.0]]},
+           {"id": "p5", "op": "line", "points": [[0, 300.0]]},
+           {"id": "close", "op": "close"}
+          ],
+          "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.6, 0.698, 0.6]}}
+         }
+        ],
+        "children": [
+         {
+          "id": "credits-upper-beyond",
+          "type": "group",
+          "properties": {
+           "position": {"type": "keyword", "value": "absolute"},
+           "left": {"type": "length", "value": 0, "unit": "dp"},
+           "top": {"type": "length", "value": -4500.0, "unit": "dp"},
+           "height": {"type": "length", "value": 4500.0, "unit": "dp"},
+           "width": {"type": "length", "value": 100, "unit": "%"},
+           "background-color": {"type": "color", "value": [0, 0, 0, 1]},
+           "pointer-events": {"type": "keyword", "value": "none"}
+          }
+         }
+        ]
        },
        {
-        "id": "credits-heading",
-        "type": "text",
+        "id": "credits-lower",
+        "type": "vector",
         "properties": {
-         "text": {"type": "text", "value": "#str_02225"},
          "position": {"type": "keyword", "value": "absolute"},
-         "left": {"type": "length", "value": 15.0, "unit": "dp"},
-         "top": {"type": "length", "value": 168.0, "unit": "dp"},
-         "width": {"type": "length", "value": 600.0, "unit": "dp"},
-         "height": {"type": "length", "value": 31.5, "unit": "dp"},
-         "font-family": {"type": "font", "value": "bank"},
-         "font-size": {"type": "length", "value": 28.8, "unit": "dp"},
-         "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-         "color": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]},
-         "text-align": {"type": "keyword", "value": "left"},
-         "white-space": {"type": "keyword", "value": "nowrap"},
+         "left": {"type": "length", "value": 0, "unit": "dp"},
+         "top": {"type": "length", "value": 505.5, "unit": "dp"},
+         "height": {"type": "length", "value": 214.5, "unit": "dp"},
+         "width": {"type": "length", "value": 100, "unit": "%"},
          "pointer-events": {"type": "keyword", "value": "none"},
-         "opacity": {"type": "number", "value": 0}
-        }
+         "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+        },
+        "paths": [
+         {
+          "id": "bar",
+          "commands": [
+           {"id": "p0", "op": "move", "points": [[0, 6.0]]},
+           {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 6.0]]},
+           {"id": "p2", "op": "line", "points": [[{"fraction": 1}, 214.5]]},
+           {"id": "p3", "op": "line", "points": [[0, 214.5]]},
+           {"id": "close", "op": "close"}
+          ],
+          "fill": {"type": "solid", "color": {"type": "color", "value": [0, 0, 0, 1]}}
+         },
+         {
+          "id": "edge",
+          "commands": [
+           {"id": "p0", "op": "move", "points": [[0, 6.0]]},
+           {"id": "p1", "op": "line", "points": [[{"fraction": 0.38}, 6.0]]},
+           {"id": "p2", "op": "line", "points": [[{"fraction": 0.38, "dp": 6.0}, 0]]},
+           {"id": "p3", "op": "line", "points": [[{"fraction": 1}, 0]]},
+           {"id": "p4", "op": "line", "points": [[{"fraction": 1}, 6.0]]},
+           {"id": "p5", "op": "line", "points": [[0, 6.0]]},
+           {"id": "close", "op": "close"}
+          ],
+          "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.6, 0.698, 0.6]}}
+         }
+        ],
+        "children": [
+         {
+          "id": "credits-lower-beyond",
+          "type": "group",
+          "properties": {
+           "position": {"type": "keyword", "value": "absolute"},
+           "left": {"type": "length", "value": 0, "unit": "dp"},
+           "top": {"type": "length", "value": 214.5, "unit": "dp"},
+           "height": {"type": "length", "value": 4500.0, "unit": "dp"},
+           "width": {"type": "length", "value": 100, "unit": "%"},
+           "background-color": {"type": "color", "value": [0, 0, 0, 1]},
+           "pointer-events": {"type": "keyword", "value": "none"}
+          }
+         }
+        ]
        },
        {
-        "id": "credits-roll",
+        "id": "canvas",
         "type": "group",
         "properties": {
          "position": {"type": "keyword", "value": "absolute"},
-         "left": {"type": "length", "value": 45.0, "unit": "dp"},
-         "top": {"type": "length", "value": 210.0, "unit": "dp"},
-         "width": {"type": "length", "value": 600.0, "unit": "dp"},
-         "height": {"type": "length", "value": 510.0, "unit": "dp"}
+         "top": {"type": "length", "value": 0, "unit": "dp"},
+         "width": {"type": "length", "value": 960.0, "unit": "dp"},
+         "height": {"type": "length", "value": 0, "unit": "dp"},
+         "left": {"type": "length", "value": 50, "unit": "%"},
+         "margin-left": {"type": "length", "value": -480.0, "unit": "dp"}
         },
         "children": [
          {
-          "id": "credit-bar-name",
-          "type": "vector",
+          "id": "credits-logo",
+          "type": "image",
+          "properties": {
+           "image": {"type": "image", "value": "guis/assets/mainmenu/doom3"},
+           "image-fit": {"type": "keyword", "value": "fill"},
+           "position": {"type": "keyword", "value": "absolute"},
+           "left": {"type": "length", "value": 555.0, "unit": "dp"},
+           "top": {"type": "length", "value": 310.5, "unit": "dp"},
+           "width": {"type": "length", "value": 384.0, "unit": "dp"},
+           "height": {"type": "length", "value": 192.0, "unit": "dp"},
+           "pointer-events": {"type": "keyword", "value": "none"},
+           "image-color": {"type": "color", "value": [1, 1, 1, 1]},
+           "opacity": {"type": "number", "value": 0}
+          }
+         },
+         {
+          "id": "credits-heading",
+          "type": "text",
+          "properties": {
+           "text": {"type": "text", "value": "#str_02225"},
+           "position": {"type": "keyword", "value": "absolute"},
+           "left": {"type": "length", "value": 15.0, "unit": "dp"},
+           "top": {"type": "length", "value": 168.0, "unit": "dp"},
+           "width": {"type": "length", "value": 600.0, "unit": "dp"},
+           "height": {"type": "length", "value": 31.5, "unit": "dp"},
+           "font-family": {"type": "font", "value": "bank"},
+           "font-size": {"type": "length", "value": 28.8, "unit": "dp"},
+           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+           "color": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]},
+           "text-align": {"type": "keyword", "value": "left"},
+           "white-space": {"type": "keyword", "value": "nowrap"},
+           "pointer-events": {"type": "keyword", "value": "none"},
+           "opacity": {"type": "number", "value": 0}
+          }
+         },
+         {
+          "id": "credits-roll",
+          "type": "group",
           "properties": {
            "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 15.0, "unit": "dp"},
-           "width": {"type": "length", "value": 450.0, "unit": "dp"},
-           "height": {"type": "length", "value": 18.0, "unit": "dp"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+           "left": {"type": "length", "value": 45.0, "unit": "dp"},
+           "top": {"type": "length", "value": 210.0, "unit": "dp"},
+           "width": {"type": "length", "value": 600.0, "unit": "dp"},
+           "height": {"type": "length", "value": 510.0, "unit": "dp"}
           },
-          "paths": [
+          "children": [
            {
-            "id": "bar",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[0, 0]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 0]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 1}, {"fraction": 1}]]},
-             {"id": "p3", "op": "line", "points": [[0, {"fraction": 1}]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [1, 1, 1, 1]}}
+            "id": "credit-bar-name",
+            "type": "vector",
+            "properties": {
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 15.0, "unit": "dp"},
+             "width": {"type": "length", "value": 450.0, "unit": "dp"},
+             "height": {"type": "length", "value": 18.0, "unit": "dp"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            },
+            "paths": [
+             {
+              "id": "bar",
+              "commands": [
+               {"id": "p0", "op": "move", "points": [[0, 0]]},
+               {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 0]]},
+               {"id": "p2", "op": "line", "points": [[{"fraction": 1}, {"fraction": 1}]]},
+               {"id": "p3", "op": "line", "points": [[0, {"fraction": 1}]]},
+               {"id": "close", "op": "close"}
+              ],
+              "fill": {"type": "solid", "color": {"type": "color", "value": [1, 1, 1, 1]}}
+             }
+            ]
+           },
+           {
+            "id": "credit-bar-role",
+            "type": "vector",
+            "properties": {
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 45.0, "unit": "dp"},
+             "width": {"type": "length", "value": 450.0, "unit": "dp"},
+             "height": {"type": "length", "value": 18.0, "unit": "dp"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            },
+            "paths": [
+             {
+              "id": "bar",
+              "commands": [
+               {"id": "p0", "op": "move", "points": [[0, 0]]},
+               {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 0]]},
+               {"id": "p2", "op": "line", "points": [[{"fraction": 1}, {"fraction": 1}]]},
+               {"id": "p3", "op": "line", "points": [[0, {"fraction": 1}]]},
+               {"id": "close", "op": "close"}
+              ],
+              "fill": {"type": "solid", "color": {"type": "color", "value": [1, 1, 1, 1]}}
+             }
+            ]
+           },
+           {
+            "id": "credit-1",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-1a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-2",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-2a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-3",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-3a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-11",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-11a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-25",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-25a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-4",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-4a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-5",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-5a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-6",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-6a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-7",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-7a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-8",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-8a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-9",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-9a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-10",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-10a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-13",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-13a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-14",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-14a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-15",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-15a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-16",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-16a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-17",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-17a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-18",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-18a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-19",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-19a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-20",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-20a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-21",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-21a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-22",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-22a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-23",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-23a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-24",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 0.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
+           },
+           {
+            "id": "credit-24a",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_04339"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0.0, "unit": "dp"},
+             "top": {"type": "length", "value": 30.0, "unit": "dp"},
+             "width": {"type": "length", "value": 600.0, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "font-family": {"type": "font", "value": "bank"},
+             "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
+             "text-align": {"type": "keyword", "value": "left"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            }
            }
           ]
-         },
-         {
-          "id": "credit-bar-role",
-          "type": "vector",
-          "properties": {
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 45.0, "unit": "dp"},
-           "width": {"type": "length", "value": 450.0, "unit": "dp"},
-           "height": {"type": "length", "value": 18.0, "unit": "dp"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          },
-          "paths": [
-           {
-            "id": "bar",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[0, 0]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 0]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 1}, {"fraction": 1}]]},
-             {"id": "p3", "op": "line", "points": [[0, {"fraction": 1}]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [1, 1, 1, 1]}}
-           }
-          ]
-         },
-         {
-          "id": "credit-1",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-1a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-2",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-2a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-3",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-3a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-11",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-11a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-25",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-25a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-4",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-4a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-5",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-5a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-6",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-6a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-7",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-7a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-8",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-8a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-9",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-9a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-10",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-10a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-13",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-13a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-14",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-14a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-15",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-15a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-16",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-16a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-17",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-17a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-18",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-18a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-19",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-19a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-20",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-20a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-21",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-21a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-22",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-22a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-23",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-23a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-24",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 0.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.6, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
-         },
-         {
-          "id": "credit-24a",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_04339"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0.0, "unit": "dp"},
-           "top": {"type": "length", "value": 30.0, "unit": "dp"},
-           "width": {"type": "length", "value": 600.0, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "font-family": {"type": "font", "value": "bank"},
-           "font-size": {"type": "length", "value": 25.2, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [0.2, 0.6, 0.6, 1.0]},
-           "text-align": {"type": "keyword", "value": "left"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          }
          }
         ]
        }
       ]
      },
      {
-      "id": "trail-side",
+      "id": "stage-low",
       "type": "group",
       "properties": {
        "position": {"type": "keyword", "value": "absolute"},
-       "top": {"type": "length", "value": 0, "unit": "dp"},
-       "height": {"type": "length", "value": 0, "unit": "dp"},
-       "left": {"type": "length", "value": 50, "unit": "%"},
-       "width": {"type": "length", "value": 50, "unit": "%"}
+       "left": {"type": "length", "value": 0, "unit": "dp"},
+       "width": {"type": "length", "value": 100, "unit": "%"},
+       "height": {"type": "length", "value": 720.0, "unit": "dp"},
+       "bottom": {"type": "length", "value": 0, "unit": "dp"}
       },
       "children": [
        {
-        "id": "credits_back",
+        "id": "trail-side",
         "type": "group",
         "properties": {
          "position": {"type": "keyword", "value": "absolute"},
-         "left": {"type": "length", "value": 240.0, "unit": "dp"},
-         "top": {"type": "length", "value": 679.5, "unit": "dp"},
-         "height": {"type": "length", "value": 48.0, "unit": "dp"},
-         "right": {"type": "length", "value": -57.0, "unit": "dp"}
+         "top": {"type": "length", "value": 0, "unit": "dp"},
+         "height": {"type": "length", "value": 0, "unit": "dp"},
+         "left": {"type": "length", "value": 50, "unit": "%"},
+         "width": {"type": "length", "value": 50, "unit": "%"}
         },
         "children": [
          {
-          "id": "credits_back-fill",
-          "type": "vector",
-          "properties": {
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0, "unit": "dp"},
-           "top": {"type": "length", "value": 0, "unit": "dp"},
-           "width": {"type": "length", "value": 100, "unit": "%"},
-           "height": {"type": "length", "value": 100, "unit": "%"},
-           "pointer-events": {"type": "keyword", "value": "none"}
-          },
-          "paths": [
-           {
-            "id": "band",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-             {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.549, 0.698, 0.3]}}
-           }
-          ]
-         },
-         {
-          "id": "credits_back-open",
-          "type": "vector",
-          "properties": {
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0, "unit": "dp"},
-           "top": {"type": "length", "value": 0, "unit": "dp"},
-           "width": {"type": "length", "value": 100, "unit": "%"},
-           "height": {"type": "length", "value": 100, "unit": "%"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0}
-          },
-          "paths": [
-           {
-            "id": "band",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-             {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.549, 0.698, 0.143]}}
-           }
-          ]
-         },
-         {
-          "id": "credits_back-openflash",
-          "type": "vector",
-          "properties": {
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0, "unit": "dp"},
-           "top": {"type": "length", "value": 0, "unit": "dp"},
-           "width": {"type": "length", "value": 100, "unit": "%"},
-           "height": {"type": "length", "value": 100, "unit": "%"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0}
-          },
-          "paths": [
-           {
-            "id": "band",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-             {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [1, 1, 1, 1]}}
-           }
-          ]
-         },
-         {
-          "id": "credits_back-plate",
-          "type": "vector",
-          "properties": {
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0, "unit": "dp"},
-           "top": {"type": "length", "value": 0, "unit": "dp"},
-           "width": {"type": "length", "value": 100, "unit": "%"},
-           "height": {"type": "length", "value": 100, "unit": "%"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 0},
-           "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
-          },
-          "paths": [
-           {
-            "id": "plate",
-            "commands": [
-             {"id": "p0", "op": "move", "points": [[18.0, 10.5]]},
-             {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -40.5}, 10.5]]},
-             {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -18.0}, 36.0]]},
-             {"id": "p3", "op": "line", "points": [[40.5, 36.0]]},
-             {"id": "close", "op": "close"}
-            ],
-            "fill": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.5]}}
-           }
-          ]
-         },
-         {
-          "id": "credits_back-lines",
+          "id": "credits_back",
           "type": "group",
           "properties": {
            "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0, "unit": "dp"},
-           "top": {"type": "length", "value": 0, "unit": "dp"},
-           "width": {"type": "length", "value": 100, "unit": "%"},
-           "height": {"type": "length", "value": 100, "unit": "%"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 1}
+           "left": {"type": "length", "value": 240.0, "unit": "dp"},
+           "top": {"type": "length", "value": 679.5, "unit": "dp"},
+           "height": {"type": "length", "value": 48.0, "unit": "dp"},
+           "right": {"type": "length", "value": -57.0, "unit": "dp"}
           },
           "children": [
            {
-            "id": "credits_back-line",
+            "id": "credits_back-fill",
             "type": "vector",
             "properties": {
              "position": {"type": "keyword", "value": "absolute"},
@@ -3940,12 +3878,11 @@
              "top": {"type": "length", "value": 0, "unit": "dp"},
              "width": {"type": "length", "value": 100, "unit": "%"},
              "height": {"type": "length", "value": 100, "unit": "%"},
-             "pointer-events": {"type": "keyword", "value": "none"},
-             "opacity": {"type": "number", "value": 0.5}
+             "pointer-events": {"type": "keyword", "value": "none"}
             },
             "paths": [
              {
-              "id": "line-glow4",
+              "id": "band",
               "commands": [
                {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
                {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
@@ -3953,86 +3890,12 @@
                {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
                {"id": "close", "op": "close"}
               ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.06]}},
-               "widthDp": 13.5,
-               "minimumPixels": 0,
-               "join": "miter",
-               "cap": "butt"
-              }
-             },
-             {
-              "id": "line-glow3",
-              "commands": [
-               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-               {"id": "close", "op": "close"}
-              ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.06]}},
-               "widthDp": 10.5,
-               "minimumPixels": 0,
-               "join": "miter",
-               "cap": "butt"
-              }
-             },
-             {
-              "id": "line-glow2",
-              "commands": [
-               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-               {"id": "close", "op": "close"}
-              ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.06]}},
-               "widthDp": 7.5,
-               "minimumPixels": 0,
-               "join": "miter",
-               "cap": "butt"
-              }
-             },
-             {
-              "id": "line-glow1",
-              "commands": [
-               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-               {"id": "close", "op": "close"}
-              ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.06]}},
-               "widthDp": 4.5,
-               "minimumPixels": 0,
-               "join": "miter",
-               "cap": "butt"
-              }
-             },
-             {
-              "id": "line-core",
-              "commands": [
-               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-               {"id": "close", "op": "close"}
-              ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 1.0]}},
-               "widthDp": 1.5,
-               "minimumPixels": 1,
-               "join": "miter",
-               "cap": "butt"
-              }
+              "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.549, 0.698, 0.3]}}
              }
             ]
            },
            {
-            "id": "credits_back-flash",
+            "id": "credits_back-open",
             "type": "vector",
             "properties": {
              "position": {"type": "keyword", "value": "absolute"},
@@ -4045,7 +3908,7 @@
             },
             "paths": [
              {
-              "id": "line-glow4",
+              "id": "band",
               "commands": [
                {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
                {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
@@ -4053,141 +3916,335 @@
                {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
                {"id": "close", "op": "close"}
               ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 0.06]}},
-               "widthDp": 13.5,
-               "minimumPixels": 0,
-               "join": "miter",
-               "cap": "butt"
-              }
-             },
-             {
-              "id": "line-glow3",
-              "commands": [
-               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-               {"id": "close", "op": "close"}
-              ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 0.06]}},
-               "widthDp": 10.5,
-               "minimumPixels": 0,
-               "join": "miter",
-               "cap": "butt"
-              }
-             },
-             {
-              "id": "line-glow2",
-              "commands": [
-               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-               {"id": "close", "op": "close"}
-              ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 0.06]}},
-               "widthDp": 7.5,
-               "minimumPixels": 0,
-               "join": "miter",
-               "cap": "butt"
-              }
-             },
-             {
-              "id": "line-glow1",
-              "commands": [
-               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-               {"id": "close", "op": "close"}
-              ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 0.06]}},
-               "widthDp": 4.5,
-               "minimumPixels": 0,
-               "join": "miter",
-               "cap": "butt"
-              }
-             },
-             {
-              "id": "line-core",
-              "commands": [
-               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
-               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
-               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
-               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
-               {"id": "close", "op": "close"}
-              ],
-              "stroke": {
-               "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 1.0]}},
-               "widthDp": 1.5,
-               "minimumPixels": 1,
-               "join": "miter",
-               "cap": "butt"
-              }
+              "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.549, 0.698, 0.143]}}
              }
             ]
+           },
+           {
+            "id": "credits_back-openflash",
+            "type": "vector",
+            "properties": {
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0, "unit": "dp"},
+             "top": {"type": "length", "value": 0, "unit": "dp"},
+             "width": {"type": "length", "value": 100, "unit": "%"},
+             "height": {"type": "length", "value": 100, "unit": "%"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0}
+            },
+            "paths": [
+             {
+              "id": "band",
+              "commands": [
+               {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+               {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+               {"id": "close", "op": "close"}
+              ],
+              "fill": {"type": "solid", "color": {"type": "color", "value": [1, 1, 1, 1]}}
+             }
+            ]
+           },
+           {
+            "id": "credits_back-plate",
+            "type": "vector",
+            "properties": {
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0, "unit": "dp"},
+             "top": {"type": "length", "value": 0, "unit": "dp"},
+             "width": {"type": "length", "value": 100, "unit": "%"},
+             "height": {"type": "length", "value": 100, "unit": "%"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 0},
+             "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
+            },
+            "paths": [
+             {
+              "id": "plate",
+              "commands": [
+               {"id": "p0", "op": "move", "points": [[18.0, 10.5]]},
+               {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -40.5}, 10.5]]},
+               {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -18.0}, 36.0]]},
+               {"id": "p3", "op": "line", "points": [[40.5, 36.0]]},
+               {"id": "close", "op": "close"}
+              ],
+              "fill": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.5]}}
+             }
+            ]
+           },
+           {
+            "id": "credits_back-lines",
+            "type": "group",
+            "properties": {
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0, "unit": "dp"},
+             "top": {"type": "length", "value": 0, "unit": "dp"},
+             "width": {"type": "length", "value": 100, "unit": "%"},
+             "height": {"type": "length", "value": 100, "unit": "%"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 1}
+            },
+            "children": [
+             {
+              "id": "credits_back-line",
+              "type": "vector",
+              "properties": {
+               "position": {"type": "keyword", "value": "absolute"},
+               "left": {"type": "length", "value": 0, "unit": "dp"},
+               "top": {"type": "length", "value": 0, "unit": "dp"},
+               "width": {"type": "length", "value": 100, "unit": "%"},
+               "height": {"type": "length", "value": 100, "unit": "%"},
+               "pointer-events": {"type": "keyword", "value": "none"},
+               "opacity": {"type": "number", "value": 0.5}
+              },
+              "paths": [
+               {
+                "id": "line-glow4",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.06]}},
+                 "widthDp": 13.5,
+                 "minimumPixels": 0,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               },
+               {
+                "id": "line-glow3",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.06]}},
+                 "widthDp": 10.5,
+                 "minimumPixels": 0,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               },
+               {
+                "id": "line-glow2",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.06]}},
+                 "widthDp": 7.5,
+                 "minimumPixels": 0,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               },
+               {
+                "id": "line-glow1",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 0.06]}},
+                 "widthDp": 4.5,
+                 "minimumPixels": 0,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               },
+               {
+                "id": "line-core",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.549, 0.651, 0.749, 1.0]}},
+                 "widthDp": 1.5,
+                 "minimumPixels": 1,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               }
+              ]
+             },
+             {
+              "id": "credits_back-flash",
+              "type": "vector",
+              "properties": {
+               "position": {"type": "keyword", "value": "absolute"},
+               "left": {"type": "length", "value": 0, "unit": "dp"},
+               "top": {"type": "length", "value": 0, "unit": "dp"},
+               "width": {"type": "length", "value": 100, "unit": "%"},
+               "height": {"type": "length", "value": 100, "unit": "%"},
+               "pointer-events": {"type": "keyword", "value": "none"},
+               "opacity": {"type": "number", "value": 0}
+              },
+              "paths": [
+               {
+                "id": "line-glow4",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 0.06]}},
+                 "widthDp": 13.5,
+                 "minimumPixels": 0,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               },
+               {
+                "id": "line-glow3",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 0.06]}},
+                 "widthDp": 10.5,
+                 "minimumPixels": 0,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               },
+               {
+                "id": "line-glow2",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 0.06]}},
+                 "widthDp": 7.5,
+                 "minimumPixels": 0,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               },
+               {
+                "id": "line-glow1",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 0.06]}},
+                 "widthDp": 4.5,
+                 "minimumPixels": 0,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               },
+               {
+                "id": "line-core",
+                "commands": [
+                 {"id": "p0", "op": "move", "points": [[10.5, 7.5]]},
+                 {"id": "p1", "op": "line", "points": [[{"fraction": 1, "dp": -39.0}, 7.5]]},
+                 {"id": "p2", "op": "line", "points": [[{"fraction": 1, "dp": -10.5}, 39.0]]},
+                 {"id": "p3", "op": "line", "points": [[39.0, 39.0]]},
+                 {"id": "close", "op": "close"}
+                ],
+                "stroke": {
+                 "paint": {"type": "solid", "color": {"type": "color", "value": [0.8, 0.902, 1.0, 1.0]}},
+                 "widthDp": 1.5,
+                 "minimumPixels": 1,
+                 "join": "miter",
+                 "cap": "butt"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "id": "credits_back-label",
+            "type": "text",
+            "properties": {
+             "text": {"type": "text", "value": "#str_02263"},
+             "position": {"type": "keyword", "value": "absolute"},
+             "left": {"type": "length", "value": 0, "unit": "dp"},
+             "top": {"type": "length", "value": 7.5, "unit": "dp"},
+             "height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "width": {"type": "length", "value": 100, "unit": "%"},
+             "font-family": {"type": "font", "value": "english"},
+             "font-size": {"type": "length", "value": 20.966, "unit": "dp"},
+             "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
+             "color": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]},
+             "text-align": {"type": "keyword", "value": "center"},
+             "white-space": {"type": "keyword", "value": "nowrap"},
+             "letter-spacing": {"type": "length", "value": 1.872, "unit": "dp"},
+             "pointer-events": {"type": "keyword", "value": "none"},
+             "opacity": {"type": "number", "value": 1}
+            }
            }
-          ]
-         },
-         {
-          "id": "credits_back-label",
-          "type": "text",
-          "properties": {
-           "text": {"type": "text", "value": "#str_02263"},
-           "position": {"type": "keyword", "value": "absolute"},
-           "left": {"type": "length", "value": 0, "unit": "dp"},
-           "top": {"type": "length", "value": 7.5, "unit": "dp"},
-           "height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "width": {"type": "length", "value": 100, "unit": "%"},
-           "font-family": {"type": "font", "value": "english"},
-           "font-size": {"type": "length", "value": 20.966, "unit": "dp"},
-           "line-height": {"type": "length", "value": 31.5, "unit": "dp"},
-           "color": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]},
-           "text-align": {"type": "keyword", "value": "center"},
-           "white-space": {"type": "keyword", "value": "nowrap"},
-           "letter-spacing": {"type": "length", "value": 1.872, "unit": "dp"},
-           "pointer-events": {"type": "keyword", "value": "none"},
-           "opacity": {"type": "number", "value": 1}
+          ],
+          "control": {
+           "role": "button",
+           "label": "#str_02263",
+           "states": {
+            "default": "credits_back.default",
+            "hover": "credits_back.hover",
+            "focus": "credits_back.focus",
+            "pressed": "credits_back.pressed",
+            "disabled": "credits_back.disabled"
+           },
+           "action": "back"
           }
          }
-        ],
-        "control": {
-         "role": "button",
-         "label": "#str_02263",
-         "states": {
-          "default": "credits_back.default",
-          "hover": "credits_back.hover",
-          "focus": "credits_back.focus",
-          "pressed": "credits_back.pressed",
-          "disabled": "credits_back.disabled"
-         },
-         "action": "back"
+        ]
+       },
+       {
+        "id": "credits-copyright",
+        "type": "text",
+        "properties": {
+         "text": {"type": "text", "value": "#str_04851"},
+         "position": {"type": "keyword", "value": "absolute"},
+         "left": {"type": "length", "value": 10.5, "unit": "dp"},
+         "top": {"type": "length", "value": 678.0, "unit": "dp"},
+         "width": {"type": "length", "value": 675.0, "unit": "dp"},
+         "height": {"type": "length", "value": 42.0, "unit": "dp"},
+         "font-family": {"type": "font", "value": "bank"},
+         "font-size": {"type": "length", "value": 15.552, "unit": "dp"},
+         "line-height": {"type": "length", "value": 18.0, "unit": "dp"},
+         "color": {"type": "color", "value": [1.0, 1.0, 1.0, 0.3]},
+         "text-align": {"type": "keyword", "value": "left"},
+         "white-space": {"type": "keyword", "value": "pre-wrap"},
+         "pointer-events": {"type": "keyword", "value": "none"}
         }
        }
       ]
-     },
-     {
-      "id": "credits-copyright",
-      "type": "text",
-      "properties": {
-       "text": {"type": "text", "value": "#str_04851"},
-       "position": {"type": "keyword", "value": "absolute"},
-       "left": {"type": "length", "value": 10.5, "unit": "dp"},
-       "top": {"type": "length", "value": 678.0, "unit": "dp"},
-       "width": {"type": "length", "value": 675.0, "unit": "dp"},
-       "height": {"type": "length", "value": 42.0, "unit": "dp"},
-       "font-family": {"type": "font", "value": "bank"},
-       "font-size": {"type": "length", "value": 15.552, "unit": "dp"},
-       "line-height": {"type": "length", "value": 18.0, "unit": "dp"},
-       "color": {"type": "color", "value": [1.0, 1.0, 1.0, 0.3]},
-       "text-align": {"type": "keyword", "value": "left"},
-       "white-space": {"type": "keyword", "value": "pre-wrap"},
-       "pointer-events": {"type": "keyword", "value": "none"}
-      }
      }
     ]
    },

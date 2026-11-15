@@ -216,6 +216,7 @@
   "noticeModal.contents": {"type": "boolean", "initial": false},
   "page.shown": {"type": "boolean", "initial": false},
   "page.closing": {"type": "boolean", "initial": false},
+  "page.lift": {"type": "number", "initial": 0},
   "hint": {"type": "number", "initial": -1}
  },
  "actions": {
@@ -3073,6 +3074,12 @@
      }
     ]
    }
+  },
+  {
+   "id": "stage.transform",
+   "node": "stage",
+   "property": "transform",
+   "value": [0, {"op": "*", "args": [{"state": "page.lift"}, -1]}, 1, 1, 0]
   }
  ],
  "detail": {"state": "hint", "none": -1, "shown": "hintShown"},
@@ -13528,8 +13535,8 @@
      "left": {"type": "length", "value": 0, "unit": "dp"},
      "width": {"type": "length", "value": 100, "unit": "%"},
      "height": {"type": "length", "value": 720.0, "unit": "dp"},
-     "top": {"type": "length", "value": 50, "unit": "%"},
-     "margin-top": {"type": "length", "value": -360.0, "unit": "dp"}
+     "bottom": {"type": "length", "value": 0, "unit": "dp"},
+     "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}
     },
     "children": [
      {

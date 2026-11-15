@@ -358,6 +358,12 @@ class Document:
 
     def timeline(self, ident: str, duration: float, tracks: list, *, iterations: int | None = None,
                  complete: str | None = None, essential: bool | None = None) -> str:
+        # The runtime refuses a whole document for one bad track, and a refused
+        # document is a silent fall back to the stock screen: fail here.
+        for item in tracks:
+            times = [key["atMs"] for key in item["keys"]]
+            if times[0] != 0 or any(later <= earlier for earlier, later in zip(times, times[1:])) or times[-1] > duration:
+                raise ValueError(f"timeline {ident}: {item['node']}.{item['property']} keys at {times} in {duration} ms")
         entry = {"id": ident, "durationMs": duration, "tracks": tracks}
         if iterations is not None:
             entry["iterations"] = iterations

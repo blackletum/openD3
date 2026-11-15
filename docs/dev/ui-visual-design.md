@@ -2604,7 +2604,12 @@ squeeze the sheet 2:1 horizontally. The sheet has no baked shadow.
    opaque.
 4. The cursor keeps its two shapes and its blink.
 5. The start-up status line stays one centred line of small cells in `load.status` in the picture's
-   lower strip.
+   lower strip. The picture itself is rebuilt from its elements: stars, Mars as a lit 3D model with
+   the fires of its night side, the teal wash, the fine honeycomb (flat-topped cells 22.5 u across),
+   the large hexagons three cells to the side, the letterbox and its rules. Only the id mark stays
+   a bitmap. Motion is slight and never in step: the planet turns a third of a degree a second,
+   each large hexagon's transparency pulses on a period of its own, single cells light and fade,
+   and the fires flicker by cluster.
 6. The frame-rate counter stays white big cells in the top-trailing corner. In **Remastered** it and
    the debug lines anchor 5 u from the trailing edge; the console spans the full width of the view
    and keeps its 8 u text inset, with as many columns as fit.

@@ -238,7 +238,8 @@ release of Doom 3 (1.3.1 packs):
   pages closing, the top bar's slide, the hint's wipe, the bindings' row
   flash and the grid lighting under the pointer; and the same screens in a
   720x1280 window, where the retained furniture goes to the top and bottom
-  edges.
+  edges; and the start-up screen, shown through `testGUI` at four shapes
+  and traced through a real start-up.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
   what was not seen.
 - Saving and loading in the same build (2026-11-14, OpenGL, console
@@ -350,7 +351,8 @@ Listed roughly by how much they block a player.
    game both declare `r_showSkel`; sound shader volumes above +10 dB are
    clamped. A `mars_city1` load currently logs about 25 distinct warnings,
    some of them the retail content's own.
-5. **The retained interface has fourteen Doom 3 documents.** The title, the
+5. **The retained interface has fifteen Doom 3 documents.** The start-up
+   screen, the title, the
    single-player pause, the message box, the death screen's choices, the
    level loading screens' furniture, the in-game multiplayer menu, and the
    Load Game, Save Game,

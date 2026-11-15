@@ -37,6 +37,7 @@ to 0, because the retained HUD has no Doom 3 documents. `+set ui_retained 1` sel
 | Level loading screens: the two bands, the typed LOADING and its flare, the bar, the level's title, subtitle and briefing; the hell level's screen (no bands, the word in red, the frame tinted red); the first level's (black, the word and the bar in the middle) | `guis/loading/loading.rui` | 10.14 |
 | In-game multiplayer menu: the tab strip; the Main panel (ready, spectate, team, vote, chat); New Vote (the type list, a number or a list of game types, players or maps with the map's picture, Call and Cancel); Multiplayer (data rate, always run, name, skins); Controls (four sub-tabs, 43 bindings); Options (nine rows); Exit; the hint line. System opens the SYSTEM page above under the strip | `guis/menu/mp_escape.rui` | 10.13 |
 | Death screen: Restart, Load and Main Menu, typed in letter by letter, and the line under each | `guis/menu/restartmenu.rui` | 9.8 |
+| Start-up screen: the stock picture rebuilt element by element (stars, Mars in 3D, its fires, the teal wash, the honeycomb, the large hexagons, the letterbox and its rules) with the id mark and the status line | `guis/loading/initialization.rui` | 10.15 |
 | Create Server: the plate and its bridge to the tab, the server name, the map list under the chosen map's picture, nine option rows, the ADVANCED SERVER OPTIONS dialog with eight more, the create bar | `guis/menu/createserver.rui` | 6.5 to 6.7, 6.9, 6.10, 9.6 |
 
 Everything else is still the stock GUI, reached from the retained home as
@@ -221,6 +222,53 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
   sets `voteIndex` and the value where the game reads them and sends
   `callVote`.
 
+- **The start-up screen is the stock picture taken apart.** While the
+  engine starts it shows one picture, `guis/assets/splash/launch`, under
+  a status line. The engine already presents
+  `guis/loading/initialization.rui` in its place when the file exists and
+  `ui_retained` is 1 (`RetainedUI_DrawInitialization`: `onInit`, then
+  `onEnter` once the first frame is on screen, `message` and `step`, and
+  `stepChanged`). The document rebuilds the picture's elements one by
+  one, back to front:
+  - black space and a seeded field of stars;
+  - Mars as a 3D model, the main menu's own (`models/wipes/planet2.lwo`)
+    in a `model` node under one light from the leading side, so its
+    trailing side is night; it turns a third of a degree a second;
+  - the night side's fires, additive specks along a ring of fissures in
+    clusters that each flicker on their own, over a dull glow;
+  - the band's teal wash and lighter strips;
+  - the fine honeycomb, flat-topped cells 22.5 u across, every edge drawn
+    once, and 44 single cells of it that light and fade at moments of
+    their own;
+  - the large hexagons, three cells to the side on the fine grid's own
+    lines, each a node of its own whose transparency pulses on its own
+    period (2.6 to 7.4 s), so no two keep step;
+  - a few very large soft hexagons;
+  - the letterbox and its two cyan rules;
+  - the id mark, the one bitmap: its block cropped from the installed
+    picture by a clipping group (a logo is a bitmap exception);
+  - the status line in BigChars small cells, which lights white for a
+    moment at each step.
+
+  Three engine additions carry it, all marked openD3. The document may
+  declare a `clock`, which the engine sets each frame to the seconds the
+  screen has been up: a model scene takes its values from state, and
+  nothing else in the format moves with time. A scene of static models
+  now draws before the game module is loaded
+  (`RenderWindowBareLight`, `RenderWindowBareEntity` in
+  `src/ui/RenderWindow.cpp`, and the host's check in
+  `src/ui/RetainedUI.cpp`): the render window used the game's
+  spawn-argument parsers for its light and its entity, and start-up shows
+  the screen before there is a game. And the generator now refuses a
+  timeline whose keys do not increase, because the runtime refuses the
+  whole document for one and start-up then falls back to the stock
+  picture without a word on screen.
+
+  The band, its rules, the honeycomb and the stars run to the view's
+  edges; the planet keeps its place on the centred canvas; the id mark
+  keeps its distance from the trailing edge; on a tall view the band
+  stays one canvas high, centred.
+
 A mod whose main menu lacks one of those stock buttons keeps its own menu.
 
 ## Motion and state
@@ -403,6 +451,9 @@ group box, the stepping rows over the service's draft and its two dialogs.
 `tools/ui/doom3_menu_credits.py` holds the Credits page and the Mods panel.
 `tools/ui/doom3_menu_death.py` holds the death screen's choices and their
 typing.
+`tools/ui/doom3_menu_init.py` holds the start-up screen: one function for
+each element of the stock picture, and `fit`, which gives a piece that is
+animated on its own a node no larger than itself.
 `tools/ui/doom3_menu_loading.py` holds the loading screen: its bands, bar,
 typed word and text block.
 `tools/ui/doom3_menu_mpmenu.py` holds the in-game multiplayer menu: the
@@ -492,6 +543,19 @@ Points that are easy to get wrong:
   `tools/ui/doom3_menu_system.py`. The merge of 14 November added
   `settings.msaa.clamped` and `settings.msaa.status`, and the page was
   refused from then until 15 November.
+- `wait N` counts frames, and a client whose window is not being paced
+  runs them several times faster: a script then acts and captures before
+  the menu has faded in, which is the likely cause of the black captures
+  of 15 November (those runs also finished early). Use `waitMsec`.
+- The start-up screen cannot be captured as it runs: no console command
+  runs yet, and the window does not answer a paint request while the
+  engine is starting. `testGUI guis/loading/initialization.rui`, then
+  `opend3_retainedGui event onEnter` and `state clock <seconds>`, shows
+  the same document once the menu is up; `ui_retainedTrace 1` logs each
+  real start-up frame (`INITIALIZATION_FRAME`, `RETAINED_INITIALIZATION_FRAME`).
+- One vector's coverage has a budget ("coverage exceeds output rectangle
+  budget", and the vector draws nothing): the honeycomb is cut into
+  strips.
 - A scripted run's profile keeps what earlier runs archived. After a
   multiplayer run `si_gameType` stays `deathmatch`, and a `devmap` then
   starts as a multiplayer game with no pause screen: pass `+set
@@ -715,6 +779,21 @@ from the window.
   Not seen at a tall shape: the loading screens, GAME OPTIONS, a message
   box, and anything on a real phone.
 
+- The start-up screen (15 November). Shown through `testGUI` with
+  `onEnter` raised and the clock set, at 1280x720, 960x720, 1680x720 and
+  720x1280: every element draws, the planet lit from the leading side
+  with its fires on the night side, the band running to the edges of the
+  wide view and the id mark at the trailing side. Against the stock
+  picture the planet, the band, the rules, the mark and the status line
+  are where it has them; the honeycomb and the hexagons are of its sizes
+  but not its exact cells. Two stills 1.7 s apart with the clock moved
+  on differ in about 25,000 of 921,600 pixels (the hexagons, the cells,
+  the fires and the planet). In a real start-up, traced: 25 frames in
+  about 2 s with the model scene among them and no warning, the first
+  frame costing 430 ms and the rest about 18 ms. With `ui_retained 0`
+  start-up is the stock picture as before. Not seen: the real start-up's
+  picture itself, the animation in motion, and reduced motion.
+
 Not verified: Resurrection of Evil, Vulkan, a controller, touch, reduced
 motion, languages other than English, the multiplayer pause, a mod's menu, and
 every platform but Windows.
@@ -789,6 +868,17 @@ every platform but Windows.
   only the selected save's date and time. The list's sort and filter verbs
   have no controls. More than 64 saves page through NEWER SAVES and OLDER
   SAVES rows, which were not exercised.
+- **Start-up screen.** The first frame costs about 0.4 s, which the stock
+  picture does not: the document is a megabyte and its geometry is built
+  then. The fires are drawn in the plane of the screen and do not turn
+  with the planet, which over a start-up of a few seconds moves a few u
+  under them. The planet's fires are an interpretation of the picture's,
+  not a trace of it. The id mark's block carries the picture's own
+  background at its edges. The status line shows the engine's message as
+  it comes, and `step` stays 0, because the engine matches the message
+  against Quake 4 string keys. On an upright phone the band is a strip a
+  quarter of the height. The engine holds the screen still under reduced
+  motion.
 - **Tall views.** The furniture goes to the edges but nothing grows: the
   save lists, the server list and the map list keep their canvas heights,
   with empty backdrop above or below them. Text keeps its u size, which on

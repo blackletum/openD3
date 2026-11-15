@@ -28,6 +28,7 @@ from doom3_menu_kit import (
 
 from doom3_menu_credits import credits_document, mods_panel
 from doom3_menu_death import death_document
+from doom3_menu_init import initialization_document
 from doom3_menu_loading import loading_document
 from doom3_menu_mpmenu import multiplayer_menu_document
 from doom3_menu_multiplayer import create_server_document, join_game_document, mp_settings_panel
@@ -51,6 +52,7 @@ OUTPUTS = {
     "createserver": PAK0 / "guis" / "menu" / "createserver.rui",
     "restartmenu": PAK0 / "guis" / "menu" / "restartmenu.rui",
     "loading": PAK0 / "guis" / "loading" / "loading.rui",
+    "initialization": PAK0 / "guis" / "loading" / "initialization.rui",
     "mp_escape": PAK0 / "guis" / "menu" / "mp_escape.rui",
 }
 
@@ -598,7 +600,8 @@ def main() -> int:
                  "controls": controls_document(), "game": game_options_document(), "system": system_document(),
                  "credits": credits_document(), "joingame": join_game_document(),
                  "createserver": create_server_document(), "restartmenu": death_document(),
-                 "loading": loading_document(), "mp_escape": multiplayer_menu_document()}
+                 "loading": loading_document(), "mp_escape": multiplayer_menu_document(),
+                 "initialization": initialization_document()}
     stale = []
     for name, document in documents.items():
         output = OUTPUTS[name]

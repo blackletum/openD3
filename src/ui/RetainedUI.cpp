@@ -249,7 +249,9 @@ public:
 	}
 	bool RenderModelScene(std::uint64_t owner,const opend3::ui::ModelScene& scene,int width,int height,double seconds,
 		std::string& image,std::string& error) override {
-		if (!renderSystem || !gameEdit || !owner || !opend3::ui::ValidModelScene(scene,error)) {
+		// openD3: a scene of static models draws before the game module is
+		// loaded (idRenderWindow::PrepareModelScene refuses one that needs it).
+		if (!renderSystem || !owner || !opend3::ui::ValidModelScene(scene,error)) {
 			if (error.empty()) error="The model preview renderer is unavailable";
 			return false;
 		}
@@ -1967,6 +1969,13 @@ bool RetainedUI_DrawInitialization(const char* message) {
 		opend3::ui::Runtime::EventEffects effects;
 		if (!initializationView->runtime->RunEvent("stepChanged",PresentationTime(),effects,error)) return false;
 		if (ui_retainedTrace.GetBool()) common->Printf("RETAINED_INITIALIZATION step=%d message=%s\n",step,message);
+	}
+	// openD3: a document that declares a `clock` is told how many seconds it
+	// has been on screen, to turn its own scene by (Doom 3's start-up planet).
+	if (previous.contains("clock")) {
+		static double clockStart = 0; static const retainedUIView_t* clockView = nullptr;
+		if (clockView != initializationView) { clockView = initializationView; clockStart = PresentationTime(); }
+		if (!initializationView->runtime->SetState({{"clock",PresentationTime()-clockStart}},error,PresentationTime())) return false;
 	}
 	opend3::ui::Viewport viewport;
 	if (!RetainedUI_DefaultViewport(viewport)) return false;

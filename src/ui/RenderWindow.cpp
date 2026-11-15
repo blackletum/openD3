@@ -37,6 +37,36 @@ static idMat3 RenderWindowRotationToAxis( const idWinVec4 &rotation ) {
 	return idAngles( rotation.x(), rotation.y(), rotation.z() ).ToMat3();
 }
 
+#if defined( OPEND3 )
+// Doom 3's start-up screen turns its planet before the game module is loaded
+// (guis/loading/initialization.rui). A point light and a static model need
+// nothing of the game: these stand in for the game's spawn-argument parsers
+// while there is no game, with the parsers' own defaults. A model that needs
+// the game (a skin, an animation, an entity definition) still waits for it.
+static void RenderWindowBareLight( renderLight_t &light, const idVec3 &origin, const idVec3 &colour ) {
+	memset( &light, 0, sizeof( light ) );
+	light.axis.Identity();
+	light.origin = origin;
+	light.pointLight = true;
+	light.lightRadius.Set( 300.0f, 300.0f, 300.0f );
+	light.shader = declManager->FindMaterial( "lights/defaultPointLight" );
+	light.shaderParms[ SHADERPARM_RED ] = colour.x;
+	light.shaderParms[ SHADERPARM_GREEN ] = colour.y;
+	light.shaderParms[ SHADERPARM_BLUE ] = colour.z;
+	light.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
+}
+
+static void RenderWindowBareEntity( renderEntity_t &entity, const char *model, const idVec3 &origin ) {
+	memset( &entity, 0, sizeof( entity ) );
+	entity.axis.Identity();
+	entity.origin = origin;
+	entity.hModel = ( model != NULL && model[0] != '\0' ) ? renderModelManager->FindModel( model ) : NULL;
+	if ( entity.hModel != NULL ) {
+		entity.bounds = entity.hModel->Bounds( &entity );
+	}
+}
+#endif
+
 template <typename T>
 static int RenderWindowGetSurfaceMask( const T *model, const char *surfaceName ) {
 	if constexpr ( requires( const T &renderModel ) { renderModel.GetSurfaceMask( surfaceName ); } ) {
@@ -280,6 +310,11 @@ void idRenderWindow::PreRender() {
 		spawnArgs.Set( "name", va( "light_%d", i ) );
 		spawnArgs.Set( "origin", lightOrigin[i].ToVec3().ToString() );
 		spawnArgs.Set( "_color", lightColor[i].ToVec3().ToString() );
+#if defined( OPEND3 )
+		if ( gameEdit == NULL ) {
+			RenderWindowBareLight( rLights[i], lightOrigin[i].ToVec3(), lightColor[i].ToVec3() );
+		} else
+#endif
 		gameEdit->ParseSpawnArgsToRenderLight( &spawnArgs, &rLights[i] );
 		lightDefs[i] = world->AddLightDef( &rLights[i] );
 	}
@@ -305,6 +340,11 @@ void idRenderWindow::PreRender() {
 	spawnArgs.Set( "model", modelName[0].c_str() );
 	spawnArgs.Set( "skin", customSkin[0].c_str() );
 	spawnArgs.Set( "origin", modelOrigin.c_str() );
+#if defined( OPEND3 )
+	if ( gameEdit == NULL ) {
+		RenderWindowBareEntity( worldEntity[0], modelName[0].c_str(), modelOrigin.ToVec3() );
+	} else
+#endif
 	gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, &worldEntity[0] );
 	if ( worldEntity[0].hModel ) {
 		RenderWindowEnsurePreviewBounds( worldEntity[0] );
@@ -327,6 +367,11 @@ void idRenderWindow::PreRender() {
 		spawnArgs.Set( "model", modelName[i].c_str() );
 		spawnArgs.Set( "skin", customSkin[i].c_str() );
 		spawnArgs.Set( "origin", "0 0 0" );
+#if defined( OPEND3 )
+		if ( gameEdit == NULL ) {
+			RenderWindowBareEntity( worldEntity[i], modelName[i].c_str(), vec3_origin );
+		} else
+#endif
 		gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, &worldEntity[i] );
 		if ( !worldEntity[i].hModel ) {
 			continue;
@@ -489,7 +534,16 @@ bool idRenderWindow::PrepareModelScene( int time, std::string &error ) {
 	// The retained caller validates its typed scene before configuration. Keep
 	// this legacy renderDef implementation independent of the retained library,
 	// which is intentionally absent from dedicated-server links.
+#if defined( OPEND3 )
+	// Without the game a scene of static models still draws (RenderWindowBareEntity).
+	bool needsGame = false;
+	for ( const auto &part : configuredScene.parts ) {
+		needsGame = needsGame || !part.skin.empty() || !part.animation.empty() || !part.animationClass.empty() || !part.joint.empty();
+	}
+	if ( ( !gameEdit && needsGame ) || !world || !sceneConfigured || configuredScene.parts.empty() || configuredScene.parts[0].model.empty() ) {
+#else
 	if ( !gameEdit || !world || !sceneConfigured || configuredScene.parts.empty() || configuredScene.parts[0].model.empty() ) {
+#endif
 		if ( error.empty() ) error = "No game renderer or root model is available for the preview";
 		return false;
 	}

@@ -8592,6 +8592,14 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 		if ( stockItem == NULL || retainedPagePending != NULL ) {
 			return;
 		}
+		if ( !idStr::Icmp( request, "optionsDefaults" ) ) {
+			// DEFAULTS asks in the home's own dialog, as the stock RESET ALL
+			// DEFAULTS dialog asks over the stock options list; the list stays
+			// open behind it. YES comes back as defaultsYes.
+			HandleMainMenuCommands( "play guisounds_menuclickup" );
+			guiRetainedHome->HandleNamedEvent( "defaultsModalShow" );
+			return;
+		}
 		if ( !idStr::Icmp( request, "optionsSystem" ) ) {
 			// The retained SYSTEM page edits the engine's settings service. It
 			// opens over the home, which keeps drawing behind it.
@@ -8647,6 +8655,19 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 		if ( command.Length() > 0 ) {
 			DispatchCommand( guiMainMenu, command.c_str() );
 		}
+		return;
+	}
+	if ( !idStr::Icmp( request, "defaultsYes" ) ) {
+		// The DEFAULTS dialog's YES does what the stock dialog's does: every
+		// CVar back to its default, default.cfg and setMachineSpec run again
+		// and the bindings reloaded (HandleMainMenuCommands' exec cvar_restart
+		// and loadBinds). The interface choice is not one of the "control,
+		// game and system options" the dialog names, so it survives the reset.
+		const bool retained = ui_retained.GetBool();
+		HandleMainMenuCommands( "exec cvar_restart ; play guisounds_chirpconnect" );
+		HandleMainMenuCommands( "loadBinds" );
+		ui_retained.SetBool( retained );
+		guiRetainedHome->HandleNamedEvent( "defaultsModalHide" );
 		return;
 	}
 	// NEW GAME's difficulty list is part of the retained title, as it is part

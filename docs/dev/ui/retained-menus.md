@@ -23,6 +23,7 @@ to 0, because the retained HUD has no Doom 3 documents. `+set ui_retained 1` sel
 | Load Game page: plate, bridge and flair, the list, the level shot and its details, LOAD GAME and DELETE, the delete dialog | `guis/menu/loadgame.rui` | 6.5 to 6.9, 9.5 |
 | Save Game page: the list, the name field, SAVE GAME, the overwrite and refusal dialogs | `guis/menu/savegame.rui` | 6.5 to 6.9, 9.5 |
 | OPTIONS' sub-list: CONTROLS, GAME OPTIONS, SYSTEM, DEFAULTS | in `title.rui` and `pause.rui` | 6.4, 9.3 |
+| RESET ALL DEFAULTS dialog: the question, YES and CANCEL | in `title.rui` and `pause.rui` | 6.10, 9.3 |
 | CONTROLS page: four category tabs, 43 bindings, the apply bar | `guis/menu/settings/controls.rui` | 6.6, 6.7, 6.9, 9.3 |
 | GAME OPTIONS page: the stock page's ten rows, the apply bar | `guis/menu/settings/game.rui` | 6.6, 6.7, 6.9, 9.3 |
 | SYSTEM page: video and audio group boxes, the status line, the apply bar, the keep-or-revert and discard dialogs | `guis/menu/settings/system.rui` | 6.6, 6.7, 6.9, 6.10, 9.3 |
@@ -39,7 +40,7 @@ to 0, because the retained HUD has no Doom 3 documents. `+set ui_retained 1` sel
 | Create Server: the plate and its bridge to the tab, the server name, the map list under the chosen map's picture, nine option rows, the ADVANCED SERVER OPTIONS dialog with eight more, the create bar | `guis/menu/createserver.rui` | 6.5 to 6.7, 6.9, 6.10, 9.6 |
 
 Everything else is still the stock GUI, reached from the retained home as
-before: the DEFAULTS dialog (from the retained options list), the in-game
+before: the in-game
 multiplayer menu's System page (from its tab), the update
 check, the first level's, the hell level's and the fallback loading screens,
 the entry prompt, the CD key box and the download box.
@@ -91,11 +92,18 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
   open behind them and is there again when a page closes. SYSTEM opens
   through the engine's own route (`OpenSystemSettings`), which makes the page
   the settings service's owner; the home keeps drawing behind it and takes
-  the screen back when the page dismisses itself. DEFAULTS has no retained
-  counterpart: the session presses the stock OPTIONS button and, 720 ms later
-  when the stock list has unfolded, the stock item (`retainedStockFollow`).
-  The stock menu hands back when its list closes. SYSTEM falls back the same
-  way where its document cannot present.
+  the screen back when the page dismisses itself. DEFAULTS asks in the
+  home's own dialog (`defaultsModalShow`), as the stock RESET ALL DEFAULTS
+  dialog asks over the stock list, with CANCEL focused; its YES is the
+  session's `defaultsYes`, which does what the stock dialog's YES does:
+  `exec cvar_restart` through the stock menu's command handler (every CVar
+  to its default, then `default.cfg` and `setMachineSpec`) and `loadBinds`.
+  `ui_retained` is put back afterwards: the interface choice is not one of
+  the control, game and system options the dialog names. Where a page's
+  document cannot present, SYSTEM falls back to the stock menu: the session
+  presses the stock OPTIONS button and, 720 ms later when the stock list has
+  unfolded, the stock item (`retainedStockFollow`). The stock menu hands
+  back when its list closes.
 
 - **Mods and credits use openQ4's routes unchanged.** MODS publishes the
   installed mods into the title document and raises its `modsModalShow`
@@ -197,7 +205,8 @@ verbs, openD3 adds:
 | `newGame0` to `newGame3` | Sets the stock menu's `skill` and runs its `startGame` (`game/mars_city1`, or `game/erebus1` when `d3xp` is the game). `newGame3` plays the locked sound while `g_nightmare` is off |
 | `optionsControls`, `optionsGame` | Present the CONTROLS or GAME OPTIONS page over the home; the stock page where its document cannot present |
 | `optionsSystem` | Opens the retained SYSTEM page; the stock one where it cannot present |
-| `optionsDefaults` | Opens the stock DEFAULTS dialog through the stock options list |
+| `optionsDefaults` | Raises the home's `defaultsModalShow` |
+| `defaultsYes` | The dialog's YES: `exec cvar_restart` and `loadBinds` as the stock dialog runs them, `ui_retained` kept, then `defaultsModalHide` |
 | `gameName` | Sets `ui_name` from the page's `game.name` |
 | `mpBrowser` | Opens the Game Browser and asks for a new server list; the stock browser where it cannot present |
 | `mpCreate` | Opens the Create Server page; the stock one where it cannot present |
@@ -409,8 +418,16 @@ from the window.
   with the list open.
 - GAME OPTIONS: Show Decals stepped to No and Smooth Mouse stepped from 1 to
   3, both read back from the written config.
-- DEFAULTS opens the stock reset dialog; closing the stock list brings the
-  retained home back.
+- DEFAULTS opens the RESET ALL DEFAULTS dialog over the title, CANCEL focused,
+  with the options list still open behind it; CANCEL closes it. With
+  `g_showPlayerShadow` set to 0 and W unbound beforehand, YES closed the
+  dialog, left the list open and the retained title presenting, and read
+  back `g_showPlayerShadow` 1, W bound to `_forward` (`default.cfg` ran
+  again), `com_machineSpec` 2 (`setMachineSpec` ran) and `ui_retained` still
+  1. Not exercised from the pause. As under the stock dialog the reset puts
+  `logFile`, `r_fullscreen` and `com_maxfps` back to their defaults with
+  everything else: the log goes quiet until `logFile` is set again, and the
+  written config carries `r_fullscreen 1` for the next launch.
 - SYSTEM, from the title and from the pause: the service accepts the page and
   fills it from its draft. Vertical Sync stepped to Yes shows "Unsaved
   changes." and lights APPLY CHANGES; applying it wrote `r_swapInterval "1"`
@@ -567,6 +584,9 @@ every platform but Windows.
   stay stock. The word's first typed frame, a lone L, is skipped: it has
   no string of its own. The bar's frame is square-cornered lines where the
   stock art is slightly rounded.
+- **DEFAULTS.** The dialog has no stock fallback: it is part of the home
+  documents, so it presents wherever the home does. It was exercised from
+  the title only.
 - **SYSTEM.** The page offers the stock page's settings, not the service's
   whole catalog: no display or refresh-rate choice, no borderless or desktop
   full screen, no window size fields, no renderer or device choice, no

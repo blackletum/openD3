@@ -215,7 +215,9 @@ release of Doom 3 (1.3.1 packs):
   `game/alphalabs1` was saved, saved over and deleted; and the options list
   with its CONTROLS, GAME OPTIONS and SYSTEM pages, on which a key was bound,
   two game settings changed and vertical sync was applied through the
-  settings service; the mods panel and the credits page; and the multiplayer
+  settings service, and the DEFAULTS dialog, whose YES put a changed game
+  setting and an unbound key back to their defaults; the mods panel and the
+  credits page; and the multiplayer
   list and Game Browser, from which a client joined a dedicated server of the
   same build on the same machine as far as the map load and the player's
   spawn; and the Create Server page, from which a LAN deathmatch server was

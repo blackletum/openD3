@@ -242,7 +242,7 @@ bool SessionMenuCommand(const std::string& command) {
 		// Doom 3's title: the difficulty list's four starts and the menu's own
 		// sounds (idSessionLocal::HandleRetainedSessionRequest).
 		"newGame0","newGame1","newGame2","newGame3",
-		"optionsControls","optionsGame","optionsSystem","optionsDefaults","gameName",
+		"optionsControls","optionsGame","optionsSystem","optionsDefaults","defaultsYes","gameName",
 		"mpBrowser","mpCreate","mpSettings","joinCreate",
 		"createBrowser","createGameTypeNext","createRateNext","mpRateNext","mpName",
 		// Doom 3's in-game multiplayer menu.

@@ -66,6 +66,8 @@ STR = {
     "mp.browser": "#str_02198", "mp.browser.hint": "#str_02199", "mp.create": "#str_02200", "mp.create.hint": "#str_02201",
     "mp.settings": "#str_04100", "mp.close": "#str_02214",
     "opt.system": "#str_00167", "opt.system.hint": "#str_02170", "opt.defaults": "#str_04086", "opt.defaults.hint": "#str_04087",
+    "defaults.title": "#str_04130", "defaults.body": "#str_04131", "defaults.yes.hint": "#str_04133",
+    "cancel": "#str_00124", "defaults.cancel.hint": "#str_04134",
     "mods": "#str_04098", "mods.hint": "#str_04108",
     "updates": "#str_04837", "updates.hint": "#str_04838",
     "credits": "#str_02218", "credits.hint": "#str_02219",
@@ -300,8 +302,9 @@ def home_document(pause: bool) -> dict:
     the exit dialog (and, paused, the quit-game dialog) over them.
 
     The session's requests: newGame0 to newGame3, loadGame, saveGame,
-    multiplayer, settings, mods, updates, credits, resume, quitToMenu, quit.
-    Its events: open, returnHome, depart, release."""
+    multiplayer, settings, mods, updates, credits, resume, quitToMenu, quit,
+    and defaultsYes from the DEFAULTS dialog. Its events: open, returnHome,
+    depart, release, defaultsModalShow and defaultsModalHide."""
     doc = Document("opend3.pause" if pause else "opend3.title")
     for request in ("loadGame", "settings", "quit"):
         doc.session(request)
@@ -360,7 +363,16 @@ def home_document(pause: bool) -> dict:
         ("exit_no", STR["no"], 210, None, "exitCancel", None)], initial="exit_no", back="exitCancel")
     doc.events["exitAsk"] = [{"op": "action", "action": "soundForward"}, {"op": "call", "event": "exitModalShow"}]
     doc.events["exitCancel"] = [{"op": "action", "action": "soundBack"}, {"op": "call", "event": "exitModalHide"}]
-    modals = [exit_modal]
+    # DEFAULTS asks as the stock RESET ALL DEFAULTS dialog does (section
+    # 9.3): the session raises defaultsModalShow for the options list's item,
+    # YES is the session's defaultsYes and CANCEL keeps the focus.
+    doc.session("defaultsYes")
+    defaults_modal = dialog(doc, "defaultsModal", STR["defaults.title"], STR["defaults.body"], [
+        ("defaults_yes", STR["yes"], 61, "defaultsYes", None, STR["defaults.yes.hint"]),
+        ("defaults_cancel", STR["cancel"], 210, None, "defaultsCancel", STR["defaults.cancel.hint"])],
+        initial="defaults_cancel", back="defaultsCancel")
+    doc.events["defaultsCancel"] = [{"op": "action", "action": "soundBack"}, {"op": "call", "event": "defaultsModalHide"}]
+    modals = [exit_modal, defaults_modal]
     if not pause:
         # MODS opens the session's mods dialog, drawn as the stock Mods page.
         modals.append(mods_panel(doc))

@@ -295,6 +295,11 @@ static const char *const RETAINED_MP_WELCOME_MENU_PAGES[] = {
 static const int RETAINED_MP_WELCOME_SLOTS = 4;
 // How long a hand-off waits for the stock menu's column to show its button.
 static const int RETAINED_MP_HANDOFF_MSEC = 500;
+#if defined( OPEND3 ) && !defined( ID_DEDICATED )
+// A Doom 3 page's closing, played before its way out is answered (defined
+// with HandleRetainedSessionRequest).
+static bool Session_BeginRetainedPageLeave( idUserInterface *gui, const char *request );
+#endif
 
 static bool Session_RetainedMultiplayerEnabled( bool welcome ) {
 	const char *const *missing = welcome ? RETAINED_MP_WELCOME_MISSING_PAGES : RETAINED_MP_ESCAPE_MISSING_PAGES;
@@ -5840,7 +5845,12 @@ void idSessionLocal::DispatchCommand( idUserInterface *gui, const char *menuComm
 			HandleRetainedSessionRequest( gui, sessionRequest.c_str() );
 		}
 		if ( closeRequested ) {
+#if defined( OPEND3 ) && !defined( ID_DEDICATED )
+			// Doom 3's SYSTEM page closes as its other pages do (UpdateRetainedPage).
+			if ( gui == guiSystem ) { if ( !Session_BeginRetainedPageLeave( gui, "" ) ) ReturnSystemSettings(); }
+#else
 			if ( gui == guiSystem ) ReturnSystemSettings();
+#endif
 			else if ( gui == guiTest ) TestGUI( NULL );
 			else if ( gui == guiRetainedHome ) HandleRetainedSessionRequest( gui, "resume" );
 			else if ( gui == guiRetainedMultiplayer ) HandleRetainedMultiplayerRequest( gui, "mpClose" );
@@ -7362,6 +7372,28 @@ static void Session_DrawRetainedScene( idUserInterface *menu, int presentationTi
 	Session_DrawRetainedScene( menu, presentationTime, RETAINED_STOCK_FURNITURE,
 		static_cast<int>( sizeof( RETAINED_STOCK_FURNITURE ) / sizeof( RETAINED_STOCK_FURNITURE[0] ) ) );
 }
+
+// Doom 3's grid lights the line the pointer crosses and lets it decay
+// (section 9.1 of the visual specification). The stock menu still draws the
+// grid under the retained home, which takes the input, and the grid's hover
+// catchers are the stock menu's own windows: the home's pointer is shown to
+// the stock menu, as a move and never a press. The stock buttons under it
+// light too, unseen (their furniture is not drawn), which is the state a
+// hand-off to a stock page should find them in.
+static void Session_RouteRetainedScenePointer( idUserInterface *menu, idUserInterface *home ) {
+	static float shownX = -1.0f, shownY = -1.0f;
+	const float x = home->CursorX(), y = home->CursorY();
+	if ( x == shownX && y == shownY ) {
+		return;
+	}
+	shownX = x;
+	shownY = y;
+	menu->SetCursor( x, y );
+	sysEvent_t ev;
+	memset( &ev, 0, sizeof( ev ) );
+	ev.evType = SE_MOUSE;
+	menu->HandleEvent( &ev, common->GetPresentationTime() );
+}
 #else
 static const retainedHandoff_t RETAINED_HANDOFFS[] = {
 	{ "singlePlayer",	"main_b_newgame",		RETAINED_HANDOFF_PAGE },
@@ -7983,6 +8015,9 @@ void idSessionLocal::RetainedHomeFrameEvent() {
 	if ( VR_HasInputFocus() ) {
 		guiMainMenu->SetCursor( guiRetainedHome->CursorX(), guiRetainedHome->CursorY() );
 	}
+#if defined( OPEND3 ) && !defined( ID_DEDICATED )
+	Session_RouteRetainedScenePointer( guiMainMenu, guiRetainedHome );
+#endif
 	sysEvent_t ev;
 	memset( &ev, 0, sizeof( ev ) );
 	ev.evType = SE_NONE;
@@ -8329,8 +8364,42 @@ static void Session_ApplyRetainedMpSetting( idUserInterface *gui, const char *re
 }
 #endif
 
+#if defined( OPEND3 ) && !defined( ID_DEDICATED )
+// A Doom 3 page's way out waits for the page's closing (section 8.4 of the
+// visual specification): its pieces fade together while its plate shrinks,
+// and the request is answered when their light is gone. The stock menu holds
+// the screen for 400 ms; the page's pageLeave runs 250.
+static const int RETAINED_PAGE_LEAVE_MSEC = 250;
+static idUserInterface *retainedLeaveGui = NULL;	// the page closing now (NULL: none)
+static idStr retainedLeaveRequest;					// its request; empty for the SYSTEM page's dismissal
+static int retainedLeaveAt = 0;						// presentation time to answer it
+static bool retainedLeaveAnswering = false;
+
+// True when the request waits: the page started closing, or already was.
+static bool Session_BeginRetainedPageLeave( idUserInterface *gui, const char *request ) {
+	if ( retainedLeaveAnswering ) {
+		return false;
+	}
+	if ( retainedLeaveGui != gui ) {
+		retainedLeaveGui = gui;
+		retainedLeaveRequest = request;
+		retainedLeaveAt = common->GetPresentationTime() + RETAINED_PAGE_LEAVE_MSEC;
+		gui->HandleNamedEvent( "pageLeave" );
+	}
+	return true;
+}
+#endif
+
 void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const char *request ) {
 #ifndef ID_DEDICATED
+#if defined( OPEND3 )
+	if ( request != NULL && gui != NULL && gui == guiActive &&
+			( !idStr::Icmp( request, "loadBack" ) || !idStr::Icmp( request, "saveBack" ) ||
+			  !idStr::Icmp( request, "controlsBack" ) || !idStr::Icmp( request, "gameBack" ) ) &&
+			Session_BeginRetainedPageLeave( gui, request ) ) {
+		return;
+	}
+#endif
 	// The system check's answers (Session_presetcheck.cpp).
 	if ( request != NULL && Session_PresetCheckOwns( gui ) ) {
 		Session_PresetCheckRequest( gui, request );
@@ -8929,6 +8998,26 @@ bool idSessionLocal::RetainedChildPageActive() const {
 // abandons it.
 void idSessionLocal::UpdateRetainedPage() {
 #ifndef ID_DEDICATED
+#if defined( OPEND3 )
+	// A closing page is answered when its closing has played; anything else
+	// taking the screen first abandons it.
+	if ( retainedLeaveGui != NULL ) {
+		if ( guiActive != retainedLeaveGui ) {
+			retainedLeaveGui = NULL;
+		} else if ( common->GetPresentationTime() >= retainedLeaveAt ) {
+			idUserInterface *page = retainedLeaveGui;
+			const idStr request = retainedLeaveRequest;
+			retainedLeaveGui = NULL;
+			retainedLeaveAnswering = true;
+			if ( request.Length() > 0 ) {
+				HandleRetainedSessionRequest( page, request.c_str() );
+			} else if ( page == guiSystem ) {
+				ReturnSystemSettings();
+			}
+			retainedLeaveAnswering = false;
+		}
+	}
+#endif
 	if ( retainedPagePending == NULL ) {
 		return;
 	}

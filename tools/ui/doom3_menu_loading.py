@@ -33,7 +33,7 @@ build_doom3_menus.py writes the document.
 from __future__ import annotations
 
 from doom3_menu_kit import (
-    DECEL, FACE_AN, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, colour, em, font, group, keyword, label, length,
+    DECEL, FACE_AN, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, colour, em, font, group, held, keyword, label, length,
     linear, mid, number, path, radial, rgb, solid, track, transform, typeface, vector,
 )
 
@@ -84,13 +84,6 @@ def face_40(face: str, tint: list, align: str = "left") -> dict:
 
 SPREAD = 80.0   # u: how far a band's node runs past each screen edge, for its slide and its step's place
 LEAD, TRAIL = {"fraction": 0, "dp": 0}, {"fraction": 1, "dp": 0}
-
-
-def held(keys: list) -> list:
-    """Keys that start from their first value whatever the last load left: a
-    timeline starts from the property's current value, so the first value is
-    set again 1 ms in."""
-    return [keys[0], (1, keys[0][1]), *keys[1:]]
 
 
 def edge_strip(ident: str, points: list, start: tuple, end: tuple, toward_edge: bool) -> dict:

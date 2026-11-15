@@ -21,7 +21,7 @@ from doom3_menu_kit import (
     CANVAS_H, CANVAS_W, DECEL, FACE_AN, FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour,
     control, dialog, down, edge_glow, far, font, group, hairline, item_outline, keyword, label, length, linear,
     nav_button, number, outset, outset_box, path, picture, radial, rgb, solid, stroke, token, track, transform,
-    typeface, vector,
+    typeface, vector, held, nav_modes,
 )
 
 ROWS = 64           # RETAINED_LOAD_ROWS: the saves the list holds at a time
@@ -78,14 +78,16 @@ def page_shell(doc: Document, plate: list, bridge: list, flairs: list) -> list:
                          [path(f"flair{index}", u_points(points), fill=solid([1, 1, 1, 1])) for index, points in enumerate(flairs)])
     small = transform(sx=0.62, sy=0.46)
 
+    # Each track starts from nothing whatever the last showing left (a
+    # timeline starts from the property's current value).
     def born(node: str, at: int) -> list:
         """A piece's white flash: 40 % at `at`, most of the way down by 50 ms, gone by 350."""
-        keys = [(0, number(0))] + ([(at - 1, number(0))] if at > 1 else []) + [(max(at, 1), number(0.4)), (at + 50, number(0.25)),
-                                                                              (at + 350, number(0)), (600, number(0))]
+        keys = [(0, number(0)), (1, number(0))] + ([(at - 1, number(0))] if at > 2 else []) + [
+            (max(at, 2), number(0.4)), (at + 50, number(0.25)), (at + 350, number(0)), (600, number(0))]
         return [track(node, "opacity", keys)]
 
     def shown(node: str, at: int) -> list:
-        keys = [(0, number(0))] + ([(at - 1, number(0))] if at > 1 else []) + [(max(at, 1), number(1)), (600, number(1))]
+        keys = [(0, number(0)), (1, number(0))] + ([(at - 1, number(0))] if at > 2 else []) + [(max(at, 2), number(1)), (600, number(1))]
         return [track(node, "opacity", keys)]
 
     doc.state["page.shown"] = {"type": "boolean", "initial": False}
@@ -93,8 +95,8 @@ def page_shell(doc: Document, plate: list, bridge: list, flairs: list) -> list:
     doc.timeline("pageEnter", 600, [
         *shown("plate-bridge", 0), *born("plate-bridge-flash", 0),
         *shown("plate-body", 50), *born("plate-flash", 50),
-        track("plate-body", "transform", [(0, small), (50, small, DECEL), (450, transform()), (600, transform())]),
-        track("plate-flash", "transform", [(0, small), (50, small, DECEL), (450, transform()), (600, transform())]),
+        track("plate-body", "transform", held([(0, small), (50, small, DECEL), (450, transform()), (600, transform())])),
+        track("plate-flash", "transform", held([(0, small), (50, small, DECEL), (450, transform()), (600, transform())])),
         *([*shown("plate-flair", 150), *born("plate-flair-flash", 150)] if flairs else []),
     ])
     doc.timeline("pageContent", 400, [track("page-content", "opacity", [(0, number(1)), (400, number(1))])], complete="pageShown")
@@ -315,11 +317,42 @@ SAVE_FLAIRS = [[(490, 259), (497, 252), (497, 333), (490, 340)], [(328, 380), (4
 
 
 def page_frame(doc: Document, shell: list, content: list, owner: dict, modals: list, on_canvas: bool,
-               content_box: tuple = (53, 48, 540, 330)) -> dict:
+               content_box: tuple = (53, 48, 540, 330), *, back: str) -> dict:
     """A page over the home that handed off to it: the plate and the content
     on the centred 4:3 canvas (section 3), the owning nav button drawn again
     in its home place as the way back, the hint line, the edge glow and the
-    page's dialogs. The home hides its own copy of that button and its hint."""
+    page's dialogs. The home hides its own copy of that button and its hint.
+
+    The owning button stands open (section 8.4): its band flashes and
+    settles to chrome.fill.open and its outline goes out, as the home's own
+    button does when it grows into a sub-list.
+
+    Closing (sections 8.2 and 8.4): `pageClose` asks with `back`, the
+    page's own way out. The session raises `pageLeave` before it answers
+    (RETAINED_PAGE_LEAVE_MSEC): the content switches off at once and the
+    pieces fade together, without a flash, in 50 + 200 ms while the plate
+    shrinks back. The stock holds the screen for its 400 ms shrink; the page
+    is answered when its light is gone."""
+    doc.state["page.closing"] = {"type": "boolean", "initial": False}
+    pieces = [node["id"] for node in shell if node["id"] in ("plate-bridge", "plate-body", "plate-flair")]
+    # An apply bar is the page's own piece: it arrives 100 ms in as a flash
+    # (section 8.2's order) and goes with the content. The owning nav button
+    # is the home's and stays.
+    own_bar = owner["id"] != "page_close"
+    if own_bar:
+        owner["properties"]["opacity"] = number(1)
+        doc.timeline("pageBar", 600, [
+            track(owner["id"], "opacity", held([(0, number(0)), (99, number(0)), (100, number(1)), (600, number(1))])),
+            track(f"{owner['id']}-openflash", "opacity", held([(0, number(0)), (99, number(0)), (100, number(0.4)), (150, number(0.25)),
+                                                               (450, number(0)), (600, number(0))]))])
+    doc.timeline("pageLeaving", 250, [
+        *[track(piece, "opacity", [(0, number(1)), (50, number(0.7)), (250, number(0))]) for piece in pieces],
+        *([track(owner["id"], "opacity", [(0, number(0)), (1, number(0)), (250, number(0))])] if own_bar else []),
+        track("plate-body", "transform", [(0, transform(), DECEL), (250, transform(sx=0.68, sy=0.54))])])
+    doc.events["pageClose"] = [{"op": "action", "action": back}]
+    doc.events["pageLeave"] = [{"op": "if", "condition": {"op": "!", "args": [{"state": "page.closing"}]},
+                                "then": [{"op": "setState", "values": {"page.closing": True, "page.shown": False}},
+                                         {"op": "playTimeline", "timeline": "pageLeaving"}]}]
     inner = group("page-content", {**box(*content_box), "display": keyword("none"), "opacity": number(1)}, content)
     doc.bind("page-content.display", "page-content", "display", {"op": "select", "args": [{"state": "page.shown"}, "block", "none"]})
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)},
@@ -327,8 +360,14 @@ def page_frame(doc: Document, shell: list, content: list, owner: dict, modals: l
     sides = [] if on_canvas else [group("lead-side", {**absolute(left=0, top=0, height=0), "width": length(50, "%")}, [owner])]
     stage = group("stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),
                             "margin-top": length(-CANVAS_H / 2)}, [canvas, *sides, doc.hint_line()])
-    doc.events["onActivate"] = [{"op": "setState", "values": {"page.shown": False}}, {"op": "playTimeline", "timeline": "pageEnter"},
+    doc.events["onActivate"] = [{"op": "setState", "values": {"page.shown": False, "page.closing": False}},
+                                {"op": "playTimeline", "timeline": "pageEnter"},
                                 {"op": "playTimeline", "timeline": "pageContent"}, {"op": "playTimeline", "timeline": "edgeGlow"}]
+    if own_bar:
+        doc.events["onActivate"].append({"op": "playTimeline", "timeline": "pageBar"})
+    else:
+        nav_modes(doc, "page_close")
+        doc.events["onActivate"].append({"op": "playTimeline", "timeline": "page_closeOpen"})
     root = group("screen", {**FULL, "font-family": font(FACE_DEFAULT), "font-size": length(18), "color": colour([1, 1, 1, 1])},
                  [stage, edge_glow(doc), *modals])
     return doc.build(root)
@@ -398,10 +437,11 @@ def load_game_document() -> dict:
     doc.events["deleteAsk"] = [{"op": "action", "action": "soundForward"}, {"op": "call", "event": "deleteModalShow"}]
     doc.events["deleteCancel"] = [{"op": "action", "action": "soundBack"}, {"op": "call", "event": "deleteModalHide"}]
     doc.events["deleteConfirm"] = [{"op": "action", "action": "delete"}, {"op": "call", "event": "deleteModalHide"}]
-    doc.events["onBack"] = [{"op": "action", "action": "back"}]
+    doc.events["onBack"] = [{"op": "call", "event": "pageClose"}]
 
-    owner = nav_button(doc, "page_close", STR["load"], SECOND_PLACE, action="back", hint=STR["load.close"])
-    return page_frame(doc, page_shell(doc, LOAD_PLATE, LOAD_BRIDGE, LOAD_FLAIRS), content, owner, [delete_modal], on_canvas=True)
+    owner = nav_button(doc, "page_close", STR["load"], SECOND_PLACE, event="pageClose", hint=STR["load.close"])
+    return page_frame(doc, page_shell(doc, LOAD_PLATE, LOAD_BRIDGE, LOAD_FLAIRS), content, owner, [delete_modal], on_canvas=True,
+                      back="back")
 
 
 def save_game_document() -> dict:
@@ -430,7 +470,7 @@ def save_game_document() -> dict:
     doc.events["nameEntered"] = [{"op": "action", "action": "save"}]
     doc.events["saveRequested"] = [{"op": "if", "condition": {"state": "ui.numberDraftsPending"},
                                     "then": [{"op": "action", "action": "editName"}], "else": [{"op": "action", "action": "save"}]}]
-    doc.events["onBack"] = [{"op": "action", "action": "back"}]
+    doc.events["onBack"] = [{"op": "call", "event": "pageClose"}]
 
     content = [*title_and_rule("save", STR["save"], 410), *save_list(doc, "save", [{"op": "call", "event": "saveRequested"}], STR["save"])]
     field = name_field(doc, "save_name", box(8, 297, 295, 16), "save.name", "rename", 32)
@@ -455,6 +495,6 @@ def save_game_document() -> dict:
         ("notice_ok", STR["ok"], 135, None, "noticeClose", None)], initial="notice_ok", back="noticeClose", contents=[notice])
     doc.events["noticeClose"] = [{"op": "action", "action": "soundBack"}, {"op": "call", "event": "noticeModalHide"}]
 
-    owner = nav_button(doc, "page_close", STR["save"], FIRST_PLACE, action="back", hint=STR["save.close"])
+    owner = nav_button(doc, "page_close", STR["save"], FIRST_PLACE, event="pageClose", hint=STR["save.close"])
     return page_frame(doc, page_shell(doc, SAVE_PLATE, SAVE_BRIDGE, SAVE_FLAIRS), content, owner, [overwrite_modal, notice_modal],
-                      on_canvas=False)
+                      on_canvas=False, back="back")

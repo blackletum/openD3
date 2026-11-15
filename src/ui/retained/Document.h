@@ -250,6 +250,8 @@ struct Control {
 // bindings show what it names in place, as a page section's summary does.
 struct DetailSpec {
 	std::string state, card;
+	// openD3: played when the subject changes to a control that names a detail.
+	std::string shown;
 	double none = -1;
 };
 struct ControlReadback {

@@ -128,12 +128,12 @@
      "node": "load-top-band",
      "property": "transform",
      "keys": [
+      {"atMs": 0, "value": {"type": "transform", "unit": "dp", "value": [-30.0, 0, 1, 1, 0]}},
       {
-       "atMs": 0,
+       "atMs": 1,
        "value": {"type": "transform", "unit": "dp", "value": [-30.0, 0, 1, 1, 0]},
        "easing": [0.2, 0.0, 0.2, 1.0]
       },
-      {"atMs": 1, "value": {"type": "transform", "unit": "dp", "value": [-30.0, 0, 1, 1, 0]}},
       {"atMs": 400, "value": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}},
       {"atMs": 900, "value": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}}
      ]
@@ -434,12 +434,12 @@
      "node": "load-bottom-band",
      "property": "transform",
      "keys": [
+      {"atMs": 0, "value": {"type": "transform", "unit": "dp", "value": [45.0, 0, 1, 1, 0]}},
       {
-       "atMs": 0,
+       "atMs": 1,
        "value": {"type": "transform", "unit": "dp", "value": [45.0, 0, 1, 1, 0]},
        "easing": [0.2, 0.0, 0.2, 1.0]
       },
-      {"atMs": 1, "value": {"type": "transform", "unit": "dp", "value": [45.0, 0, 1, 1, 0]}},
       {"atMs": 400, "value": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}},
       {"atMs": 900, "value": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, 0]}}
      ]

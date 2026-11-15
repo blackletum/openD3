@@ -44,7 +44,8 @@ TAB_CURRENT = rgb("#000D00", 0.4)
 PANEL_FILL = rgb("#1A3333", 0.5)
 PANEL_BORDER = rgb("#1A4040")
 PANEL_LINK = rgb("#337366", 0.3)
-FRAME_LINE = rgb("#8CBFBF", 0.36)
+FRAME_LINE = rgb("#8CBFBF", 0.40)   # mp.line at the top of its flicker (33 to 40 %)
+SHADOW = [0, 0, 0, 1]
 BUTTON_FILL = rgb("#99FFFF", 0.3)
 BUTTON_BORDER = rgb("#66B2B2")
 BUTTON_TEXT = rgb("#99FFFF")
@@ -106,7 +107,7 @@ def panel(ident: str, tab_left: float, tab_width: float, rect: tuple, content: l
                       (U * (tab_left - 16), U * 33)], fill=solid(PANEL_LINK))])
     frame_points = [(U * (left - 6), U * (top - 6)), (U * (left + width + 6), U * (top - 6)), (U * (left + width + 6), U * (top + height + 6)),
                     (U * (left - 6), U * (top + height + 6))]
-    frame = vector(f"{ident}-frame", {**absolute(left=U * -20, top=0, width=CANVAS_W + U * 40, height=CANVAS_H), **NO_POINTER},
+    frame = vector(f"{ident}-frame", {**absolute(left=U * -20, top=0, width=CANVAS_W + U * 40, height=CANVAS_H), **NO_POINTER, "opacity": number(1)},
                    [path("frame", [(x + U * 20, y) for x, y in frame_points], closed=leading_frame, stroke=stroke(solid(FRAME_LINE), U, minimum=1))])
     backing = vector(f"{ident}-backing", {**box(left, top, width, height), **NO_POINTER},
                      [path("fill", WHOLE, fill=solid(PANEL_FILL)), path("border", EDGE, stroke=stroke(solid(PANEL_BORDER), U, minimum=1))])
@@ -114,10 +115,23 @@ def panel(ident: str, tab_left: float, tab_width: float, rect: tuple, content: l
     return group(ident, {**absolute(left=0, top=0, width=CANVAS_W, height=0), "display": keyword("none")}, [link, frame, backing, body])
 
 
+def shadowed(node: dict) -> dict:
+    """`node`, a text, over the stock's shadow 1: its black copy 1 u down and
+    to the trailing side, at the text's own alpha. The stock gives it to the
+    labels and links that stand over the game with nothing behind them."""
+    props = dict(node["properties"])
+    place = {name: props.pop(name) for name in ("position", "left", "top", "right", "bottom", "width", "height", "display") if name in props}
+    tint = props["color"]["value"]
+    under = {"id": f"{node['id']}-shadow", "type": "text",
+             "properties": {**props, **FULL, "color": colour([*SHADOW[:3], tint[3]]), "left": length(U), "top": length(U)}}
+    node["properties"] = {**props, **FULL}
+    return group(f"{node['id']}-set", {**place, **NO_POINTER}, [under, node])
+
+
 def row_label(ident: str, key: str, centre: float, tint: list = TEXT) -> dict:
     """A row's label (section 10.13): Bank 0.25, right-aligned to the gutter
-    at x 120."""
-    return label(ident, key, {**box(4, centre - 8, 116, 16), **typeface(FACE_BANK, 0.25, 16, tint, "right"), **NO_POINTER})
+    at x 120, with the stock's shadow."""
+    return shadowed(label(ident, key, {**box(4, centre - 8, 116, 16), **typeface(FACE_BANK, 0.25, 16, tint, "right"), **NO_POINTER}))
 
 
 def filled_button(doc: Document, ident: str, top: float, action: str, text_state: str) -> dict:
@@ -164,7 +178,7 @@ def toggle(doc: Document, ident: str, key: str, left: float, centre: float, acti
 def text_link(doc: Document, ident: str, key: str, top: float, action: str) -> dict:
     """A text link (section 10.13): 127 x 17 u, right-aligned, mp.menu.tab,
     white under the pointer in 50 ms."""
-    text_node = label(f"{ident}-label", key, {**FULL, **typeface(FACE_BANK, 0.25, 17, TAB_TEXT, "right"), **NO_POINTER})
+    text_node = shadowed(label(f"{ident}-label", key, {**FULL, **typeface(FACE_BANK, 0.25, 17, TAB_TEXT, "right"), **NO_POINTER}))
     ids = doc.states(ident, [(f"{ident}-label", "color", {"default": colour(TAB_TEXT), "hover": colour(TEXT)}, 50, 50)])
     return group(ident, box(2, top, 127, 17), [text_node], control={"role": "button", "label": key, "action": action, "states": ids})
 
@@ -459,6 +473,9 @@ def multiplayer_menu_document() -> dict:
         panels.append(node)
     hint = label("mp-hint", "#str_04156", {**box(12, 425, 256, 30), **typeface(FACE_BANK, 0.25, 30, TEXT), **NO_POINTER, "opacity": number(1)})
     doc.timeline("mpHint", 2000, [track("mp-hint", "opacity", [(0, number(1)), (1000, number(0.4)), (2000, number(1))])], iterations=0)
+    # The frame line flickers between 40 and 33 % on the stock's 400 ms table.
+    doc.timeline("mpFlicker", 400, [track(f"{node['id']}-frame", "opacity", [(0, number(1)), (200, number(0.825)), (400, number(1))])
+                                    for node in panels], iterations=0)
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)},
                    [*strip(), *tabs, *panels, hint])
     stage = group("stage", {**FULL, "display": keyword("none")}, [canvas])
@@ -466,7 +483,7 @@ def multiplayer_menu_document() -> dict:
     # The session raises `open` as the card covers the game's menu and
     # `release` as the menu closes.
     doc.events["open"] = [{"op": "setState", "values": {"mp.shown": True, "mp.tab": 0, "vote.type": -1, "vote.item_count": 0}},
-                          {"op": "playTimeline", "timeline": "mpHint"}]
+                          {"op": "playTimeline", "timeline": "mpHint"}, {"op": "playTimeline", "timeline": "mpFlicker"}]
     doc.events["release"] = [{"op": "setState", "values": {"mp.shown": False}}]
     doc.events["onBack"] = [{"op": "action", "action": "mpClose"}]
     root = group("screen", {**FULL, "font-family": font(FACE_DEFAULT), "font-size": length(18), "color": colour([1, 1, 1, 1])}, [stage])

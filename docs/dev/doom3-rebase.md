@@ -233,7 +233,10 @@ release of Doom 3 (1.3.1 packs):
   key, called a frag limit vote that passed, and disconnected, and whose
   System tab opened the SYSTEM page over the game, where vertical sync was
   applied; and the hell level's and the first level's loading screens on
-  `hell1` and `mars_city1`.
+  `hell1` and `mars_city1`; and, in stills taken mid-motion, the menus'
+  choreography: the nav band standing aside and dimming, sub-lists and
+  pages closing, the top bar's slide, the hint's wipe, the bindings' row
+  flash and the grid lighting under the pointer.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
   what was not seen.
 - Saving and loading in the same build (2026-11-14, OpenGL, console

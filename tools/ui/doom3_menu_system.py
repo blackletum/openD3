@@ -303,9 +303,7 @@ def system_document() -> dict:
 
     # APPLY CHANGES acts while the draft can be applied.
     doc.events["apply"] = [{"op": "if", "condition": st("settings.canApply"), "then": [{"op": "action", "action": "apply"}]}]
-    bar = apply_bar(doc, STR["apply"], 238, STR["apply.hint"], None)
-    bar["control"].pop("action", None)
-    bar["control"]["event"] = "apply"
+    bar = apply_bar(doc, STR["apply"], 238, STR["apply.hint"], "apply")
     doc.bind("page_apply.enabled", "page_apply", "enabled", both(st("settings.canApply"), no(st("settings.confirmationVisible"))))
 
     # A display change asks to be kept (the service's confirmation). Its
@@ -344,16 +342,16 @@ def system_document() -> dict:
     hide = {"op": "setState", "values": {"page.discardVisible": False}}
     doc.events["continueEditing"] = [hide, {"op": "action", "action": "soundBack"}]
     doc.events["discard"] = [{"op": "if", "condition": both(st("page.discardVisible"), no(st("settings.busy"))),
-                              "then": [{"op": "action", "action": "cancel"}, hide, {"op": "action", "action": "dismiss"}]}]
+                              "then": [{"op": "action", "action": "cancel"}, hide, {"op": "call", "event": "pageClose"}]}]
     idle = both(no(st("settings.busy")), op("||", op("==", st("settings.phase"), 0), op("==", st("settings.phase"), 1)))
     doc.events["onBack"] = [{"op": "if", "condition": st("page.discardVisible"), "then": [{"op": "call", "event": "continueEditing"}], "else": [
         {"op": "if", "condition": idle, "then": [
             {"op": "if", "condition": st("settings.dirty"), "then": [{"op": "setState", "values": {"page.discardVisible": True}},
                                                                       {"op": "action", "action": "soundForward"}],
-             "else": [{"op": "action", "action": "cancel"}, {"op": "action", "action": "dismiss"}]}]}]}]
+             "else": [{"op": "action", "action": "cancel"}, {"op": "call", "event": "pageClose"}]}]}]}]
 
     document = page_frame(doc, page_shell(doc, SYSTEM_PLATE, BRIDGE, FLAIRS), content, bar, [confirm, discard], on_canvas=True,
-                          content_box=(165, 30, 390, 370))
+                          content_box=(165, 30, 390, 370), back="dismiss")
     document["events"]["onActivate"] = [{"op": "action", "action": "begin"}, {"op": "setState", "values": {"page.discardVisible": False}},
                                         *document["events"]["onActivate"]]
     # Opened from the in-game multiplayer menu's System tab (the session sets

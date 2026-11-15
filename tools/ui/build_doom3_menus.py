@@ -23,7 +23,7 @@ from pathlib import Path
 from doom3_menu_kit import (
     CANVAS_H, CANVAS_W, DECEL, FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour,
     dialog, edge_glow, font, footer_link, group, keyword, label, lead, length, menu_item, mid, nav_button, number,
-    path, picture, render, solid, stroke, token, track, trail, transform, typeface, vector, walk,
+    path, picture, render, solid, stroke, token, track, trail, transform, typeface, vector, walk, held, nav_modes, SLIDE, far,
 )
 
 from doom3_menu_credits import credits_document, mods_panel
@@ -86,12 +86,17 @@ LOGO = "guis/assets/mainmenu/doom3"   # the stock logo bitmap (a bitmap exceptio
 
 # ----------------------------------------------------------------- the frame
 
-def frame() -> dict:
+def frame(doc: Document) -> dict:
     """Section 6.8's frame pieces in the Remastered layout (section 9.11):
     the top bar from the leading edge to the flare at the top-trailing
     corner; the bottom strips to both edges with their step at its stock
     distance from the trailing edge; the second band likewise. Each band is
-    one polygon in its own colour, and only the flare's boundary is stroked."""
+    one polygon in its own colour, and only the flare's boundary is stroked.
+
+    Section 8.4 (TopBarSlideOut, TopBarSlideIn): while a page is open the
+    top bar runs the full width and the flare has left the screen, over 300
+    ms each way (`barOut`, `barIn`). The second band's leading 50 u goes
+    while OPTIONS' list is open and the buttons stand aside (`frame-band-plug`)."""
     bar, strip, band = "chrome.bar", "chrome.strip", "chrome.band"
     paths = [
         # Top bar: a 12 u band at 60 % of the colour over a 4 u line at 100 %.
@@ -99,22 +104,84 @@ def frame() -> dict:
              fill=solid(token(bar, 0.12))),
         path("bar-line", [(lead(0), U * 11), (trail(542), U * 11), (trail(542), U * 15), (lead(0), U * 15)],
              fill=solid(token(bar))),
-        # The flare: the bar continued, widening toward the trailing edge
-        # along a concave arc and a 45 degree run, about 37 u deep at the edge.
-        path("flare", [(trail(542), U * -1), (trail(640), U * -1), (trail(640), U * 37), (trail(629), U * 27),
-                       ("q", (trail(614), U * 16), (trail(594), U * 15)), (trail(542), U * 15)],
-             fill=solid(token(bar, 0.12))),
-        path("flare-line", [(trail(542), U * 13), (trail(594), U * 13), ("q", (trail(614), U * 14), (trail(629), U * 25.5)),
-                            (trail(640), U * 35.5)], closed=False, stroke=stroke(solid(token(bar)), U * 3, minimum=1)),
         # Bottom strips: 12 u at the leading side, 29 u at the trailing side.
         path("strip", [(lead(0), U * 468), (trail(371), U * 468), (trail(388), U * 451), (trail(640), U * 451),
                        (trail(640), U * 480), (lead(0), U * 480)], fill=solid(token(strip))),
         path("strip-chamfer", [(lead(0), U * 447), (lead(20), U * 468), (lead(0), U * 468)], fill=solid(token(strip))),
         # Second band: 24 u tall under the nav buttons, 7 u toward the trailing edge.
-        path("band", [(lead(187), U * 464), (lead(209), U * 440), (trail(640), U * 440), (trail(640), U * 447),
+        path("band", [(lead(237), U * 464), (lead(259), U * 440), (trail(640), U * 440), (trail(640), U * 447),
                       (trail(396), U * 447), (trail(379), U * 464)], fill=solid(token(band))),
     ]
-    return vector("frame", {**FULL, **NO_POINTER}, paths)
+    plug = vector("frame-band-plug", {**FULL, **NO_POINTER, "opacity": number(1)}, [
+        path("plug", [(lead(187), U * 464), (lead(209), U * 440), (lead(259), U * 440), (lead(237), U * 464)], fill=solid(token(band)))])
+
+    # The corner piece, in its own box at the top-trailing corner: x from 542.
+    def local(x: float, y: float) -> tuple:
+        return (U * (x - 542), U * (y + 2))
+
+    corner = {**absolute(right=0, top=U * -2, width=U * 98, height=U * 42), **NO_POINTER}
+    # The flare: the bar continued, widening toward the trailing edge along a
+    # concave arc and a 45 degree run, about 37 u deep at the edge.
+    flare = vector("frame-flare", {**corner, "transform": transform()}, [
+        path("flare", [local(542, -1), local(640, -1), local(640, 37), local(629, 27), ("q", local(614, 16), local(594, 15)), local(542, 15)],
+             fill=solid(token(bar, 0.12))),
+        path("flare-line", [local(542, 13), local(594, 13), ("q", local(614, 14), local(629, 25.5)), local(640, 35.5)], closed=False,
+             stroke=stroke(solid(token(bar)), U * 3, minimum=1))])
+    # The bar's own last 98 u, which the flare makes way for.
+    folded = transform(tx=-U * 49, sx=0.001)
+    extension = vector("frame-bar-ext", {**corner, "transform": folded}, [
+        path("band", [local(542, -1), local(640, -1), local(640, 11), local(542, 11)], fill=solid(token(bar, 0.12))),
+        path("line", [local(542, 11), local(640, 11), local(640, 15), local(542, 15)], fill=solid(token(bar)))])
+    doc.timeline("barOut", 300, [track("frame-bar-ext", "transform", [(0, folded, DECEL), (300, transform())]),
+                                 track("frame-flare", "transform", [(0, transform(), DECEL), (300, transform(tx=U * 98))])])
+    doc.timeline("barIn", 300, [track("frame-bar-ext", "transform", [(0, transform(), DECEL), (300, folded)]),
+                                track("frame-flare", "transform", [(0, transform(tx=U * 98), DECEL), (300, transform())])])
+    return group("frame", {**FULL, **NO_POINTER}, [vector("frame-bands", {**FULL, **NO_POINTER}, paths), plug, extension, flare])
+
+
+def sub_list(doc: Document, name: str, tab: str, rows: list, height: float, enter: list, focus_open: str, focus_close: str,
+             mode: str) -> None:
+    """A sub-list's opening and closing (section 8.4). `<name>.open` says
+    whether the list is the open one; `<name>.shown` keeps it drawn while it
+    closes. Opening: the tab grows upward as a flash that settles and the
+    items arrive 50 ms apart (the caller's `enter` tracks). Closing has no
+    stagger: the items go at once and the tab folds back into its button
+    over 300 ms, accel(0.4, 0.6). `<Name>Hide` drops the list in one frame,
+    for another list opening in its place. `mode` is the nav band's standing
+    while the list is open."""
+    title = {"opt": "options", "ng": "newGame", "mp": "mp"}[name]
+    doc.state[f"{name}.open"] = {"type": "boolean", "initial": False}
+    doc.state[f"{name}.shown"] = {"type": "boolean", "initial": False}
+    folded = transform(ty=height / 2, sy=0.02)
+    doc.timeline(f"{name}Enter", 700, enter)
+    doc.timeline(f"{name}Leave", 300, [
+        track(tab, "transform", [(0, transform(), SLIDE), (300, folded)]),
+        track(f"{tab}-flash", "opacity", [(0, number(0)), (300, number(0))]),
+        *[track(row, "opacity", [(0, number(0)), (1, number(0)), (300, number(0))]) for row in rows]], complete=f"{name}Gone")
+    doc.events[f"{name}Gone"] = [{"op": "if", "condition": {"op": "!", "args": [{"state": f"{name}.open"}]},
+                                  "then": [{"op": "setState", "values": {f"{name}.shown": False}}]}]
+    doc.session("soundForward")
+    doc.session("soundBack")
+    doc.events[f"{title}Open"] = [{"op": "setState", "values": {f"{name}.open": True, f"{name}.shown": True}},
+                                  {"op": "action", "action": "soundForward"}, {"op": "playTimeline", "timeline": f"{name}Enter"},
+                                  {"op": "call", "event": mode}, {"op": "focus", "control": focus_open}]
+    doc.events[f"{title}Close"] = [{"op": "if", "condition": {"state": f"{name}.open"},
+                                    "then": [{"op": "setState", "values": {f"{name}.open": False}}, {"op": "action", "action": "soundBack"},
+                                             {"op": "playTimeline", "timeline": f"{name}Leave"}, {"op": "call", "event": "navRest"},
+                                             {"op": "focus", "control": focus_close}]}]
+    doc.events[f"{title}Hide"] = [{"op": "setState", "values": {f"{name}.open": False, f"{name}.shown": False}}]
+    doc.events[f"{title}Toggle"] = [{"op": "if", "condition": {"state": f"{name}.open"},
+                                     "then": [{"op": "call", "event": f"{title}Close"}], "else": [{"op": "call", "event": f"{title}Open"}]}]
+
+
+def arrival(ident: str, row: int) -> list:
+    """A sub-list item's arrival (section 8.2): absent until its turn, 50 ms
+    after the item before it, then a white flash at 70 % that settles in 50
+    + 200 ms."""
+    at = 280 + 50 * row
+    return [track(f"{ident}-row", "opacity", held([(0, number(0)), (at - 1, number(0)), (at, number(1)), (700, number(1))])),
+            track(f"{ident}-arrive", "opacity", held([(0, number(0)), (at - 1, number(0)), (at, number(0.7)), (at + 50, number(0.4)),
+                                                      (at + 250, number(0))]))]
 
 
 def options_list(doc: Document) -> dict:
@@ -123,18 +190,16 @@ def options_list(doc: Document) -> dict:
     items at a 20 u pitch: CONTROLS, GAME OPTIONS, SYSTEM and DEFAULTS. It
     stays at the leading edge with the tab (section 3).
 
-    Section 8.4 (AnimMainToOptions): the first nav button narrows aside over
-    200 ms, accel(0.4, 0.6), the plate grows upward over 200 ms as a flash
-    that settles, and the items arrive from 280 ms, 50 ms apart. Closing has
-    no stagger."""
-    doc.state["opt.open"] = {"type": "boolean", "initial": False}
+    Section 8.4 (AnimMainToOptions): the plate grows upward over 200 ms as a
+    flash that settles, and the items arrive from 280 ms, 50 ms apart, while
+    the nav band stands aside (the home's navOptions). Closing has no
+    stagger (sub_list)."""
     height = U * 89
     shape = [(U * 7, 0), (U * 130, 0), (U * 132, U * 2), (U * 132, height), (0, height), (0, U * 7)]
     tab = vector("opt-tab", {**FULL, **NO_POINTER, "transform": transform()}, [path("tab", shape, fill=solid(token("chrome.fill.open")))])
     tab_flash = vector("opt-tab-flash", {**FULL, **NO_POINTER, "opacity": number(0)}, [path("tab", shape, fill=solid([1, 1, 1, 1]))])
-    enter = [track("opt-tab", "transform", [(0, transform(ty=height / 2, sy=0.02), DECEL), (200, transform()), (700, transform())]),
-             track("opt-tab-flash", "opacity", [(0, number(0.7)), (50, number(0.5)), (300, number(0)), (700, number(0))]),
-             track("nav_first", "left", [(0, length(U * 27)), (200, length(U * 137)), (700, length(U * 137))])]
+    enter = [track("opt-tab", "transform", held([(0, transform(ty=height / 2, sy=0.02), DECEL), (200, transform()), (700, transform())])),
+             track("opt-tab-flash", "opacity", held([(0, number(0.7)), (50, number(0.5)), (300, number(0)), (700, number(0))]))]
     rows = []
     for row, (ident, name) in enumerate((("opt_controls", "controls"), ("opt_game", "game"), ("opt_system", "system"), ("opt_defaults", "defaults"))):
         request = {"controls": "optionsControls", "game": "optionsGame", "system": "optionsSystem", "defaults": "optionsDefaults"}[name]
@@ -143,23 +208,10 @@ def options_list(doc: Document) -> dict:
         flash = vector(f"{ident}-arrive", {**FULL, **NO_POINTER, "opacity": number(0)},
                        [path("flash", [(0, 0), (U * 119, 0), (U * 124, U * 5), (U * 124, U * 19), (0, U * 19)], fill=solid([1, 1, 1, 1]))])
         rows.append(group(f"{ident}-row", {**box(2, 2 + 20 * row, 124, 19), "opacity": number(1)}, [item, flash]))
-        at = 280 + 50 * row
-        enter.append(track(f"{ident}-row", "opacity", [(0, number(0)), (at - 1, number(0)), (at, number(1)), (700, number(1))]))
-        enter.append(track(f"{ident}-arrive", "opacity", [(0, number(0)), (at - 1, number(0)), (at, number(0.7)), (at + 50, number(0.4)),
-                                                         (at + 250, number(0))]))
-    doc.timeline("optEnter", 700, enter)
-    doc.timeline("optLeave", 200, [track("nav_first", "left", [(0, length(U * 137)), (200, length(U * 27))])])
+        enter += arrival(ident, row)
     node = group("opt-list", {**box(3, 351, 132, 89), "display": keyword("none")}, [tab, tab_flash, *rows])
-    doc.bind("opt-list.display", "opt-list", "display", {"op": "select", "args": [{"state": "opt.open"}, "block", "none"]})
-    doc.session("soundForward")
-    doc.session("soundBack")
-    doc.events["optionsOpen"] = [{"op": "setState", "values": {"opt.open": True}}, {"op": "action", "action": "soundForward"},
-                                 {"op": "playTimeline", "timeline": "optEnter"}, {"op": "focus", "control": "opt_controls"}]
-    doc.events["optionsClose"] = [{"op": "if", "condition": {"state": "opt.open"},
-                                   "then": [{"op": "setState", "values": {"opt.open": False}}, {"op": "action", "action": "soundBack"},
-                                            {"op": "playTimeline", "timeline": "optLeave"}, {"op": "focus", "control": "nav_options"}]}]
-    doc.events["optionsToggle"] = [{"op": "if", "condition": {"state": "opt.open"},
-                                    "then": [{"op": "call", "event": "optionsClose"}], "else": [{"op": "call", "event": "optionsOpen"}]}]
+    sub_list(doc, "opt", "opt-tab", [row["id"] for row in rows], height, enter, "opt_controls", "nav_options", "navOptions")
+    doc.bind("opt-list.display", "opt-list", "display", {"op": "select", "args": [{"state": "opt.shown"}, "block", "none"]})
     return node
 
 
@@ -169,13 +221,12 @@ def multiplayer_list(doc: Document) -> dict:
     SERVER and MULTIPLAYER SETTINGS, on a plate in chrome.fill.open. It opens
     as the other lists do: the plate grows upward as a flash that settles and
     the items arrive 50 ms apart."""
-    doc.state["mp.open"] = {"type": "boolean", "initial": False}
     height = U * 65
     shape = [(U * 7, 0), (U * 214, 0), (U * 216, U * 2), (U * 216, height), (0, height), (0, U * 7)]
     tab = vector("mp-tab", {**FULL, **NO_POINTER, "transform": transform()}, [path("tab", shape, fill=solid(token("chrome.fill.open")))])
     tab_flash = vector("mp-tab-flash", {**FULL, **NO_POINTER, "opacity": number(0)}, [path("tab", shape, fill=solid([1, 1, 1, 1]))])
-    enter = [track("mp-tab", "transform", [(0, transform(ty=height / 2, sy=0.02), DECEL), (200, transform()), (700, transform())]),
-             track("mp-tab-flash", "opacity", [(0, number(0.7)), (50, number(0.5)), (300, number(0)), (700, number(0))])]
+    enter = [track("mp-tab", "transform", held([(0, transform(ty=height / 2, sy=0.02), DECEL), (300, transform()), (700, transform())])),
+             track("mp-tab-flash", "opacity", held([(0, number(0.7)), (50, number(0.5)), (300, number(0)), (700, number(0))]))]
     rows = []
     for row, (ident, name, request, hint) in enumerate((("mp_browser", "browser", "mpBrowser", STR["mp.browser.hint"]),
                                                         ("mp_create", "create", "mpCreate", STR["mp.create.hint"]),
@@ -184,22 +235,10 @@ def multiplayer_list(doc: Document) -> dict:
         flash = vector(f"{ident}-arrive", {**FULL, **NO_POINTER, "opacity": number(0)},
                        [path("flash", [(0, 0), (U * 203, 0), (U * 208, U * 5), (U * 208, U * 19), (0, U * 19)], fill=solid([1, 1, 1, 1]))])
         rows.append(group(f"{ident}-row", {**box(4, 3 + 20 * row, 208, 19), "opacity": number(1)}, [item, flash]))
-        at = 280 + 50 * row
-        enter.append(track(f"{ident}-row", "opacity", [(0, number(0)), (at - 1, number(0)), (at, number(1)), (700, number(1))]))
-        enter.append(track(f"{ident}-arrive", "opacity", [(0, number(0)), (at - 1, number(0)), (at, number(0.7)), (at + 50, number(0.4)),
-                                                         (at + 250, number(0))]))
-    doc.timeline("mpEnter", 700, enter)
+        enter += arrival(ident, row)
     node = group("mp-list", {**absolute(right=U * 6, top=U * 350, width=U * 216, height=U * 65), "display": keyword("none")}, [tab, tab_flash, *rows])
-    doc.bind("mp-list.display", "mp-list", "display", {"op": "select", "args": [{"state": "mp.open"}, "block", "none"]})
-    doc.events["mpOpen"] = [{"op": "if", "condition": {"state": "opt.open"}, "then": [{"op": "playTimeline", "timeline": "optLeave"}]},
-                            {"op": "setState", "values": {"mp.open": True, "opt.open": False, "ng.open": False}},
-                            {"op": "action", "action": "soundForward"}, {"op": "playTimeline", "timeline": "mpEnter"},
-                            {"op": "focus", "control": "mp_browser"}]
-    doc.events["mpClose"] = [{"op": "if", "condition": {"state": "mp.open"},
-                              "then": [{"op": "setState", "values": {"mp.open": False}}, {"op": "action", "action": "soundBack"},
-                                       {"op": "focus", "control": "nav_third"}]}]
-    doc.events["mpToggle"] = [{"op": "if", "condition": {"state": "mp.open"},
-                               "then": [{"op": "call", "event": "mpClose"}], "else": [{"op": "call", "event": "mpOpen"}]}]
+    sub_list(doc, "mp", "mp-tab", [row["id"] for row in rows], height, enter, "mp_browser", "nav_third", "navThirdOpen")
+    doc.bind("mp-list.display", "mp-list", "display", {"op": "select", "args": [{"state": "mp.shown"}, "block", "none"]})
     return node
 
 
@@ -211,7 +250,8 @@ def options_tab(doc: Document, action: str) -> dict:
     ident = "nav_options"
     rise = 36.0   # u: the stub stands this far above the tab, in the body's own node
     shape = [
-        path("tab", [(U * 2, U * rise), (U * 192, U * rise), (U * 169, U * (rise + 24)), (U * 22, U * (rise + 24)), (U * 2, U * (rise + 4))],
+        # Its trailing end follows the cell, which lengthens while the list is open.
+        path("tab", [(U * 2, U * rise), (far(4), U * rise), (far(27), U * (rise + 24)), (U * 22, U * (rise + 24)), (U * 2, U * (rise + 4))],
              fill=solid(token("chrome.tab", 1.0))),
         path("stub", [(U * 2, U * rise), (U * 2, U * (rise - 30)), (U * 4, U * (rise - 32)), (U * 25, U * (rise - 32)),
                       (U * 29, U * (rise - 28)), (U * 29, U * (rise - 16)), (U * 45, U * rise)], fill=solid(token("chrome.tab", 1.0))),
@@ -248,7 +288,6 @@ def new_game_list(doc: Document) -> dict:
     ms, accel(0.2, 0.8), born as a white flash that settles in 50 + 200 ms;
     the items arrive from 280 ms, 50 ms apart, each as a flash. Closing has no
     stagger."""
-    doc.state["ng.open"] = {"type": "boolean", "initial": False}
     doc.state["nightmare"] = {"type": "boolean", "initial": False, "cvar": "g_nightmare"}
     height = U * 97   # 318 to 415 u
     tab_shape = [(U * 7, 0), (U * 177, 0), (U * 179, U * 2), (U * 179, height), (0, height), (0, U * 7)]
@@ -262,34 +301,22 @@ def new_game_list(doc: Document) -> dict:
              ("ng_skill2", STR["skill2"], "newGame2", STR["skill2.hint"], False),
              ("ng_skill3", STR["skill3"], "newGame3", STR["skill3.hint"], False),
              ("ng_skill3_locked", STR["skill3"], "newGame3", STR["skill3.locked"], True)]
-    enter = [track("ng-tab", "transform", [(0, transform(ty=height / 2, sy=0.02), DECEL), (300, transform())]),
-             track("ng-tab-flash", "opacity", [(0, number(0.7)), (50, number(0.5)), (300, number(0)), (700, number(0))]),
-             track("ng-caption", "opacity", [(0, number(0)), (279, number(0)), (280, number(1)), (700, number(1))])]
+    enter = [track("ng-tab", "transform", held([(0, transform(ty=height / 2, sy=0.02), DECEL), (300, transform()), (700, transform())])),
+             track("ng-tab-flash", "opacity", held([(0, number(0.7)), (50, number(0.5)), (300, number(0)), (700, number(0))])),
+             track("ng-caption", "opacity", held([(0, number(0)), (279, number(0)), (280, number(1)), (700, number(1))]))]
     for index, (ident, key, action, hint, locked) in enumerate(specs):
         row = min(index, LIST_ROWS - 1)
         item = menu_item(doc, ident, key, absolute(left=0, top=0), 171, action=doc.session(action), hint=hint, locked=locked)
         flash = vector(f"{ident}-arrive", {**FULL, **NO_POINTER, "opacity": number(0)},
                        [path("flash", [(0, 0), (U * 166, 0), (U * 171, U * 5), (U * 171, U * 19), (0, U * 19)], fill=solid([1, 1, 1, 1]))])
         holder = group(f"{ident}-row", {**box(0, 17 + 20 * row, 171, 19), "opacity": number(1), "display": keyword("block")}, [item, flash])
-        at = 280 + 50 * row
-        enter.append(track(f"{ident}-row", "opacity", [(0, number(0)), (at - 1, number(0)), (at, number(1)), (700, number(1))]))
-        enter.append(track(f"{ident}-arrive", "opacity", [(0, number(0)), (at - 1, number(0)), (at, number(0.7)), (at + 50, number(0.4)),
-                                                         (at + 250, number(0))]))
+        enter += arrival(ident, row)
         rows.append(holder)
     doc.bind("ng_skill3-row.display", "ng_skill3-row", "display", {"op": "select", "args": [{"state": "nightmare"}, "block", "none"]})
     doc.bind("ng_skill3_locked-row.display", "ng_skill3_locked-row", "display", {"op": "select", "args": [{"state": "nightmare"}, "none", "block"]})
-    doc.timeline("ngEnter", 700, enter)
     node = group("ng-list", {**box(34, 318, 179, 97), "display": keyword("none")}, [tab, tab_flash, caption, *rows])
-    doc.bind("ng-list.display", "ng-list", "display", {"op": "select", "args": [{"state": "ng.open"}, "block", "none"]})
-    doc.session("soundForward")
-    doc.session("soundBack")
-    doc.events["newGameOpen"] = [{"op": "setState", "values": {"ng.open": True}}, {"op": "action", "action": "soundForward"},
-                                 {"op": "playTimeline", "timeline": "ngEnter"}, {"op": "focus", "control": "ng_skill1"}]
-    doc.events["newGameClose"] = [{"op": "if", "condition": {"state": "ng.open"},
-                                   "then": [{"op": "setState", "values": {"ng.open": False}}, {"op": "action", "action": "soundBack"},
-                                            {"op": "focus", "control": "nav_first"}]}]
-    doc.events["newGameToggle"] = [{"op": "if", "condition": {"state": "ng.open"},
-                                    "then": [{"op": "call", "event": "newGameClose"}], "else": [{"op": "call", "event": "newGameOpen"}]}]
+    sub_list(doc, "ng", "ng-tab", ["ng-caption", *[row["id"] for row in rows]], height, enter, "ng_skill1", "nav_first", "navFirstOpen")
+    doc.bind("ng-list.display", "ng-list", "display", {"op": "select", "args": [{"state": "ng.shown"}, "block", "none"]})
     return node
 
 
@@ -308,6 +335,14 @@ def home_document(pause: bool) -> dict:
     doc = Document("opend3.pause" if pause else "opend3.title")
     for request in ("loadGame", "settings", "quit"):
         doc.session(request)
+    lists = ("options",) if pause else ("options", "newGame", "mp")
+
+    def leaving(action: str) -> list:
+        """A nav button that opens a page: any open list goes first, in one
+        frame, and the band stands at rest for the page's own copy of the
+        button (section 8.4)."""
+        return [*[{"op": "call", "event": f"{name}Hide"} for name in lists], {"op": "playTimeline", "timeline": "bandSnap"},
+                {"op": "action", "action": action}]
 
     # Nav band (section 6.3). NEW GAME lengthens to the leading edge and
     # MULTIPLAYER to the trailing edge; LOAD GAME keeps its canvas place.
@@ -316,12 +351,47 @@ def home_document(pause: bool) -> dict:
     first_place = {**FIRST_PLACE, "opacity": number(1)}
     third_place = absolute(left=U * (409 - 320), right=U * 1, top=U * 410, height=U * 32)
     if pause:
-        first = nav_button(doc, "nav_first", STR["savegame"], first_place, action=doc.session("saveGame"), hint=STR["savegame.hint"])
+        doc.session("saveGame")
+        first = nav_button(doc, "nav_first", STR["savegame"], first_place, event="saveGameGo", hint=STR["savegame.hint"])
+        doc.events["saveGameGo"] = leaving("saveGame")
         third = nav_button(doc, "nav_third", STR["quitgame"], third_place, event="quitGameAsk", hint=STR["quitgame.hint"])
     else:
         first = nav_button(doc, "nav_first", STR["newgame"], first_place, event="newGameToggle", hint=STR["newgame.hint"])
         third = nav_button(doc, "nav_third", STR["multiplayer"], third_place, event="mpToggle", hint=STR["multiplayer.hint"])
-    second = nav_button(doc, "nav_second", STR["loadgame"], {**SECOND_PLACE, "opacity": number(1)}, action="loadGame", hint=STR["loadgame.hint"])
+    second = nav_button(doc, "nav_second", STR["loadgame"], {**SECOND_PLACE, "opacity": number(1)}, event="loadGameGo", hint=STR["loadgame.hint"])
+    doc.events["loadGameGo"] = leaving("loadGame")
+
+    # The band's standings (sections 7.1 and 8.4). At rest every button is
+    # lit. While OPTIONS' list is open the three stand aside, narrowed, dim
+    # and unoutlined, the OPTIONS tab lengthens under them and the second
+    # band gives up its leading 50 u (AnimMainToOptions: 200 ms, accel(0.4,
+    # 0.6); back in 300). A button grown into its own list is open and the
+    # others dim; while a page is open all three are dim.
+    buttons = ("nav_first", "nav_second", "nav_third")
+    for button in buttons:
+        nav_modes(doc, button)
+    rest = {("nav_first", "left"): 27, ("nav_first", "right"): 320 - 241, ("nav_second", "left"): 213, ("nav_second", "width"): 224,
+            ("nav_third", "left"): 409 - 320, ("nav_options", "width"): 196}
+    aside = {("nav_first", "left"): 131, ("nav_first", "right"): 320 - 310, ("nav_second", "left"): 282, ("nav_second", "width"): 183,
+             ("nav_third", "left"): 437 - 320, ("nav_options", "width"): 246}
+
+    def band_to(places: dict, plug: float, ms: int) -> list:
+        return [*[track(node, prop, [(0, length(U * value), SLIDE), (ms, length(U * value))]) for (node, prop), value in places.items()],
+                track("frame-band-plug", "opacity", [(0, number(plug)), (ms, number(plug))])]
+
+    doc.timeline("bandAside", 200, band_to(aside, 0, 200))
+    doc.timeline("bandRest", 300, band_to(rest, 1, 300))
+    doc.timeline("bandSnap", 1, band_to(rest, 1, 1))
+
+    def standing(band: str | None, **modes: str) -> list:
+        steps = [{"op": "playTimeline", "timeline": f"{button}{modes.get(button.split('_')[1], 'Dim')}"} for button in buttons]
+        return steps + ([{"op": "playTimeline", "timeline": band}] if band else [])
+
+    doc.events["navRest"] = standing("bandRest", first="Lit", second="Lit", third="Lit")
+    doc.events["navOptions"] = standing("bandAside")
+    doc.events["navFirstOpen"] = standing("bandRest", first="Open")
+    doc.events["navThirdOpen"] = standing("bandRest", third="Open")
+    doc.events["navPage"] = standing(None)
 
     # Footer links (section 9.2), anchored to the bottom-trailing corner.
     def link(ident, key, x, w, **how):
@@ -337,15 +407,10 @@ def home_document(pause: bool) -> dict:
     leading = [first, options_tab(doc, "optionsToggle"), options_list(doc)]
     if not pause:
         leading.append(new_game_list(doc))
-        # The two lists share the corner: one opens as the other closes.
-        doc.events["newGameOpen"][0:0] = [{"op": "if", "condition": {"state": "opt.open"},
-                                           "then": [{"op": "setState", "values": {"opt.open": False}},
-                                                    {"op": "playTimeline", "timeline": "optLeave"}]}]
-        doc.events["optionsOpen"][0:0] = [{"op": "setState", "values": {"ng.open": False}}]
         trailing_list = multiplayer_list(doc)
-        # One list at a time: opening another closes MULTIPLAYER's.
-        doc.events["newGameOpen"][0:0] = [{"op": "setState", "values": {"mp.open": False}}]
-        doc.events["optionsOpen"][0:0] = [{"op": "setState", "values": {"mp.open": False}}]
+        # One list at a time: a list that opens drops the others in one frame.
+        for name in lists:
+            doc.events[f"{name}Open"][0:0] = [{"op": "call", "event": f"{other}Hide"} for other in lists if other != name]
     # Zero-height holders carry the anchors: their own boxes take no pointer.
     lead_side = group("lead-side", {**absolute(left=0, top=0, height=0), "width": length(50, "%")}, leading)
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)}, [
@@ -398,7 +463,7 @@ def home_document(pause: bool) -> dict:
 
     hint = doc.hint_line()
     stage = group("stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),
-                            "margin-top": length(-CANVAS_H / 2)}, [frame(), canvas, lead_side, trail_side, hint])
+                            "margin-top": length(-CANVAS_H / 2)}, [frame(doc), canvas, lead_side, trail_side, hint])
     furniture = group("furniture", {**FULL, "opacity": number(0)}, [stage])
     glow = edge_glow(doc)
     root = group("screen", {**FULL, "font-family": font(FACE_DEFAULT), "font-size": length(18), "color": colour([1, 1, 1, 1])},
@@ -439,12 +504,19 @@ def home_document(pause: bool) -> dict:
     doc.timeline("release", 50, [track("furniture", "opacity", [(0, number(0)), (50, number(0))]),
                                  track("edge-glow", "opacity", [(0, number(0)), (50, number(0))])])
     ambient = [{"op": "playTimeline", "timeline": "logoShimmer"}, {"op": "playTimeline", "timeline": "edgeGlow"}]
+    # The band takes the standing of whichever list is still open behind the
+    # page that closed; the top bar gives the flare its corner back.
+    back = [{"op": "call", "event": "navRest"}]
+    for name, mode in (("mp", "navThirdOpen"), ("ng", "navFirstOpen"), ("opt", "navOptions")):
+        if name == "opt" or not pause:
+            back = [{"op": "if", "condition": {"state": f"{name}.open"}, "then": [{"op": "call", "event": mode}], "else": back}]
     doc.events["open"] = [{"op": "playTimeline", "timeline": "open"}, *ambient]
-    doc.events["returnHome"] = [{"op": "playTimeline", "timeline": "returnHome"}, *ambient]
-    doc.events["depart"] = [{"op": "playTimeline", "timeline": "depart"}]
+    doc.events["returnHome"] = [{"op": "playTimeline", "timeline": "returnHome"}, {"op": "playTimeline", "timeline": "barIn"}, *back, *ambient]
+    doc.events["depart"] = [{"op": "playTimeline", "timeline": "depart"}, {"op": "playTimeline", "timeline": "barOut"},
+                            {"op": "call", "event": "navPage"}]
     doc.events["release"] = [{"op": "playTimeline", "timeline": "release"}]
     if not pause:
-        doc.events["open"].insert(0, {"op": "setState", "values": {"ng.open": False}})
+        doc.events["open"].insert(0, {"op": "call", "event": "newGameHide"})
     return doc.build(root)
 
 

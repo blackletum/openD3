@@ -209,6 +209,71 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
 
 A mod whose main menu lacks one of those stock buttons keeps its own menu.
 
+## Motion and state
+
+Sections 7 and 8 of the specification, as the documents play them. The
+timings are the stock menu's own (`guis/mainmenu.gui`, its `Anim*`
+controllers), except where a line says otherwise.
+
+- **The nav band has standings.** Beside its own hover and press, each nav
+  button is lit, dim or open (`nav_modes` in the kit: `<id>Lit`, `<id>Dim`,
+  `<id>Open`). A button that has grown into its own sub-list or page is
+  open: its band flashes white at 70 % and settles to `chrome.fill.open` in
+  50 + 300 ms, and its outline goes out in 250 ms. The others are dim:
+  label to `text.dim` in 200 ms, no outline. The home's events `navRest`,
+  `navOptions`, `navFirstOpen`, `navThirdOpen` and `navPage` set all three
+  at once, and `returnHome` picks the one for whichever list is still open
+  behind the page that closed. These timelines drive the label's and the
+  outline group's opacity, which the control's own states never touch, so
+  the two never fight. A page's own copy of its nav button stands open
+  too.
+- **The band stands aside for OPTIONS.** While OPTIONS' list is open the
+  three buttons narrow and move toward the trailing side (NEW GAME from
+  the list's edge to canvas x 310, LOAD GAME 282 to 465, MULTIPLAYER from
+  437), the OPTIONS tab lengthens by 50 u under them and the second band
+  gives up its leading 50 u, in 200 ms, accel(0.4, 0.6); back in 300
+  (`bandAside`, `bandRest`). The stock starts the three 20 ms apart; here
+  they move together. A nav button that opens a page drops any open list
+  in one frame and snaps the band to rest first (`bandSnap`), because the
+  page draws that button again at its rest place.
+- **A sub-list closes as one object.** Its items go at once and its tab
+  folds back into the button over 300 ms, accel(0.4, 0.6) (`sub_list` in
+  the generator: `<name>.open` is the logic, `<name>.shown` keeps the list
+  drawn until `<name>Gone`). A list that opens in another's place drops it
+  in one frame (`<Name>Hide`).
+- **A page takes the flare's corner.** While a page is open the top bar
+  runs the full width and the flare has left the screen, 300 ms each way
+  (`barOut` on `depart`, `barIn` on `returnHome`), and the logo is hidden.
+- **A page closes before it is answered.** A timeline's completion may not
+  invoke an action, so the session plays the closing: when `loadBack`,
+  `saveBack`, `controlsBack`, `gameBack` or the SYSTEM page's dismissal
+  arrives, it raises the page's `pageLeave` and answers
+  `RETAINED_PAGE_LEAVE_MSEC` (250) later. The content switches off at
+  once, the apply bar with it, and the plate, bridge and flair fade
+  together in 50 + 200 ms while the plate shrinks, without a flash. The
+  stock holds the screen for its whole 400 ms shrink. An apply bar
+  arrives 100 ms into a page's opening, as a flash (`pageBar`).
+- **The hint wipes in.** Each new hint wipes in from the leading end in
+  150 ms while it falls from white at 50 % to its rest at 20 % in 250 ms.
+  The runtime plays that for the document: a `detail` definition may name
+  a `shown` timeline, played each time the subject changes to a control
+  that names a detail. That is an openD3 addition to the retained runtime
+  (`src/ui/retained/Document.cpp`, `Runtime.cpp`). A hint still leaves
+  with its subject in one frame.
+- **A category's rows flash.** On the CONTROLS page a category change
+  flashes its rows white at 15 %, top to bottom 20 ms apart, each gone in
+  250 ms (`controlsFlash<n>`).
+- **The grid answers the pointer.** The stock menu still draws the grid
+  under the home, and the grid's hover catchers are its own windows, so
+  the session shows the stock menu where the home's pointer is
+  (`Session_RouteRetainedScenePointer`, a move and never a press). The
+  line the pointer crosses lights to 15 % and decays in 300 ms, as in the
+  stock. The stock buttons under the pointer light too, unseen.
+- **The in-game menu's frame flickers** between 40 and 33 % on the stock's
+  400 ms table, and its row labels and text links carry the stock's
+  shadow 1: a black copy 1 u down and to the trailing side (`shadowed`).
+  The document format has no text shadow.
+
 ## Session requests
 
 A document asks the session through `session.menu` actions. Beyond openQ4's
@@ -313,8 +378,10 @@ The session's own click (`main_menu_selection` upstream) plays
 
 `tools/ui/build_doom3_menus.py` writes the documents.
 `tools/ui/doom3_menu_kit.py` holds the shared parts: the tokens of section 4, the
-hairline, the nav button, the sub-menu item (which is also the dialog button),
-the footer link, the dialog shell, the hint line and the edge glow.
+hairline, the nav button and its standings, the sub-menu item (which is also
+the dialog button), the footer link, the dialog shell, the hint line with its
+wipe, the edge glow, and `held` for a timeline that must start from a fixed
+value.
 `tools/ui/doom3_menu_options.py` holds the option row plate, the stepping
 choice, the slider, the binding row, the category tab, the apply bar and the
 two options pages. `tools/ui/doom3_menu_system.py` holds the SYSTEM page: the
@@ -352,7 +419,20 @@ Points that are easy to get wrong:
 - A vector node draws nothing outside its own box. A hairline on a box's edge
   needs a node grown by its glow (`outset`, `outset_box`).
 - A timeline starts from the property's current value, so its first key is
-  never shown. A jump (the outline's flash) is a 1 ms step.
+  never shown. A jump (the outline's flash) is a 1 ms step, and so is
+  anything that must start from a fixed value whatever the last showing
+  left: `held` in the kit sets the first value again 1 ms in and keeps the
+  first key's easing on the move that follows. Until 15 November the
+  sub-lists' items and the page plates began their openings from whatever
+  they last showed.
+- A timeline's completion program may set state and play timelines but may
+  not invoke an action; the document is refused ("A completion program
+  cannot invoke actions"). What must happen after an animation is the
+  session's to time.
+- A control's own state timelines and a document's timelines must not
+  drive the same property of the same node: give the document's a wrapper
+  (the nav button's `-lines` group) or another property (the label's
+  opacity beside its colour).
 - A control's feedback reaches only its own subtree. The hint line therefore
   follows the document's detail subject and switches without the stock wipe.
 - Up to textscale 0.30 the stock draws its 12 point atlas, taller and wider
@@ -398,6 +478,14 @@ Points that are easy to get wrong:
   `tools/ui/doom3_menu_system.py`. The merge of 14 November added
   `settings.msaa.clamped` and `settings.msaa.status`, and the page was
   refused from then until 15 November.
+- A scripted run's profile keeps what earlier runs archived. After a
+  multiplayer run `si_gameType` stays `deathmatch`, and a `devmap` then
+  starts as a multiplayer game with no pause screen: pass `+set
+  si_gameType singleplayer`.
+- A capture can come back black, or a run stall, when the client's window
+  cannot present (seen twice on 15 November while the machine was in
+  use; the same commands worked minutes later). Check a capture's
+  extrema before reading anything into it.
 - A test window takes the keyboard when it opens, and a key the person at
   the machine then presses reaches it (one became a binding in a test
   profile). Start it without activating it (`STARTUPINFO` with
@@ -570,6 +658,34 @@ from the window.
   crashed in the game, under the stock interface too.) The page's failure
   notice was not seen.
 
+- Motion and state (15 November, 1280x720 unless said, driven with
+  `opend3_retainedGui` and captured mid-motion with the engine's
+  `screenshot`). The hint: 80 ms after LOAD GAME took the focus its hint
+  was half wiped in and bright; later whole and dim. OPTIONS: at 100 ms
+  the tab was a white flash most of the way up and the three buttons were
+  moving, dim; open, they stood aside with no outlines and the tab ran
+  under NEW GAME; 150 ms into closing the items were gone, the tab was
+  folding and the buttons were nearly back and lit. NEW GAME's and
+  MULTIPLAYER's lists: the owner open, the other two dim. LOAD GAME: at
+  200 ms the plate was a white flash still growing, the owner flashing
+  and the logo fading; open, the flare was gone and the bar ran the
+  width; 130 ms into closing the content was gone and the plate was
+  fading and smaller; afterwards the title was whole again. CONTROLS: a
+  few frames after a category change every row's plate was lighter than
+  at rest (by 20 to 30 of 255). CONTROLS, GAME
+  OPTIONS and SYSTEM closed with their apply bars gone at once, and the
+  SYSTEM page still returned through the settings service (the log's
+  `child=0` afterwards). The same from the pause at 1680x720 (GAME
+  OPTIONS, Save Game) and the list standings at 960x720. The in-game
+  menu on a LAN listen server: the labels' shadows, and the SYSTEM page
+  opening and closing over the game. The grid: with the pointer put at y
+  120 the line there was lit across the whole width, and gone 670 ms
+  later. The Game Browser, Create Server, Multiplayer Settings, Mods,
+  Credits and the death screen were opened once each afterwards and drew
+  as before. Not seen: any of it by eye in motion (stills only), the
+  frame's flicker (too slight for a still), reduced motion, a pointer
+  moved by a mouse, and a controller.
+
 Not verified: Resurrection of Evil, Vulkan, a controller, touch, reduced
 motion, languages other than English, the multiplayer pause, a mod's menu, and
 every platform but Windows.
@@ -592,13 +708,11 @@ every platform but Windows.
   16 rows; a limit outside the server's range is refused by the game with
   a chat line, as on the stock panel. The card is on the centred canvas, not anchored to
   the top-leading corner as rule 7 asks, so that a hand-off does not move
-  the strip. The frame line does not flicker and the labels have no
-  shadow.
+  the strip.
 - **Multiplayer.**
   Multiplayer Settings leaves out the stock CD key row (openD3 has no
-  keys) and sets its three rows half a pitch higher for it; it does not dim
-  MULTIPLAYER while it is open, and it opens and closes without the
-  plate's unfolding. Create Server leaves out the stock PunkBuster row (a
+  keys) and sets its three rows half a pitch higher for it; it opens and
+  closes without the plate's unfolding. Create Server leaves out the stock PunkBuster row (a
   discontinued service); its passwords show in clear, as the stock fields
   do; a refused number (out of range) stays in its field with no message;
   and it asks for Quake 4's generic level shot when it opens, which Doom 3
@@ -638,23 +752,26 @@ every platform but Windows.
   set in Bank, which draws them as small capitals.
 - **Options pages.** Player Name's field and the mouse sensitivity slider were
   not exercised by hand; a slider shows its number beside the ruler, which
-  the stock does not; a category change does not flash its rows (section
-  8.4); the stock CONTROLS page's two choice rows among the bindings (Free
+  the stock does not; the stock CONTROLS page's two choice rows among the bindings (Free
   Look, Invert Mouse) are on GAME OPTIONS only; and the pages have no plate
   morph from one to another (each closes to the list).
 - **Load and save.** The stock list's Date and Time columns are a Level
   column here, because the session publishes each row's name and level and
   only the selected save's date and time. The list's sort and filter verbs
-  have no controls. A page closes without the stock's 400 ms shrink, and the
-  home does not narrow its other nav buttons or run its top bar across while
-  a page is open. More than 64 saves page through NEWER SAVES and OLDER
+  have no controls. More than 64 saves page through NEWER SAVES and OLDER
   SAVES rows, which were not exercised.
-- **Choreography.** The difficulty list unfolds and its items arrive as
-  flashes, but the other nav buttons do not narrow and slide aside as section
-  8.4 measures, and the list closes without motion. The hint line has no wipe.
-- **The grid's pointer response.** The stock grid still draws, but the stock
-  menu no longer receives the pointer while the home presents, so its lines do
-  not light.
+- **Choreography.** The band stands aside for OPTIONS' list only: while a
+  page is open the stock also keeps the three buttons narrowed at the
+  trailing side (section 9.3), and here they stand at rest, dim. The
+  three buttons move together, not 20 ms apart. A page's plate grows and
+  shrinks about its own centre, not out of the nav band, and one options
+  page does not morph into another. A page is answered 250 ms into its
+  closing, not at the stock's 400. A hint leaves in one frame, without
+  the stock's 50 ms wipe out. A list's close cannot be seen to its end by
+  another list opening in its place: that one drops it at once.
+- **The grid's pointer response** runs while the home takes the input. It
+  stops under a retained page, but it still answers under one of the
+  home's dialogs, where the stock's dim would catch the pointer.
 - **The logo's interference layer** (section 8.5) is not drawn; the shimmer is.
 - **Scan lines** are still the stock bitmap, not procedural.
 - **Sounds for focus changes** follow openQ4's sound router, which openD3 has

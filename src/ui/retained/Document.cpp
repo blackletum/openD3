@@ -387,10 +387,17 @@ private:
 			return;
 		}
 		const auto& detail = root["detail"];
-		Fields(detail,"/detail",{"state","card","none","extensions"});
+		Fields(detail,"/detail",{"state","card","shown","none","extensions"});
 		DetailSpec spec;
 		spec.state = Id(detail["state"],"/detail/state");
 		if (detail.isMember("none")) spec.none = Numeric(detail["none"],"/detail/none",-1e9,1e9);
+		// openD3: a timeline to play each time the subject changes to a control
+		// that names a detail (Doom 3's hint line wipes in for each new hint).
+		if (detail.isMember("shown")) {
+			spec.shown = Id(detail["shown"],"/detail/shown");
+			const auto* timeline = FindTimeline(spec.shown);
+			Require(timeline != nullptr && timeline->iterations == 1,detail["shown"],"/detail/shown","The detail's shown timeline must exist and run once");
+		}
 		const auto declared = model.state.find(spec.state);
 		Require(declared != model.state.end() && std::holds_alternative<double>(declared->second.initial),detail["state"],"/detail/state",
 			"The detail state must be a declared number");

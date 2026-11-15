@@ -319,6 +319,13 @@ def track(node: str, prop: str, keys: list) -> dict:
     return {"node": node, "property": prop, "keys": result}
 
 
+def held(keys: list) -> list:
+    """Keys that start from their first value whatever the property holds: a
+    timeline starts from the property's current value, so the first value is
+    set again 1 ms in. The first key's easing shapes the move that follows."""
+    return [(0, keys[0][1]), (1, *keys[0][1:]), *keys[1:]]
+
+
 # --------------------------------------------------------------------- document
 
 class Document:
@@ -396,18 +403,24 @@ class Document:
     def hint_line(self) -> dict:
         """Section 7.3's hint line: Bank 0.25 at 17, 470, anchored to the
         bottom-leading corner, naming the control under the pointer or the
-        focus. It rests at 20 %. The stock wipe-in is not drawn: a control's
-        feedback reaches only its own subtree, so the line switches with the
-        subject (the reduced-motion treatment)."""
+        focus. Each new hint wipes in from the leading end in 150 ms while it
+        falls from white at 50 % to its rest at 20 % in 250 ms; the runtime
+        plays that for the document each time the subject changes
+        (detail.shown). A hint leaves with its subject, in one frame."""
         self.state["hint"] = {"type": "number", "initial": -1}
-        self.detail = {"state": "hint", "none": -1}
+        self.detail = {"state": "hint", "none": -1, "shown": "hintShown"}
         value = ""
         for index in range(len(self.hints) - 1, -1, -1):
             value = {"op": "select", "args": [{"op": "==", "args": [{"state": "hint"}, index]}, self.hints[index], value]}
-        node = label("hint-line", self.hints[0] if self.hints else "#str_01998", {
-            **box(17, 468, 420, 12), **typeface(FACE_BANK, 0.25, 12, token("text.hint")), **NO_POINTER, "opacity": number(1)})
-        self.bind("hint-line.text", "hint-line", "text", value)
-        return node
+        place = absolute(left=0, top=0, width=U * 420, height=U * 12)
+        words = label("hint-text", self.hints[0] if self.hints else "#str_01998", {
+            **place, **typeface(FACE_BANK, 0.25, 12, rgb("#FFFFFF")), **NO_POINTER, "opacity": number(TOKENS["text.hint"][1])})
+        self.bind("hint-line.text", "hint-text", "text", value)
+        wipe = group("hint-wipe", {**place, "overflow": keyword("hidden"), **NO_POINTER}, [words])
+        self.timeline("hintShown", 250, [
+            track("hint-wipe", "width", held([(0, length(0)), (150, length(U * 420)), (250, length(U * 420))])),
+            track("hint-text", "opacity", held([(0, number(0.5)), (250, number(TOKENS["text.hint"][1]))]))])
+        return group("hint-line", {**box(17, 468, 420, 12), **NO_POINTER, "opacity": number(1)}, [wipe])
 
     def build(self, root: dict) -> dict:
         result = {"format": "retained-ui", "version": 1, "id": self.ident,
@@ -460,12 +473,17 @@ def nav_button(doc: Document, ident: str, key: str, place: dict, *, action: str 
     band = band or [(U * 7, U * 5), (far(26), U * 5), (far(7), U * 26), (U * 26, U * 26)]
     inset = inset or [(U * 12, U * 7), (far(27), U * 7), (far(12), U * 24), (U * 27, U * 24)]
     fill = vector(f"{ident}-fill", {**FULL, **NO_POINTER}, [path("band", band, fill=solid(token("chrome.fill")))])
+    # Open, the band is chrome.fill.open: this much of the same hue over the fill.
+    opened = vector(f"{ident}-open", {**FULL, **NO_POINTER, "opacity": number(0)}, [path("band", band, fill=solid(rgb("#738CB2", 0.143)))])
+    opened_flash = vector(f"{ident}-openflash", {**FULL, **NO_POINTER, "opacity": number(0)}, [path("band", band, fill=solid([1, 1, 1, 1]))])
     plate = vector(f"{ident}-plate", {**FULL, **NO_POINTER, "opacity": number(0), "transform": transform()},
                    [path("plate", inset, fill=solid(token("chrome.fill.hover")))])
     line = vector(f"{ident}-line", {**FULL, **NO_POINTER, "opacity": number(0.5)}, hairline("line", band, "#8CA6BF"))
     flash = vector(f"{ident}-flash", {**FULL, **NO_POINTER, "opacity": number(0)}, hairline("line", band, "#CCE6FF"))
+    lines = group(f"{ident}-lines", {**FULL, **NO_POINTER, "opacity": number(1)}, [line, flash])
     text_node = label(f"{ident}-label", key, {**absolute(left=0, top=U * 5, height=U * 21), "width": length(100, "%"),
-                                              **typeface(FACE_DEFAULT, 0.26, 21, token("text.active"), "center"), **NO_POINTER})
+                                              **typeface(FACE_DEFAULT, 0.26, 21, token("text.active"), "center"), **NO_POINTER,
+                                              "opacity": number(1)})
     white, press, dim = colour(token("text.active")), colour(token("text.press")), colour(token("text.dim"))
     grown, rest = transform(sx=1.06, sy=1.22), transform()
     ids = doc.states(ident, [
@@ -475,8 +493,31 @@ def nav_button(doc: Document, ident: str, key: str, place: dict, *, action: str 
         (f"{ident}-plate", "transform", {"default": rest, "hover": rest}, 300, 400, grown, SETTLE),
         (f"{ident}-label", "color", {"default": white, "hover": white, "pressed": press, "disabled": dim}, 250, 250),
     ])
-    return group(ident, place, [fill, plate, line, flash, text_node],
+    return group(ident, place, [fill, opened, opened_flash, plate, lines, text_node],
                  control=control(doc, key, ids, action=action, event=event, hint=hint))
+
+
+def nav_modes(doc: Document, ident: str) -> None:
+    """A nav button's three standings beside its own hover and press
+    (sections 7.1 and 8.4), each a timeline from whatever it shows now.
+
+    `<id>Lit`: at rest, outlined, its label white. `<id>Dim`: another button
+    owns the screen (a sub-list or a page is open): the label falls to
+    text.dim in 200 ms and the outline goes out. `<id>Open`: the button has
+    grown into its own sub-list or page: its band flashes white at 70 % and
+    settles to chrome.fill.open in 50 + 300 ms, and its outline goes out in
+    250 ms. These drive the label's and the outline group's opacity, which
+    the control's own states leave alone."""
+    label_id, lines_id, open_id, flash_id = f"{ident}-label", f"{ident}-lines", f"{ident}-open", f"{ident}-openflash"
+
+    def to(node: str, value: float, ms: int) -> dict:
+        return track(node, "opacity", [(0, number(value)), (ms, number(value))])
+
+    doc.timeline(f"{ident}Lit", 300, [to(label_id, 1, 200), to(lines_id, 1, 300), to(open_id, 0, 200), to(flash_id, 0, 200)])
+    doc.timeline(f"{ident}Dim", 200, [to(label_id, 0.5, 200), to(lines_id, 0, 200), to(open_id, 0, 200), to(flash_id, 0, 200)])
+    doc.timeline(f"{ident}Open", 350, [
+        to(label_id, 1, 200), to(lines_id, 0, 250), track(open_id, "opacity", held([(0, number(1)), (350, number(1))])),
+        track(flash_id, "opacity", held([(0, number(0.7)), (50, number(0.5)), (350, number(0))]))])
 
 
 def item_outline(width: float, height: float = 19.0, cut: float = 5.0) -> list:

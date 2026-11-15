@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from doom3_menu_kit import (
     FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour, control, group, item_outline, keyword,
-    label, length, nav_button, number, path, rgb, solid, stroke, token, typeface, vector,
+    label, length, nav_button, number, path, rgb, solid, stroke, token, track, typeface, vector,
 )
 from doom3_menu_pages import PLACEHOLDER, WHOLE, name_field, page_frame, page_shell, title_and_rule
 
@@ -132,13 +132,13 @@ def slider_row(doc: Document, ident: str, key: str, top: float, cvar: str, state
                           "parts": {"track": f"{ident}-track", "fill": f"{ident}-fill", "thumb": f"{ident}-thumb", "value": f"{ident}-value"}})
 
 
-def apply_bar(doc: Document, key: str, cell_left: float, hint: str, action: str) -> dict:
+def apply_bar(doc: Document, key: str, cell_left: float, hint: str, event: str = "pageClose") -> dict:
     """Section 6.9's apply bar: the nav button's parts with the leading cap
     mirrored, so both ends lean outward and the bar nests in the plate's
     notch. It saves the page's changes by closing it, as the stock bar does."""
     band = [(U * 26, U * 6), (U * 207, U * 6), (U * 226, U * 27), (U * 7, U * 27)]
     inset = [(U * 29, U * 8), (U * 204, U * 8), (U * 219, U * 25), (U * 14, U * 25)]
-    return nav_button(doc, "page_apply", key, box(cell_left, 369, 233, 32), action=action, hint=hint, band=band, inset=inset)
+    return nav_button(doc, "page_apply", key, box(cell_left, 369, 233, 32), event=event, hint=hint, band=band, inset=inset)
 
 
 # ------------------------------------------------------------------- CONTROLS
@@ -176,7 +176,8 @@ def category_tab(doc: Document, index: int, key: str) -> dict:
         (f"{ident}-hot", "opacity", {"default": number(0), "hover": number(1)}, 200, 400),
         (f"{ident}-label", "color", {"default": colour(token("text.action")), "hover": colour(token("text.active"))}, 200, 200),
     ])
-    doc.events[f"controlsTab{index}"] = [{"op": "setState", "values": {"controls.tab": index}}, {"op": "action", "action": "soundForward"}]
+    doc.events[f"controlsTab{index}"] = [{"op": "setState", "values": {"controls.tab": index}}, {"op": "action", "action": "soundForward"},
+                                         {"op": "playTimeline", "timeline": f"controlsFlash{index}"}]
     return group(ident, box(0, 50 + 20 * index, 122, 14), [hot, idle, open_label],
                  control={"role": "button", "label": key, "event": f"controlsTab{index}", "states": ids})
 
@@ -205,10 +206,24 @@ def controls_document() -> dict:
         doc.bind(f"controls-rows-{index}.display", f"controls-rows-{index}", "display",
                  {"op": "select", "args": [{"op": "==", "args": [{"state": "controls.tab"}, index]}, "block", "none"]})
         content.append(holder)
+    # Section 8.4 (ControlsFlash): a category's rows flash flash.row, white at
+    # 15 %, top to bottom 20 ms apart, each gone in 250 ms.
+    longest = max(len(rows) for _heading, rows in CATEGORIES)
+    for position in range(longest):
+        content.append(vector(f"controls-flash-{position}", {**box(130, 48 + 23 * position, 320, 16), **NO_POINTER, "opacity": number(0)},
+                              [path("flash", item_outline(320, 16), fill=solid(rgb("#FFFFFF", 0.15)))]))
+    for index, (_heading, rows) in enumerate(CATEGORIES):
+        tracks = []
+        for position in range(longest):
+            at = 20 * position
+            lit = [(at + 2, number(1)), (at + 250, number(0))] if position < len(rows) else []
+            tracks.append(track(f"controls-flash-{position}", "opacity", [(0, number(0)), (1, number(0)), *lit, (500, number(0))]))
+        doc.timeline(f"controlsFlash{index}", 500, tracks)
     doc.events["onSecondary"] = [{"op": "action", "action": "controlsClear"}]
-    doc.events["onBack"] = [{"op": "action", "action": "controlsBack"}]
-    bar = apply_bar(doc, STR["apply"], 267, STR["controls.apply.hint"], "controlsBack")
-    return page_frame(doc, page_shell(doc, CONTROLS_PLATE, BRIDGE, FLAIRS), content, bar, [], on_canvas=True, content_box=(165, 50, 450, 350))
+    doc.events["onBack"] = [{"op": "call", "event": "pageClose"}]
+    bar = apply_bar(doc, STR["apply"], 267, STR["controls.apply.hint"])
+    return page_frame(doc, page_shell(doc, CONTROLS_PLATE, BRIDGE, FLAIRS), content, bar, [], on_canvas=True, content_box=(165, 50, 450, 350),
+                      back="controlsBack")
 
 
 # --------------------------------------------------------------- GAME OPTIONS
@@ -248,6 +263,7 @@ def game_options_document() -> dict:
                slider_row(doc, "game_smooth", "#str_02139", 38 + 23 * 7, "m_smooth", "cvar.m_smooth", 1, 8, 1, 0),
                slider_row(doc, "game_sensitivity", "#str_02140", 38 + 23 * 8, "sensitivity", "cvar.sensitivity", 1, 30, 0.5, 1),
                flag("game_freelook", "#str_02141", 9, "in_freeLook")]
-    doc.events["onBack"] = [{"op": "action", "action": "gameBack"}]
-    bar = apply_bar(doc, STR["apply"], 225, STR["game.apply.hint"], "gameBack")
-    return page_frame(doc, page_shell(doc, GAME_PLATE, BRIDGE, FLAIRS), content, bar, [], on_canvas=True, content_box=(165, 70, 340, 330))
+    doc.events["onBack"] = [{"op": "call", "event": "pageClose"}]
+    bar = apply_bar(doc, STR["apply"], 225, STR["game.apply.hint"])
+    return page_frame(doc, page_shell(doc, GAME_PLATE, BRIDGE, FLAIRS), content, bar, [], on_canvas=True, content_box=(165, 70, 340, 330),
+                      back="gameBack")

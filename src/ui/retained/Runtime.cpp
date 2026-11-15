@@ -2391,7 +2391,10 @@ struct Runtime::Impl {
 		if (!state.WouldChange(change)) return false;
 		State candidate = state; std::string error;
 		if (!candidate.Set(change,error) || !ValidModals(candidate,motion,error)) { host.Log(true,error); return false; }
-		state = std::move(candidate); ApplyControlBindings(); ApplyMotion(); return true;
+		state = std::move(candidate); ApplyControlBindings();
+		// openD3: the new subject's detail arrives with the document's own motion.
+		if (!spec.shown.empty() && !subject.empty()) motion.Play(spec.shown,time);
+		ApplyMotion(); return true;
 	}
 	// Places the detail card beside its subject by the card's measured box
 	// (DetailSpec). A hidden card, or none, is not placed. True when it moved.

@@ -180,6 +180,8 @@
   "settings.lightGrid.pending": {"type": "boolean", "initial": false},
   "settings.renderer.available": {"type": "boolean", "initial": false},
   "settings.renderer.fallback": {"type": "boolean", "initial": false},
+  "settings.msaa.clamped": {"type": "boolean", "initial": false},
+  "settings.msaa.status": {"type": "string", "initial": ""},
   "settings.display.available": {"type": "boolean", "initial": false},
   "settings.display.spanAvailable": {"type": "boolean", "initial": false},
   "settings.display.catalog": {"type": "string", "initial": ""},
@@ -333,7 +335,8 @@
   "cvar.s_volume_dB": {"type": "number", "initial": -6, "cvar": "s_volume_dB"},
   "cvar.s_reverse": {"type": "boolean", "initial": false, "cvar": "s_reverse"},
   "page.shown": {"type": "boolean", "initial": false},
-  "hint": {"type": "number", "initial": -1}
+  "hint": {"type": "number", "initial": -1},
+  "page.ingame": {"type": "boolean", "initial": false}
  },
  "actions": {
   "begin": {"operation": "settings.system.begin", "arguments": {}},
@@ -1432,6 +1435,51 @@
    "node": "hint-line",
    "property": "text",
    "value": {"op": "select", "args": [{"op": "==", "args": [{"state": "hint"}, 0]}, "#str_04074", ""]}
+  },
+  {
+   "id": "plate-bridge.display",
+   "node": "plate-bridge",
+   "property": "display",
+   "value": {"op": "select", "args": [{"state": "page.ingame"}, "none", "block"]}
+  },
+  {
+   "id": "plate-bridge-flash.display",
+   "node": "plate-bridge-flash",
+   "property": "display",
+   "value": {"op": "select", "args": [{"state": "page.ingame"}, "none", "block"]}
+  },
+  {
+   "id": "plate-flair.display",
+   "node": "plate-flair",
+   "property": "display",
+   "value": {"op": "select", "args": [{"state": "page.ingame"}, "none", "block"]}
+  },
+  {
+   "id": "plate-flair-flash.display",
+   "node": "plate-flair-flash",
+   "property": "display",
+   "value": {"op": "select", "args": [{"state": "page.ingame"}, "none", "block"]}
+  },
+  {
+   "id": "hint-line.display",
+   "node": "hint-line",
+   "property": "display",
+   "value": {"op": "select", "args": [{"state": "page.ingame"}, "none", "block"]}
+  },
+  {
+   "id": "edge-glow.display",
+   "node": "edge-glow",
+   "property": "display",
+   "value": {"op": "select", "args": [{"state": "page.ingame"}, "none", "block"]}
+  },
+  {
+   "id": "plate-ingame.display",
+   "node": "plate-ingame",
+   "property": "display",
+   "value": {
+    "op": "select",
+    "args": [{"op": "&&", "args": [{"state": "page.ingame"}, {"state": "page.shown"}]}, "block", "none"]
+   }
   }
  ],
  "detail": {"state": "hint", "none": -1},
@@ -4112,7 +4160,8 @@
          "width": {"type": "length", "value": 960.0, "unit": "dp"},
          "height": {"type": "length", "value": 720.0, "unit": "dp"},
          "pointer-events": {"type": "keyword", "value": "none"},
-         "opacity": {"type": "number", "value": 1}
+         "opacity": {"type": "number", "value": 1},
+         "display": {"type": "keyword", "value": "block"}
         },
         "paths": [
          {
@@ -4138,7 +4187,8 @@
          "width": {"type": "length", "value": 960.0, "unit": "dp"},
          "height": {"type": "length", "value": 720.0, "unit": "dp"},
          "pointer-events": {"type": "keyword", "value": "none"},
-         "opacity": {"type": "number", "value": 0}
+         "opacity": {"type": "number", "value": 0},
+         "display": {"type": "keyword", "value": "block"}
         },
         "paths": [
          {
@@ -4151,6 +4201,40 @@
            {"id": "close", "op": "close"}
           ],
           "fill": {"type": "solid", "color": {"type": "color", "value": [1, 1, 1, 1]}}
+         }
+        ]
+       },
+       {
+        "id": "plate-ingame",
+        "type": "vector",
+        "properties": {
+         "position": {"type": "keyword", "value": "absolute"},
+         "left": {"type": "length", "value": 241.5, "unit": "dp"},
+         "top": {"type": "length", "value": 39.0, "unit": "dp"},
+         "width": {"type": "length", "value": 594.0, "unit": "dp"},
+         "height": {"type": "length", "value": 556.5, "unit": "dp"},
+         "pointer-events": {"type": "keyword", "value": "none"},
+         "display": {"type": "keyword", "value": "none"}
+        },
+        "paths": [
+         {
+          "id": "backing",
+          "commands": [
+           {"id": "p0", "op": "move", "points": [[33.0, 0.0]]},
+           {"id": "p1", "op": "line", "points": [[546.0, 0.0]]},
+           {"id": "p2", "op": "line", "points": [[594.0, 48.0]]},
+           {"id": "p3", "op": "line", "points": [[594.0, 508.5]]},
+           {"id": "p4", "op": "line", "points": [[561.0, 541.5]]},
+           {"id": "p5", "op": "line", "points": [[436.5, 541.5]]},
+           {"id": "p6", "op": "line", "points": [[426.0, 556.5]]},
+           {"id": "p7", "op": "line", "points": [[154.5, 556.5]]},
+           {"id": "p8", "op": "line", "points": [[144.0, 541.5]]},
+           {"id": "p9", "op": "line", "points": [[48.0, 541.5]]},
+           {"id": "p10", "op": "line", "points": [[0.0, 493.5]]},
+           {"id": "p11", "op": "line", "points": [[0.0, 33.0]]},
+           {"id": "close", "op": "close"}
+          ],
+          "fill": {"type": "solid", "color": {"type": "color", "value": [0.0, 0.0, 0.0, 0.6]}}
          }
         ]
        },
@@ -4261,7 +4345,8 @@
          "width": {"type": "length", "value": 960.0, "unit": "dp"},
          "height": {"type": "length", "value": 720.0, "unit": "dp"},
          "pointer-events": {"type": "keyword", "value": "none"},
-         "opacity": {"type": "number", "value": 1}
+         "opacity": {"type": "number", "value": 1},
+         "display": {"type": "keyword", "value": "block"}
         },
         "paths": [
          {
@@ -4298,7 +4383,8 @@
          "width": {"type": "length", "value": 960.0, "unit": "dp"},
          "height": {"type": "length", "value": 720.0, "unit": "dp"},
          "pointer-events": {"type": "keyword", "value": "none"},
-         "opacity": {"type": "number", "value": 0}
+         "opacity": {"type": "number", "value": 0},
+         "display": {"type": "keyword", "value": "block"}
         },
         "paths": [
          {
@@ -6905,7 +6991,8 @@
        "text-align": {"type": "keyword", "value": "left"},
        "white-space": {"type": "keyword", "value": "nowrap"},
        "pointer-events": {"type": "keyword", "value": "none"},
-       "opacity": {"type": "number", "value": 1}
+       "opacity": {"type": "number", "value": 1},
+       "display": {"type": "keyword", "value": "block"}
       }
      }
     ]
@@ -6920,7 +7007,8 @@
      "width": {"type": "length", "value": 100, "unit": "%"},
      "height": {"type": "length", "value": 100, "unit": "%"},
      "pointer-events": {"type": "keyword", "value": "none"},
-     "opacity": {"type": "number", "value": 1}
+     "opacity": {"type": "number", "value": 1},
+     "display": {"type": "keyword", "value": "block"}
     },
     "paths": [
      {

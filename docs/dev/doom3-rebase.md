@@ -230,7 +230,10 @@ release of Doom 3 (1.3.1 packs):
   `admin` and `d3dm1`, at 4:3, 16:9 and 21:9; and the in-game multiplayer
   menu on a local server, from which a player set ready, spectated,
   changed team, said a line of team chat, changed name and skin, bound a
-  key, called a frag limit vote that passed, and disconnected.
+  key, called a frag limit vote that passed, and disconnected, and whose
+  System tab opened the SYSTEM page over the game, where vertical sync was
+  applied; and the hell level's and the first level's loading screens on
+  `hell1` and `mars_city1`.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
   what was not seen.
 - Saving and loading in the same build (2026-11-14, OpenGL, console
@@ -344,15 +347,14 @@ Listed roughly by how much they block a player.
    some of them the retail content's own.
 5. **The retained interface has fourteen Doom 3 documents.** The title, the
    single-player pause, the message box, the death screen's choices, the
-   level loading screens' furniture, the in-game multiplayer menu but for its
-   System page, and the Load Game, Save Game,
+   level loading screens' furniture, the in-game multiplayer menu, and the
+   Load Game, Save Game,
    Controls, Game Options, System, Credits, Game Browser and Create Server
    pages, with the Mods and Multiplayer Settings panels in the title, are
    built to the
    [visual design specification](ui-visual-design.md) and present with
    `ui_retained 1` ([retained Doom 3 menus](ui/retained-menus.md)). Every
-   other page and the HUD have none, and the first level's, the hell
-   level's and the fallback loading screens keep the stock one, so launches
+   other page and the HUD have none, so launches
    still
    pin `ui_retained 0` and the stock Doom 3 GUIs remain the interface. With
    `ui_retained 1` the pages without a document are the stock ones, reached

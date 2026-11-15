@@ -110,7 +110,7 @@ showed as two arrows that never lined up.
 | `mphud.layout` | `guis/mphud.gui`, `chat.gui`, `mpmsgmode.gui`, `spectate.gui` | The same corners for the multiplayer HUD, the clock and scores at the top-right, chat and votes on the left |
 | `mainmenu.layout` | `guis/mainmenu.gui` (the expansion's extra dialogs are named too, unverified) | The background grid continues to the edges with its brighter fifth lines in step (vertical lines repeat every 600 units, horizontal ones span the width and repeat every 450); frame and bars to the edges; Options, New Game and multiplayer lists docked to their sides; credits and multiplayer frames across the width; dialogs dim the whole screen |
 | `pda.layout` | `guis/pda.gui` | 4:3 over the softened view |
-| `loading.layout` | `guis/map/*.gui` | The level picture fills (cropped), the bars span the width, the title and meter keep to the left |
+| `loading.layout` | `guis/map/*.gui` | The level picture fills (cropped), the bars span the width, the title and meter keep to the left; the first level's screen, a word and a meter on black, stays centred |
 | `screens.layout` | `msg.gui`, `netmenu.gui`, `restart.gui`, `gameover.gui`, `credits.gui`, `intro.gui` | Full-screen layers and dims fill; the boxes, choices and films stay centred |
 
 Not patched, because they need nothing: `scoreboard.gui`, `mpmain.gui` (floating

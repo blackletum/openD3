@@ -269,10 +269,10 @@ static const int RETAINED_MP_MATCH_RULE_VALUE_MAX = 10000;
 // The stock menu buttons the card's hand-offs press, by the card's page
 // index (card.stock_page), in the generator's order.
 #if defined( OPEND3 )
-// Doom 3's menu (guis/mpmain.gui): the tabs of the pages the card has no
-// panel for yet.
+// Doom 3's menu (guis/mpmain.gui): the tab of the one page the card has no
+// panel for, pressed where the retained SYSTEM page cannot present.
 static const char *const RETAINED_MP_STOCK_PAGES[] = {
-	"NewVote", "Multiplayer", "Controls", "Options", "System"
+	"System"
 };
 #else
 static const char *const RETAINED_MP_STOCK_PAGES[] = {
@@ -2580,13 +2580,32 @@ bool idSessionLocal::RetainedSystemAvailable() const {
 	return Session_RetainedSystemEnabled() && retainedStock.FindIndex( RETAINED_SYSTEM_GUI ) < 0;
 }
 
+// Doom 3's SYSTEM page opened from the in-game multiplayer menu: it stands
+// over the running game and returns to the game's menu, not to the main menu.
+bool idSessionLocal::RetainedSystemOverGame() const {
+#if defined( OPEND3 )
+	return guiSystem != NULL && guiSystemParent != NULL && guiSystemParent != guiMainMenu &&
+		guiSystemParent != guiRetainedSettingsPage && mapSpawned;
+#else
+	return false;
+#endif
+}
+
 bool idSessionLocal::OpenSystemSettings() {
 #ifdef ID_DEDICATED
 	return false;
 #else
 	if ( !Session_RetainedSystemEnabled() || systemGuiTransition || guiTest != NULL || RetainedUI_IsOpen() ) return false;
 	if ( guiSystem != NULL ) return guiActive == guiSystem;
+#if defined( OPEND3 )
+	// Doom 3's in-game multiplayer menu has no route through the main menu:
+	// its System tab opens the page over the game's own menu, which the card
+	// covers, and the page returns to it.
+	const bool overGameMenu = RetainedMultiplayerCovers();
+	if ( guiMainMenu == NULL || !( RetainedSettingsParent() || overGameMenu ) || guiMsgRestore != NULL ) return false;
+#else
 	if ( guiMainMenu == NULL || !RetainedSettingsParent() || guiMsgRestore != NULL ) return false;
+#endif
 	// Load and validate its application contract before deactivating the
 	// parent. A page that is missing or invalid leaves the stock SYSTEM page
 	// in use for the rest of the session.
@@ -2598,6 +2617,12 @@ bool idSessionLocal::OpenSystemSettings() {
 		uiManager->DeAlloc( child );
 		return false;
 	}
+#if defined( OPEND3 )
+	// Over a game the page stands alone under the card's strip: no bridge to
+	// a list, no flair, no edge glow and no hint line of its own.
+	child->SetStateBool( "page.ingame", overGameMenu );
+	child->StateChanged( common->GetPresentationTime() );
+#endif
 	guiSystemParent = guiActive;
 	guiSystemParentHandle = guiHandle;
 	guiSystem = child;
@@ -7306,9 +7331,10 @@ static const int RETAINED_DEATH_FURNITURE_COUNT = static_cast<int>( sizeof( RETA
 // A level's own loading screen (guis/map/<map>.gui) draws its picture and
 // scan lines under the retained one, and its opening fade from black. Its
 // bands, its text, its bar and the word LOADING are the retained screen's.
+// The first level's screen keeps its word and flare in UacText1Parent.
 static const char *const RETAINED_LOADING_FURNITURE[] = {
 	"bgBlackTop", "bgBlackBottom", "TitleBar", "TextDescription", "TextTitle", "TextSubTitle",
-	"LoadingFillClip", "LoadingLine", "TextLoading", "FlareBox"
+	"LoadingFillClip", "LoadingLine", "TextLoading", "FlareBox", "UacText1Parent"
 };
 static const int RETAINED_LOADING_FURNITURE_COUNT = static_cast<int>( sizeof( RETAINED_LOADING_FURNITURE ) / sizeof( RETAINED_LOADING_FURNITURE[0] ) );
 // The stock screen drawing under the retained loading screen, and that
@@ -8348,7 +8374,13 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 			!idStr::Icmp( request, "soundError" ) ? "guisounds_menuerror" :
 			!idStr::Icmp( request, "soundLocked" ) ? "guisounds_error" : NULL;
 		if ( shader != NULL ) {
-			HandleMainMenuCommands( va( "play %s", shader ) );
+			if ( RetainedSystemOverGame() && game != NULL ) {
+				// Over a multiplayer game the game's sound world plays, and
+				// the game sounds its menu's clicks.
+				game->HandleGuiCommands( va( "play %s", shader ) );
+			} else {
+				HandleMainMenuCommands( va( "play %s", shader ) );
+			}
 			return;
 		}
 	}
@@ -11430,17 +11462,37 @@ idUserInterface *idSessionLocal::SelectRetainedLoadingGui( idUserInterface *lega
 	// over a bar, and the level's title and briefing. The stock screen goes
 	// on drawing its picture (DrawRetainedPageHome) and the retained screen
 	// draws the rest, with the level's words and the bottom band's place
-	// read from the stock screen. A screen built another way keeps the stock
-	// presentation: the first level's and the hell screen's have no title,
-	// and the fallback has no word.
+	// read from the stock screen. Two screens are built another way and the
+	// document has a kind for each (load.kind): the hell screen's, a picture
+	// with the word in red and no bands or text, and the first level's, the
+	// word and the bar alone in the middle of a black screen. Any other
+	// screen keeps the stock presentation; the fallback (guis/map/loading.gui)
+	// is a picture with nothing over it to replace.
 	retainedLoadingScene = NULL;
 	retainedLoadingOver = NULL;
 	if ( !Session_RetainedScreensEnabled() || legacy == NULL ) {
 		return legacy;
 	}
+	enum { LOADING_STANDARD, LOADING_HELL, LOADING_FIRST };
+	int kind = LOADING_STANDARD;
 	idStr word, title, titleRect, bandRect, stepRect;
-	if ( !legacy->GetPresentationValue( "TextLoading::text", word ) || !legacy->GetPresentationValue( "TextTitle::text", title ) ||
-			!legacy->GetPresentationValue( "TextTitle::rect", titleRect ) || !legacy->GetPresentationValue( "bgBlackBottom::rect", bandRect ) ||
+	if ( legacy->GetPresentationValue( "UacText1::text", word ) && legacy->GetPresentationValue( "LoadingLine::rect", bandRect ) ) {
+		kind = LOADING_FIRST;
+	} else if ( !legacy->GetPresentationValue( "TextLoading::text", word ) ) {
+		return legacy;
+	} else if ( !legacy->GetPresentationValue( "TextTitle::text", title ) ) {
+		// No title: the hell screen, known by its word's red.
+		idStr tint;
+		float red = 0.0f, green = 0.0f, blue = 0.0f;
+		if ( !legacy->GetPresentationValue( "TextLoading::forecolor", tint ) ) {
+			return legacy;
+		}
+		tint.Replace( ",", " " );
+		if ( sscanf( tint.c_str(), "%f %f %f", &red, &green, &blue ) != 3 || red <= blue ) {
+			return legacy;
+		}
+		kind = LOADING_HELL;
+	} else if ( !legacy->GetPresentationValue( "TextTitle::rect", titleRect ) || !legacy->GetPresentationValue( "bgBlackBottom::rect", bandRect ) ||
 			!legacy->GetPresentationValue( "bgBlackBottom2::rect", stepRect ) ) {
 		return legacy;
 	}
@@ -11460,14 +11512,19 @@ idUserInterface *idSessionLocal::SelectRetainedLoadingGui( idUserInterface *lega
 		return values[ field ];
 	};
 	idStr subtitle, briefing;
-	const bool text = legacy->GetPresentationValue( "TextSubTitle::text", subtitle ) && legacy->GetPresentationValue( "TextDescription::text", briefing );
-	page->SetStateString( "load.title", common->GetLanguageDict()->GetString( title.c_str() ) );
+	const bool standard = kind == LOADING_STANDARD;
+	const bool text = standard && legacy->GetPresentationValue( "TextSubTitle::text", subtitle ) &&
+		legacy->GetPresentationValue( "TextDescription::text", briefing );
+	page->SetStateInt( "load.kind", kind );
+	page->SetStateString( "load.title", standard ? common->GetLanguageDict()->GetString( title.c_str() ) : "" );
 	page->SetStateString( "load.subtitle", text ? common->GetLanguageDict()->GetString( subtitle.c_str() ) : "" );
 	page->SetStateString( "load.briefing", text ? common->GetLanguageDict()->GetString( briefing.c_str() ) : "" );
 	page->SetStateBool( "load.text", text );
-	page->SetStateFloat( "load.band_y", rectField( bandRect, 1 ) );
-	page->SetStateFloat( "load.step_x", rectField( stepRect, 0 ) );
-	page->SetStateFloat( "load.title_y", rectField( titleRect, 1 ) );
+	if ( standard ) {
+		page->SetStateFloat( "load.band_y", rectField( bandRect, 1 ) );
+		page->SetStateFloat( "load.step_x", rectField( stepRect, 0 ) );
+		page->SetStateFloat( "load.title_y", rectField( titleRect, 1 ) );
+	}
 	page->SetStateFloat( "map_loading", 0.0f );
 	page->StateChanged( common->GetPresentationTime() );
 	page->HandleNamedEvent( "present" );
@@ -12435,6 +12492,23 @@ void idSessionLocal::HandleRetainedMultiplayerRequest( idUserInterface *gui, con
 		if ( !idStr::Icmp( request, "mpRateNext" ) || !idStr::Icmp( request, "mpName" ) ) {
 			game->HandleGuiCommands( click );
 			Session_ApplyRetainedMpSetting( gui, request );
+			return;
+		}
+		if ( !idStr::Icmp( request, "mpSystem" ) ) {
+			// System belongs to the engine's settings service and its one
+			// page: the SYSTEM page opens over the game's menu, the card's
+			// strip stays drawn behind it (idSessionLocal::Draw) and the
+			// page returns to the menu, which the card covers again. Where
+			// the page cannot present, the stock menu's own page does.
+			game->HandleGuiCommands( click );
+			if ( OpenSystemSettings() ) {
+				return;
+			}
+			retainedMultiplayerUncovered = true;
+			retainedMultiplayerHandoff = 0;
+			retainedMultiplayerHandoffUntil = common->GetPresentationTime() + RETAINED_MP_HANDOFF_MSEC;
+			RetireRetainedMultiplayer( false );
+			UpdateRetainedMultiplayer();
 			return;
 		}
 		if ( !idStr::Icmp( request, "controlsBind" ) || !idStr::Icmp( request, "controlsClear" ) ) {

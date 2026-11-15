@@ -51,3 +51,13 @@ gui "guis/map/*.gui" {
 		screenaligny top
 	}
 }
+
+// The first level's screen has no picture and no bars: its word and its
+// meter stand in the middle of a black screen, and the meter stays under the
+// word there.
+gui "guis/map/mars_city1.gui" {
+	window LoadingFillClip, LoadingLine, FlareBox {
+		screenalignx middle
+		screenaligny middle
+	}
+}

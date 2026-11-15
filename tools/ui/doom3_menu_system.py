@@ -113,6 +113,9 @@ def page_state() -> dict:
         state[f"settings.lightGrid.{key}"] = {"type": "boolean", "initial": False}
     for key in ("available", "fallback"):
         state[f"settings.renderer.{key}"] = {"type": "boolean", "initial": False}
+    # What the service says about the antialiasing count it can draw (upstream's FPS-05); the page shows neither.
+    state["settings.msaa.clamped"] = {"type": "boolean", "initial": False}
+    state["settings.msaa.status"] = {"type": "string", "initial": ""}
     state.update(system_display_catalog.keys())
     render = {"catalog": "string", "count": "number", "selected": "number", "active": "string", "pending": "boolean",
               "autoDetect": "boolean", "canRestart": "boolean", "canChoose": "boolean", "vulkan": "boolean", "gl": "boolean",
@@ -353,4 +356,23 @@ def system_document() -> dict:
                           content_box=(165, 30, 390, 370))
     document["events"]["onActivate"] = [{"op": "action", "action": "begin"}, {"op": "setState", "values": {"page.discardVisible": False}},
                                         *document["events"]["onActivate"]]
+    # Opened from the in-game multiplayer menu's System tab (the session sets
+    # page.ingame) the page stands over the game under that menu's strip:
+    # there is no list to bridge to, and the scene's edge glow and the main
+    # menu's hint line are not that menu's.
+    doc.state["page.ingame"] = {"type": "boolean", "initial": False}
+    for node in walk(document["root"]):
+        if node["id"] in ("plate-bridge", "plate-bridge-flash", "plate-flair", "plate-flair-flash", "edge-glow", "hint-line"):
+            node["properties"]["display"] = keyword("block")
+            doc.bind(f"{node['id']}.display", node["id"], "display", op("select", st("page.ingame"), "none", "block"))
+    # The plate is made to stand over the menu's dark scene. Over a lit game,
+    # whose own messages cross it, it takes a black backing of its own shape.
+    # It runs under the apply bar in the plate's notch as well.
+    shape = [(445, 397) if point == (437, 372) else (264, 397) if point == (272, 372) else point for point in SYSTEM_PLATE]
+    xs, ys = [x for x, _ in shape], [y for _, y in shape]
+    backing = vector("plate-ingame", {**box(min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)), **NO_POINTER, "display": keyword("none")},
+                     [path("backing", [(U * (x - min(xs)), U * (y - min(ys))) for x, y in shape], fill=solid(rgb("#000000", 0.6)))])
+    doc.bind("plate-ingame.display", "plate-ingame", "display", op("select", both(st("page.ingame"), st("page.shown")), "block", "none"))
+    canvas = next(node for node in walk(document["root"]) if node["id"] == "canvas")
+    canvas["children"].insert(next(index for index, node in enumerate(canvas["children"]) if node["id"] == "plate-body"), backing)
     return document

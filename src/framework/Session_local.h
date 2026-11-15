@@ -311,6 +311,7 @@ public:
 	bool				ReturnSystemSettings();
 	void				ReportSystemSettings();
 	void				CloseSystemSettings();
+	bool				RetainedSystemOverGame() const;
 
 	// Retained (RmlUi) screens, enabled by default and gated by ui_retained.
 	// The title and single-player pause screens cover the legacy main menu

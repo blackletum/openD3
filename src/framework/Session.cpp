@@ -10666,9 +10666,10 @@ void idSessionLocal::Draw() {
 			rw->RenderScene( &currentDemoRenderView );
 			renderSystem->DrawDemoPics();
 #if defined( OPEND3 )
-		} else if ( guiActive == guiSystem && guiSystem != NULL && guiMainMenu != NULL ) {
+		} else if ( guiActive == guiSystem && guiSystem != NULL && guiMainMenu != NULL && !RetainedSystemOverGame() ) {
 			// Doom 3's SYSTEM page stands over the menu's scene and the home
-			// that opened it, as its other pages do.
+			// that opened it, as its other pages do. Opened from the in-game
+			// multiplayer menu it stands over the game, drawn below.
 			DrawRetainedPageHome( presentationTime );
 #endif
 		} else if ( guiActive == guiSystem || guiActive->State().GetBool( "gameDraw" ) ) {
@@ -10704,6 +10705,13 @@ void idSessionLocal::Draw() {
 			UI_RunTimeEvents( guiActive, presentationTime );
 			guiRetainedMultiplayer->Redraw( presentationTime );
 		} else {
+#if defined( OPEND3 )
+			if ( guiActive == guiSystem && guiRetainedEscape != NULL && RetainedSystemOverGame() ) {
+				// The in-game menu's strip, with System current, stays behind
+				// the SYSTEM page its tab opened.
+				guiRetainedEscape->Redraw( presentationTime );
+			}
+#endif
 			guiActive->Redraw( presentationTime );
 		}
 
@@ -11657,7 +11665,9 @@ void idSessionLocal::UpdateSoundWorldFocus() {
 }
 
 void idSessionLocal::SetPlayingSoundWorld() {
-	const bool systemMenuActive = guiSystem != NULL &&
+	// Doom 3's SYSTEM page over a multiplayer game keeps the game's sounds,
+	// as the game's own menu does.
+	const bool systemMenuActive = guiSystem != NULL && !RetainedSystemOverGame() &&
 		( guiActive == guiSystem || ( guiActive == guiMsg && guiMsgRestore == guiSystem ) );
 	const bool arenaPauseMenuActive = guiActive != NULL &&
 		idStr::Icmp( guiActive->Name(), "guis/arena_pause.gui" ) == 0;

@@ -13,11 +13,14 @@ card shows from the game's menu (mp.warmup, mp.ready_text, mp.spec_text,
 mp.teams, mp.team, mp.vote, mp.say) and turns the card's requests into the
 stock menu's own commands (HandleRetainedMultiplayerRequest).
 
-This card draws the strip and two panels, Main and Exit. The other five
-tabs hand the screen to the stock menu's page of that name (card.stock_page
-and mpStockPage; RETAINED_MP_STOCK_PAGES in the session), so the card stands
-where the stock menu stands, on the centred 4:3 canvas, and a hand-off does
-not move the strip. Rule 7's top-leading anchor waits for the other panels.
+This card draws the strip and six panels. The seventh tab, System, opens
+the retained SYSTEM page (guis/menu/settings/system.rui) over the game,
+because the engine's settings service serves that one document: the session
+keeps this card's strip drawn behind the page with System current, and the
+page returns to the card. Where the page cannot present, the session hands
+the screen to the stock menu's System page (RETAINED_MP_STOCK_PAGES), so the
+card stands where the stock menu stands, on the centred 4:3 canvas, and that
+hand-off does not move the strip.
 
 build_doom3_menus.py writes the document.
 """
@@ -52,16 +55,16 @@ SELECT_BORDER = rgb("#99FFFF", 0.8)
 TOGGLE_OFF = rgb("#666666")
 
 # The stock tabs: (id, label, x, width). A tab with a panel here shows it
-# (mp.tab is the tab's place in this list); New Vote and System are still the
-# stock menu's pages, named by their place in the session's
-# RETAINED_MP_STOCK_PAGES.
+# (mp.tab is the tab's place in this list). System has no panel: the engine's
+# settings service serves one document, the SYSTEM page, which the session
+# opens under the strip (mpSystem) while the card shows the tab as current.
 TABS = (("main", "#str_02381", 0, 48), ("vote", "#str_02484", 50, 87), ("player", "#str_04157", 139, 105),
         ("controls", "#str_04158", 246, 82), ("options", "#str_04159", 330, 72), ("system", "#str_04160", 404, 66),
         ("exit", "#str_04161", 472, 43))
 PANEL_TABS = {"main": 0, "vote": 1, "player": 2, "controls": 3, "options": 4, "exit": 6}
+SYSTEM_TAB = 5
 # What opening a tab resets beside mp.tab: New Vote starts with no type chosen.
 TAB_RESET = {"vote": {"vote.type": -1, "vote.item_count": 0}}
-STOCK_PAGE = {"vote": 0, "player": 1, "controls": 2, "options": 3, "system": 4}
 
 
 def tab(doc: Document, ident: str, key: str, left: float, width: float) -> dict:
@@ -70,17 +73,13 @@ def tab(doc: Document, ident: str, key: str, left: float, width: float) -> dict:
     darkened and never moves."""
     name = f"mp_tab_{ident}"
     hot = vector(f"{name}-hot", {**FULL, **NO_POINTER, "opacity": number(0)}, [path("wash", WHOLE, fill=solid(TAB_HOVER))])
-    children = [hot]
-    if ident in PANEL_TABS:
-        current = vector(f"{name}-current", {**FULL, **NO_POINTER, "display": keyword("none")}, [path("dark", WHOLE, fill=solid(TAB_CURRENT))])
-        doc.bind(f"{name}-current.display", f"{name}-current", "display",
-                 {"op": "select", "args": [{"op": "==", "args": [{"state": "mp.tab"}, PANEL_TABS[ident]]}, "block", "none"]})
-        children.append(current)
-        doc.events[f"{name}Open"] = [{"op": "setState", "values": {"mp.tab": PANEL_TABS[ident], **TAB_RESET.get(ident, {})}},
-                                     {"op": "action", "action": "mpClick"}]
-    else:
-        doc.events[f"{name}Open"] = [{"op": "setState", "values": {"card.stock_page": STOCK_PAGE[ident]}},
-                                     {"op": "action", "action": "mpStockPage"}]
+    place = PANEL_TABS.get(ident, SYSTEM_TAB)
+    current = vector(f"{name}-current", {**FULL, **NO_POINTER, "display": keyword("none")}, [path("dark", WHOLE, fill=solid(TAB_CURRENT))])
+    doc.bind(f"{name}-current.display", f"{name}-current", "display",
+             {"op": "select", "args": [{"op": "==", "args": [{"state": "mp.tab"}, place]}, "block", "none"]})
+    children = [hot, current]
+    doc.events[f"{name}Open"] = [{"op": "setState", "values": {"mp.tab": place, **TAB_RESET.get(ident, {})}},
+                                 {"op": "action", "action": "mpClick" if ident in PANEL_TABS else "mpSystem"}]
     children.append(label(f"{name}-label", key, {**FULL, **typeface(FACE_BANK, 0.25, 15, TAB_TEXT, "center"), **NO_POINTER}))
     ids = doc.states(name, [(f"{name}-hot", "opacity", {"default": number(0), "hover": number(1)}, 100, 100)])
     return group(name, box(left, 0, width, 15), children, control={"role": "button", "label": key, "event": f"{name}Open", "states": ids})
@@ -435,13 +434,12 @@ def exit_panel(doc: Document) -> dict:
 
 
 def multiplayer_menu_document() -> dict:
-    """The in-game multiplayer menu's card: the tab strip, the Main and Exit
-    panels, and the hint line breathing at the bottom. The other tabs hand
-    off to the stock menu's pages."""
+    """The in-game multiplayer menu's card: the tab strip, its six panels and
+    the hint line breathing at the bottom. System opens the SYSTEM page
+    under the strip (mpSystem)."""
     doc = Document("opend3.mpescape")
     doc.state.update({
         "mp.shown": {"type": "boolean", "initial": False}, "mp.tab": {"type": "number", "initial": 0},
-        "card.stock_page": {"type": "number", "initial": -1},
         "mp.warmup": {"type": "boolean", "initial": False}, "mp.ready_text": {"type": "string", "initial": ""},
         "mp.spec_text": {"type": "string", "initial": ""}, "mp.teams": {"type": "boolean", "initial": False},
         "mp.team": {"type": "number", "initial": 0}, "mp.vote": {"type": "boolean", "initial": False},
@@ -449,7 +447,7 @@ def multiplayer_menu_document() -> dict:
         # The adapter keeps this: the chat field holds text not yet entered.
         "ui.numberDraftsPending": {"type": "boolean", "initial": False},
     })
-    for verb in ("mpClose", "mpDisconnect", "quit", "mpStockPage", "mpReady", "mpSpectate", "mpTeamToggle", "mpVoteYes", "mpVoteNo", "mpChat",
+    for verb in ("mpClose", "mpDisconnect", "quit", "mpSystem", "mpReady", "mpSpectate", "mpTeamToggle", "mpVoteYes", "mpVoteNo", "mpChat",
                  "mpChatMode", "mpClick", "controlsBind", "controlsClear", "mpVoteType", "mpVoteItem", "mpCallVote"):
         doc.session(verb)
     tabs = [tab(doc, *entry) for entry in TABS]

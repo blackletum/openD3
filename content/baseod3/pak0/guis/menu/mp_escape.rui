@@ -9,7 +9,6 @@
  "state": {
   "mp.shown": {"type": "boolean", "initial": false},
   "mp.tab": {"type": "number", "initial": 0},
-  "card.stock_page": {"type": "number", "initial": -1},
   "mp.warmup": {"type": "boolean", "initial": false},
   "mp.ready_text": {"type": "string", "initial": ""},
   "mp.spec_text": {"type": "string", "initial": ""},
@@ -115,7 +114,7 @@
   "mpClose": {"operation": "session.menu", "arguments": {"command": "mpClose"}},
   "mpDisconnect": {"operation": "session.menu", "arguments": {"command": "mpDisconnect"}},
   "quit": {"operation": "session.menu", "arguments": {"command": "quit"}},
-  "mpStockPage": {"operation": "session.menu", "arguments": {"command": "mpStockPage"}},
+  "mpSystem": {"operation": "session.menu", "arguments": {"command": "mpSystem"}},
   "mpReady": {"operation": "session.menu", "arguments": {"command": "mpReady"}},
   "mpSpectate": {"operation": "session.menu", "arguments": {"command": "mpSpectate"}},
   "mpTeamToggle": {"operation": "session.menu", "arguments": {"command": "mpTeamToggle"}},
@@ -205,7 +204,7 @@
   "mp_tab_playerOpen": [{"op": "setState", "values": {"mp.tab": 2}}, {"op": "action", "action": "mpClick"}],
   "mp_tab_controlsOpen": [{"op": "setState", "values": {"mp.tab": 3}}, {"op": "action", "action": "mpClick"}],
   "mp_tab_optionsOpen": [{"op": "setState", "values": {"mp.tab": 4}}, {"op": "action", "action": "mpClick"}],
-  "mp_tab_systemOpen": [{"op": "setState", "values": {"card.stock_page": 4}}, {"op": "action", "action": "mpStockPage"}],
+  "mp_tab_systemOpen": [{"op": "setState", "values": {"mp.tab": 5}}, {"op": "action", "action": "mpSystem"}],
   "mp_tab_exitOpen": [{"op": "setState", "values": {"mp.tab": 6}}, {"op": "action", "action": "mpClick"}],
   "chatSay": [{"op": "action", "action": "mpChat"}],
   "vote_type_0Pick": [{"op": "setState", "values": {"vote.pick_type": 0}}, {"op": "action", "action": "mpVoteType"}],
@@ -333,6 +332,12 @@
    "node": "mp_tab_options-current",
    "property": "display",
    "value": {"op": "select", "args": [{"op": "==", "args": [{"state": "mp.tab"}, 4]}, "block", "none"]}
+  },
+  {
+   "id": "mp_tab_system-current.display",
+   "node": "mp_tab_system-current",
+   "property": "display",
+   "value": {"op": "select", "args": [{"op": "==", "args": [{"state": "mp.tab"}, 5]}, "block", "none"]}
   },
   {
    "id": "mp_tab_exit-current.display",
@@ -10682,6 +10687,32 @@
              {"id": "close", "op": "close"}
             ],
             "fill": {"type": "solid", "color": {"type": "color", "value": [0.451, 0.698, 0.698, 0.5]}}
+           }
+          ]
+         },
+         {
+          "id": "mp_tab_system-current",
+          "type": "vector",
+          "properties": {
+           "position": {"type": "keyword", "value": "absolute"},
+           "left": {"type": "length", "value": 0, "unit": "dp"},
+           "top": {"type": "length", "value": 0, "unit": "dp"},
+           "width": {"type": "length", "value": 100, "unit": "%"},
+           "height": {"type": "length", "value": 100, "unit": "%"},
+           "pointer-events": {"type": "keyword", "value": "none"},
+           "display": {"type": "keyword", "value": "none"}
+          },
+          "paths": [
+           {
+            "id": "dark",
+            "commands": [
+             {"id": "p0", "op": "move", "points": [[0, 0]]},
+             {"id": "p1", "op": "line", "points": [[{"fraction": 1}, 0]]},
+             {"id": "p2", "op": "line", "points": [[{"fraction": 1}, {"fraction": 1}]]},
+             {"id": "p3", "op": "line", "points": [[0, {"fraction": 1}]]},
+             {"id": "close", "op": "close"}
+            ],
+            "fill": {"type": "solid", "color": {"type": "color", "value": [0.0, 0.051, 0.0, 0.4]}}
            }
           ]
          },

@@ -2,7 +2,7 @@
 
 Specification version 1.2, 13 November 2026. Status: implementation target; the
 vector replacement has begun with the title screen, the single-player pause, the
-message box, the death screen's choices, the level loading screens' furniture, the in-game multiplayer menu but for its System page and the Load Game, Save Game, Controls, Game Options, System, Mods,
+message box, the death screen's choices, the level loading screens' furniture, the in-game multiplayer menu and the Load Game, Save Game, Controls, Game Options, System, Mods,
 Credits, Game Browser, Create Server and Multiplayer Settings pages ([retained Doom 3 menus](ui/retained-menus.md)), which
 present with
 `ui_retained 1`. openD3 otherwise runs the stock Doom 3 GUIs, set in

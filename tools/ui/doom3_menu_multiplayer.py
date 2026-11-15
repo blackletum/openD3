@@ -449,9 +449,10 @@ def settings_row(index: int) -> tuple:
     return (20, 46 + 23 * index, 300, 1, 100, "right", 110)
 
 
-def skin_swatch(doc: Document, index: int, name: str, skin: str) -> dict:
+def skin_swatch(doc: Document, index: int, name: str, skin: str, left: float = 35, top: float = 148) -> dict:
     """A player skin (section 9.6): the stock 32 x 64 u picture in a 1 u black
-    border, white on the skin in use and under the pointer. Accept wears it."""
+    border, white on the skin in use and under the pointer. Accept wears it.
+    `left` and `top` place the first swatch; the rest follow at a 60 u pitch."""
     ident = f"mpset_skin_{name}"
     doc.actions[f"{ident}Wear"] = {"operation": "settings.player.set", "arguments": {"cvar": "ui_skin", "value": skin}}
     image = picture(f"{ident}-picture", f"guis/assets/mainmenu/skin_{name}", {**FULL, **NO_POINTER})
@@ -461,7 +462,7 @@ def skin_swatch(doc: Document, index: int, name: str, skin: str) -> dict:
     doc.bind(f"{ident}-worn.display", f"{ident}-worn", "display",
              {"op": "select", "args": [{"op": "==", "args": [{"state": "cvar.ui_skin"}, skin]}, "block", "none"]})
     ids = doc.states(ident, [(f"{ident}-hot", "opacity", {"default": number(0), "hover": number(1)}, 100, 200)])
-    return group(ident, box(35 + 60 * index, 148, 32, 64), [image, border, hot, worn],
+    return group(ident, box(left + 60 * index, top, 32, 64), [image, border, hot, worn],
                  control={"role": "button", "label": "#str_02195", "action": f"{ident}Wear", "states": ids})
 
 

@@ -28,6 +28,8 @@ from doom3_menu_kit import (
     CANVAS_H, CANVAS_W, FACE_BANK, FACE_DEFAULT, FULL, NO_POINTER, U, Document, absolute, box, colour, font, group, hairline,
     keyword, label, length, number, path, rgb, solid, stroke, track, typeface, vector,
 )
+from doom3_menu_multiplayer import SKINS, edit_row, flag_row, skin_swatch, step_row
+from doom3_menu_options import CATEGORIES, STR as OPTION_STR, bind_row, choice_row, slider_row
 from doom3_menu_pages import EDGE, PLACEHOLDER, WHOLE, name_field
 
 # Section 10.13's tokens.
@@ -49,14 +51,17 @@ SELECT_FILL = rgb("#99FFFF", 0.4)
 SELECT_BORDER = rgb("#99FFFF", 0.8)
 TOGGLE_OFF = rgb("#666666")
 
-# The stock tabs: (id, label, x, width). Main and Exit are this card's
-# panels; the rest are the stock menu's pages, in RETAINED_MP_STOCK_PAGES'
-# order.
+# The stock tabs: (id, label, x, width). A tab with a panel here shows it
+# (mp.tab is the tab's place in this list); New Vote and System are still the
+# stock menu's pages, named by their place in the session's
+# RETAINED_MP_STOCK_PAGES.
 TABS = (("main", "#str_02381", 0, 48), ("vote", "#str_02484", 50, 87), ("player", "#str_04157", 139, 105),
         ("controls", "#str_04158", 246, 82), ("options", "#str_04159", 330, 72), ("system", "#str_04160", 404, 66),
         ("exit", "#str_04161", 472, 43))
-PANEL_TABS = {"main": 0, "exit": 6}
-STOCK_TABS = ("vote", "player", "controls", "options", "system")
+PANEL_TABS = {"main": 0, "vote": 1, "player": 2, "controls": 3, "options": 4, "exit": 6}
+# What opening a tab resets beside mp.tab: New Vote starts with no type chosen.
+TAB_RESET = {"vote": {"vote.type": -1, "vote.item_count": 0}}
+STOCK_PAGE = {"vote": 0, "player": 1, "controls": 2, "options": 3, "system": 4}
 
 
 def tab(doc: Document, ident: str, key: str, left: float, width: float) -> dict:
@@ -71,9 +76,10 @@ def tab(doc: Document, ident: str, key: str, left: float, width: float) -> dict:
         doc.bind(f"{name}-current.display", f"{name}-current", "display",
                  {"op": "select", "args": [{"op": "==", "args": [{"state": "mp.tab"}, PANEL_TABS[ident]]}, "block", "none"]})
         children.append(current)
-        doc.events[f"{name}Open"] = [{"op": "setState", "values": {"mp.tab": PANEL_TABS[ident]}}, {"op": "action", "action": "mpClick"}]
+        doc.events[f"{name}Open"] = [{"op": "setState", "values": {"mp.tab": PANEL_TABS[ident], **TAB_RESET.get(ident, {})}},
+                                     {"op": "action", "action": "mpClick"}]
     else:
-        doc.events[f"{name}Open"] = [{"op": "setState", "values": {"card.stock_page": STOCK_TABS.index(ident)}},
+        doc.events[f"{name}Open"] = [{"op": "setState", "values": {"card.stock_page": STOCK_PAGE[ident]}},
                                      {"op": "action", "action": "mpStockPage"}]
     children.append(label(f"{name}-label", key, {**FULL, **typeface(FACE_BANK, 0.25, 15, TAB_TEXT, "center"), **NO_POINTER}))
     ids = doc.states(name, [(f"{name}-hot", "opacity", {"default": number(0), "hover": number(1)}, 100, 100)])
@@ -207,6 +213,220 @@ def main_panel(doc: Document) -> dict:
     return panel("mp-main", 0, 48, (0, 39, 339, 178), content, leading_frame=False)
 
 
+# The stock vote types in the list's order: (the game's vote index, the row's
+# label, the line over its value).
+VOTE_TYPES = ((0, "#str_02487", "#str_02487"), (7, "#str_04149", "#str_04149"), (1, "#str_01983", "#str_02489"),
+              (2, "#str_01982", "#str_02490"), (3, "#str_02376", "#str_02492"), (5, "#str_02504", "#str_02494"),
+              (6, "#str_01987", "#str_01987"), (4, "#str_02505", "#str_02493"))
+VOTE_ITEMS = 16      # RETAINED_MP_VOTE_ITEMS
+LIST_ROW_H = 18.0
+TEXT_IDLE = [1, 1, 1, 0.6]
+LIST_SELECT = rgb("#99FFFF", 0.1)
+WELL_FILL = rgb("#000000", 0.6)
+WELL_BORDER = rgb("#264040")
+
+
+def well(ident: str, place: dict) -> dict:
+    """mp.well.fill: black at 60 % with a 1 u border."""
+    return vector(ident, {**place, **NO_POINTER}, [path("fill", WHOLE, fill=solid(WELL_FILL)),
+                                                   path("border", EDGE, stroke=stroke(solid(WELL_BORDER), U, minimum=1))])
+
+
+def list_row(doc: Document, ident: str, width: float, text: dict | str, chosen: dict, event: str, relative: bool) -> dict:
+    """A list row (section 10.13): Bank 0.25 in mp.text.idle, white under the
+    pointer in 50 ms, the current choice on an mp.select fill; unavailable,
+    it is 40 % and ignores the pointer. `text` is a string key or a state
+    expression."""
+    selected = vector(f"{ident}-selected", {**FULL, **NO_POINTER, "display": keyword("none")}, [path("fill", WHOLE, fill=solid(LIST_SELECT))])
+    doc.bind(f"{ident}-selected.display", f"{ident}-selected", "display", {"op": "select", "args": [chosen, "block", "none"]})
+    node = label(f"{ident}-label", text if isinstance(text, str) else PLACEHOLDER,
+                 {**box(3, 0, width - 6, LIST_ROW_H), **typeface(FACE_BANK, 0.25, LIST_ROW_H, TEXT_IDLE), "overflow": keyword("hidden"), **NO_POINTER})
+    if not isinstance(text, str):
+        doc.bind(f"{ident}-label.text", f"{ident}-label", "text", text)
+    ids = doc.states(ident, [(f"{ident}-label", "color", {"default": colour(TEXT_IDLE), "hover": colour(TEXT), "disabled": colour(rgb("#CCCCCC", 0.4))}, 50, 50)])
+    place = ({"position": keyword("relative"), "display": keyword("block"), "width": length(U * width), "height": length(U * LIST_ROW_H),
+              "flex-shrink": number(0)} if relative else {})
+    return group(ident, place, [selected, node], control={"role": "button", "label": text if isinstance(text, str) else PLACEHOLDER,
+                                                           "event": event, "states": ids})
+
+
+def plain_button(doc: Document, ident: str, key: str, place: dict, event: str) -> dict:
+    """A filled button with a fixed label (see filled_button)."""
+    fill = vector(f"{ident}-fill", {**FULL, **NO_POINTER}, [path("fill", WHOLE, fill=solid(BUTTON_FILL)),
+                                                            path("border", EDGE, stroke=stroke(solid(BUTTON_BORDER), U, minimum=1))])
+    flash = vector(f"{ident}-flash", {**FULL, **NO_POINTER, "opacity": number(0)}, [path("flash", WHOLE, fill=solid(rgb("#99FFFF", 0.5)))])
+    text_node = label(f"{ident}-label", key, {**FULL, **typeface(FACE_BANK, 0.25, 18, BUTTON_TEXT, "center"), **NO_POINTER})
+    ids = doc.states(ident, [
+        (f"{ident}-label", "color", {"default": colour(BUTTON_TEXT), "hover": colour(TEXT), "disabled": colour(TEXT_OFF)}, 50, 50),
+        (f"{ident}-flash", "opacity", {"default": number(0), "hover": number(0), "pressed": number(1)}, 50, 200),
+    ])
+    return group(ident, place, [fill, flash, text_node], control={"role": "button", "label": key, "event": event, "states": ids})
+
+
+def vote_panel(doc: Document) -> dict:
+    """The New Vote panel (38, 39, 434 x 178 u): the vote types in a list
+    well, each live only where the server allows it; beside it the chosen
+    type's line and its value, a whole number for the two limits or a list
+    for a game type, a player or a map (with the map's picture); and Call New
+    Vote and Cancel Vote. The session supplies the list (vote.item<n>) when
+    a type is chosen and takes the vote to the game."""
+    doc.state.update({"vote.type": {"type": "number", "initial": -1}, "vote.pick_type": {"type": "number", "initial": -1},
+                      "vote.allowed": {"type": "number", "initial": 0}, "vote.number": {"type": "number", "initial": 10},
+                      "vote.item_count": {"type": "number", "initial": 0}, "vote.item_selected": {"type": "number", "initial": -1},
+                      "vote.pick_item": {"type": "number", "initial": -1}, "vote.shot": {"type": "string", "initial": ""}})
+    kind = {"state": "vote.type"}
+
+    def is_type(*types: int) -> dict:
+        """True while the chosen vote type is one of `types`."""
+        test = {"op": "==", "args": [kind, types[0]]}
+        for index in types[1:]:
+            test = {"op": "||", "args": [test, {"op": "==", "args": [kind, index]}]}
+        return test
+
+    def shown(node: dict, test: dict) -> dict:
+        """`node`, taking its place only while `test` holds."""
+        node["properties"]["display"] = keyword("none")
+        doc.bind(f"{node['id']}.display", node["id"], "display", {"op": "select", "args": [test, "block", "none"]})
+        return node
+
+    title = label("vote-title", "#str_02502", {**box(6, 2, 100, 14), **typeface(FACE_BANK, 0.25, 14, TEXT), **NO_POINTER})
+    types = []
+    for position, (index, key, _line) in enumerate(VOTE_TYPES):
+        doc.state[f"vote.on{index}"] = {"type": "boolean", "initial": False}
+        ident = f"vote_type_{index}"
+        doc.events[f"{ident}Pick"] = [{"op": "setState", "values": {"vote.pick_type": index}}, {"op": "action", "action": "mpVoteType"}]
+        row = list_row(doc, ident, 154, key, {"op": "==", "args": [kind, index]}, f"{ident}Pick", relative=False)
+        row["properties"] = box(9, 19 + 19 * position, 154, LIST_ROW_H)
+        doc.bind(f"{ident}.enabled", ident, "enabled", {"state": f"vote.on{index}"})
+        types.append(row)
+
+    # The line over the value names the chosen type; with voting off or a
+    # vote under way it says so instead.
+    line_text = ""
+    for index, _key, line in reversed(VOTE_TYPES):
+        line_text = {"op": "select", "args": [{"op": "==", "args": [kind, index]}, line, line_text]}
+    allowed = {"op": "==", "args": [{"state": "vote.allowed"}, 1]}
+    status_text = {"op": "select", "args": [{"op": "==", "args": [{"state": "vote.allowed"}, 2]}, "#str_02486",
+                                             {"op": "select", "args": [allowed, line_text, "#str_02485"]}]}
+    line = label("vote-line", "#str_02485", {**box(171, 18, 250, 14), **typeface(FACE_BANK, 0.25, 14, TEXT), **NO_POINTER})
+    doc.bind("vote-line.text", "vote-line", "text", status_text)
+
+    doc.actions["voteNumber"] = {"input": "number", "operation": "ui.state.set", "arguments": {"key": "vote.number", "value": {"input": "value"}}}
+    field = shown(name_field(doc, "vote_number", box(171, 34, 50, 18), "vote.number", "voteNumber", 3, key="#str_02489", integer=(0, 100)),
+                  is_type(1, 2))
+
+    rows = []
+    for index in range(VOTE_ITEMS):
+        doc.state[f"vote.item{index}"] = {"type": "string", "initial": ""}
+        ident = f"vote_item_{index}"
+        doc.events[f"{ident}Pick"] = [{"op": "setState", "values": {"vote.pick_item": index}}, {"op": "action", "action": "mpVoteItem"}]
+        row = list_row(doc, ident, 124, {"state": f"vote.item{index}"}, {"op": "==", "args": [{"state": "vote.item_selected"}, index]},
+                       f"{ident}Pick", relative=True)
+        doc.bind(f"{ident}.display", ident, "display", {"op": "select", "args": [{"op": "<", "args": [index, {"state": "vote.item_count"}]}, "block", "none"]})
+        rows.append(row)
+    column = group("vote-item-rows", {"position": keyword("relative"), "display": keyword("flex"), "flex-direction": keyword("column"),
+                                      "width": length(U * 124)}, rows)
+    items = shown(group("vote-items", box(168, 34, 128, 115), [well("vote-items-well", FULL),
+                                                               group("vote-item-list", {**box(2, 2, 124, 111), "overflow": keyword("auto")}, [column])]),
+                  is_type(3, 4, 5))
+    picture_node = {"id": "vote-shot", "type": "image", "properties": {"image": {"type": "image", "value": ""}, "image-fit": keyword("cover"), **FULL, **NO_POINTER}}
+    doc.bind("vote-shot.image", "vote-shot", "image", {"state": "vote.shot"})
+    shot = shown(group("vote-shot-frame", box(300, 38, 128, 96), [
+        picture_node, vector("vote-shot-edge", {**FULL, **NO_POINTER}, [path("edge", EDGE, stroke=stroke(solid(rgb("#669999")), U, minimum=1))])]),
+        is_type(5))
+
+    doc.events["voteCall"] = [{"op": "action", "action": "mpCallVote"}]
+    call = plain_button(doc, "vote_call", "#str_04150", box(171, 153, 125, 18), "voteCall")
+    doc.bind("vote_call.enabled", "vote_call", "enabled", {"op": "&&", "args": [allowed, {"op": ">=", "args": [kind, 0]}]})
+    doc.events["voteCancel"] = [{"op": "setState", "values": {"mp.tab": 0}}, {"op": "action", "action": "mpClick"}]
+    cancel = plain_button(doc, "vote_cancel", "#str_04151", box(300, 153, 128, 18), "voteCancel")
+    content = [title, well("vote-types-well", box(6, 17, 160, 155)), *types, line, field, items, shot, call, cancel]
+    return panel("mp-vote", 50, 87, (38, 39, 434, 178), content, leading_frame=True)
+
+
+def player_panel(doc: Document) -> dict:
+    """The Multiplayer panel (123, 39, 318 x 178 u): Data rate, Always Run
+    and Player Name on option rows, and the five skin pictures in an inset
+    box, as on the title's Multiplayer Settings panel. Each takes effect as
+    it is changed."""
+    doc.state["cvar.ui_skin"] = {"type": "string", "initial": "", "cvar": "ui_skin"}
+    row = lambda index: (9, 8 + 23 * index, 300, 1, 100, "right", 110)
+    rate = step_row(doc, "mpp_rate", "#str_04101", row(0), "mpsettings.rate_name", "mpRateNext", align="center")
+    run = flag_row(doc, "mpp_run", "#str_04102", row(1), "cvar.in_alwaysRun", None, cvar="in_alwaysRun", align="center")
+    name = edit_row(doc, "mpp_name", "#str_02193", row(2), "mpsettings.name", "mpName", 40)
+    cut = [(0.75, 0.75), (U * 292, 0.75), (U * 300 - 0.75, U * 8), (U * 300 - 0.75, U * 96 - 0.75), (0.75, U * 96 - 0.75)]
+    skins = vector("mpp-skins", {**box(9, 78, 300, 96), **NO_POINTER},
+                   [path("well", cut, fill=solid(rgb("#000000", 0.5)), stroke=stroke(solid(rgb("#000000")), U, minimum=1))])
+    skins_title = label("mpp-skins-title", "#str_02195", {**box(14, 80, 100, 14), **typeface(FACE_BANK, 0.25, 14, TEXT), **NO_POINTER})
+    swatches = [skin_swatch(doc, index, name_, skin, left=24, top=98) for index, (name_, skin) in enumerate(SKINS)]
+    return panel("mp-player", 139, 105, (123, 39, 318, 178), [rate, run, name, skins, skins_title, *swatches], leading_frame=True)
+
+
+def sub_tab(doc: Document, index: int, key: str) -> dict:
+    """A Controls sub-tab (section 10.13): a Default 0.24 label right-aligned
+    to the row gutter; white with a faint plate under the pointer; the open
+    category's label is white."""
+    ident = f"mpc_tab_{index}"
+    chosen = {"op": "==", "args": [{"state": "controls.tab"}, index]}
+    hot = vector(f"{ident}-hot", {**FULL, **NO_POINTER, "opacity": number(0)}, [path("plate", WHOLE, fill=solid(rgb("#8CA6BF", 0.3)))])
+    idle = label(f"{ident}-label", key, {**FULL, **typeface(FACE_DEFAULT, 0.24, 14, BUTTON_TEXT, "right"), **NO_POINTER})
+    open_label = label(f"{ident}-open", key, {**FULL, **typeface(FACE_DEFAULT, 0.24, 14, TEXT, "right"), **NO_POINTER, "display": keyword("none")})
+    doc.bind(f"{ident}-open.display", f"{ident}-open", "display", {"op": "select", "args": [chosen, "block", "none"]})
+    ids = doc.states(ident, [
+        (f"{ident}-hot", "opacity", {"default": number(0), "hover": number(1)}, 200, 400),
+        (f"{ident}-label", "color", {"default": colour(BUTTON_TEXT), "hover": colour(TEXT)}, 200, 200),
+    ])
+    doc.events[f"{ident}Open"] = [{"op": "setState", "values": {"controls.tab": index}}, {"op": "action", "action": "mpClick"}]
+    return group(ident, box(0, 14 + 20 * index, 122, 14), [hot, idle, open_label],
+                 control={"role": "button", "label": key, "event": f"{ident}Open", "states": ids})
+
+
+def controls_panel(doc: Document) -> dict:
+    """The Controls panel (60, 39, 451 x 295 u): four sub-tabs and the open
+    category's bindings, up to twelve rows at a 23 u pitch, the main menu's
+    categories and rows (rule 8). A row's Accept waits for a key; Delete or
+    Backspace clears the focused row."""
+    doc.state.update({"controls.capture": {"type": "number", "initial": -1}, "controls.touchLayout": {"type": "boolean", "initial": False},
+                      "controls.tab": {"type": "number", "initial": 0}})
+    captions = [label("mpc-caption-action", OPTION_STR["action"], {**box(136, 1, 110, 12), **typeface(FACE_BANK, 0.25, 12, rgb("#99CCCC")), **NO_POINTER}),
+                label("mpc-caption-keys", OPTION_STR["keys"], {**box(251, 1, 195, 12), **typeface(FACE_BANK, 0.25, 12, rgb("#99CCCC")), **NO_POINTER})]
+    content, row = list(captions), 0
+    for index, (heading, rows) in enumerate(CATEGORIES):
+        content.append(sub_tab(doc, index, heading))
+        built = []
+        for position, (key, _binding) in enumerate(rows):
+            built.append(bind_row(doc, row, key, 14 + 23 * position))
+            row += 1
+        holder = group(f"mpc-rows-{index}", {**absolute(left=0, top=0, height=0), "width": length(100, "%"), "display": keyword("none")}, built)
+        doc.bind(f"mpc-rows-{index}.display", f"mpc-rows-{index}", "display",
+                 {"op": "select", "args": [{"op": "==", "args": [{"state": "controls.tab"}, index]}, "block", "none"]})
+        content.append(holder)
+    doc.events["onSecondary"] = [{"op": "action", "action": "controlsClear"}]
+    return panel("mp-controls", 246, 82, (60, 39, 451, 295), content, leading_frame=True)
+
+
+def options_panel(doc: Document) -> dict:
+    """The Options panel (195, 39, 315 x 230 u): the stock nine rows, seven
+    two-state choices and two sliders, in the main menu's furniture (rule
+    8). Each sets its CVar as it is changed."""
+    def flag(ident: str, key: str, position: int, cvar: str) -> dict:
+        doc.state[f"cvar.{cvar}"] = {"type": "boolean", "initial": False, "cvar": cvar}
+        return choice_row(doc, ident, key, 8 + 24 * position, cvar, True, False, {"state": f"cvar.{cvar}"})
+
+    doc.state["cvar.m_pitch"] = {"type": "number", "initial": 0.022, "cvar": "m_pitch"}
+    doc.state["cvar.m_smooth"] = {"type": "number", "initial": 1, "cvar": "m_smooth"}
+    doc.state["cvar.sensitivity"] = {"type": "number", "initial": 5, "cvar": "sensitivity"}
+    rows = [flag("mpo_freelook", "#str_02141", 0, "in_freeLook"), flag("mpo_decals", "#str_02132", 1, "g_decals"),
+            flag("mpo_reload", "#str_02134", 2, "ui_autoReload"), flag("mpo_switch", "#str_02135", 3, "ui_autoSwitch"),
+            flag("mpo_hud", "#str_02136", 4, "g_showHud"), flag("mpo_gun", "#str_02137", 5, "ui_showGun"),
+            choice_row(doc, "mpo_invert", "#str_02138", 8 + 24 * 6, "m_pitch", "-0.022", "0.022", {"op": "<", "args": [{"state": "cvar.m_pitch"}, 0]}),
+            slider_row(doc, "mpo_smooth", "#str_02139", 8 + 24 * 7, "m_smooth", "cvar.m_smooth", 1, 8, 1, 0),
+            slider_row(doc, "mpo_sensitivity", "#str_02140", 8 + 24 * 8, "sensitivity", "cvar.sensitivity", 1, 30, 0.5, 1)]
+    # The shared rows stand 20 u in; the panel's stand 7 u in.
+    holder = group("mpo-rows", {**absolute(left=U * -13, top=0, height=0), "width": length(100, "%")}, rows)
+    return panel("mp-options", 330, 72, (195, 39, 315, 230), [holder], leading_frame=True)
+
+
 def exit_panel(doc: Document) -> dict:
     """The Exit panel (378, 39, 132 x 58 u): three text links."""
     content = [text_link(doc, "mp_return", "#str_04152", 2, "mpClose"), text_link(doc, "mp_disconnect", "#str_04153", 20, "mpDisconnect"),
@@ -230,11 +450,13 @@ def multiplayer_menu_document() -> dict:
         "ui.numberDraftsPending": {"type": "boolean", "initial": False},
     })
     for verb in ("mpClose", "mpDisconnect", "quit", "mpStockPage", "mpReady", "mpSpectate", "mpTeamToggle", "mpVoteYes", "mpVoteNo", "mpChat",
-                 "mpChatMode", "mpClick"):
+                 "mpChatMode", "mpClick", "controlsBind", "controlsClear", "mpVoteType", "mpVoteItem", "mpCallVote"):
         doc.session(verb)
     tabs = [tab(doc, *entry) for entry in TABS]
     panels = []
-    for node, index in ((main_panel(doc), 0), (exit_panel(doc), 6)):
+    for node, index in ((main_panel(doc), PANEL_TABS["main"]), (vote_panel(doc), PANEL_TABS["vote"]), (player_panel(doc), PANEL_TABS["player"]),
+                        (controls_panel(doc), PANEL_TABS["controls"]), (options_panel(doc), PANEL_TABS["options"]),
+                        (exit_panel(doc), PANEL_TABS["exit"])):
         doc.bind(f"{node['id']}.display", node["id"], "display", {"op": "select", "args": [{"op": "==", "args": [{"state": "mp.tab"}, index]}, "block", "none"]})
         panels.append(node)
     hint = label("mp-hint", "#str_04156", {**box(12, 425, 256, 30), **typeface(FACE_BANK, 0.25, 30, TEXT), **NO_POINTER, "opacity": number(1)})
@@ -245,7 +467,8 @@ def multiplayer_menu_document() -> dict:
     doc.bind("stage.display", "stage", "display", {"op": "select", "args": [{"state": "mp.shown"}, "block", "none"]})
     # The session raises `open` as the card covers the game's menu and
     # `release` as the menu closes.
-    doc.events["open"] = [{"op": "setState", "values": {"mp.shown": True, "mp.tab": 0}}, {"op": "playTimeline", "timeline": "mpHint"}]
+    doc.events["open"] = [{"op": "setState", "values": {"mp.shown": True, "mp.tab": 0, "vote.type": -1, "vote.item_count": 0}},
+                          {"op": "playTimeline", "timeline": "mpHint"}]
     doc.events["release"] = [{"op": "setState", "values": {"mp.shown": False}}]
     doc.events["onBack"] = [{"op": "action", "action": "mpClose"}]
     root = group("screen", {**FULL, "font-family": font(FACE_DEFAULT), "font-size": length(18), "color": colour([1, 1, 1, 1])}, [stage])

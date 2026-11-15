@@ -246,7 +246,7 @@ bool SessionMenuCommand(const std::string& command) {
 		"mpBrowser","mpCreate","mpSettings","joinCreate",
 		"createBrowser","createGameTypeNext","createRateNext","mpRateNext","mpName",
 		// Doom 3's in-game multiplayer menu.
-		"mpReady","mpSpectate","mpTeamToggle","mpChat","mpChatMode","mpClick",
+		"mpReady","mpSpectate","mpTeamToggle","mpChat","mpChatMode","mpClick","mpVoteType","mpVoteItem",
 		"soundForward","soundBack","soundApply","soundError","soundLocked",
 #endif
         "campaigns","campaignNew","campaignChapters","campaignArena","campaignBack","campaignHome",

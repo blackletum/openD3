@@ -227,7 +227,8 @@ release of Doom 3 (1.3.1 packs):
   and the level loading screen over the stock pictures of `alphalabs1`,
   `admin` and `d3dm1`, at 4:3, 16:9 and 21:9; and the in-game multiplayer
   menu on a local server, from which a player set ready, spectated,
-  changed team, said a line of team chat and disconnected.
+  changed team, said a line of team chat, changed name and skin, bound a
+  key, called a frag limit vote that passed, and disconnected.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
   what was not seen.
 - Saving and loading in the same build (2026-11-14, OpenGL, console
@@ -341,8 +342,8 @@ Listed roughly by how much they block a player.
    some of them the retail content's own.
 5. **The retained interface has fourteen Doom 3 documents.** The title, the
    single-player pause, the message box, the death screen's choices, the
-   level loading screens' furniture, the in-game multiplayer menu's strip
-   with its Main and Exit panels, and the Load Game, Save Game,
+   level loading screens' furniture, the in-game multiplayer menu but for its
+   System page, and the Load Game, Save Game,
    Controls, Game Options, System, Credits, Game Browser and Create Server
    pages, with the Mods and Multiplayer Settings panels in the title, are
    built to the

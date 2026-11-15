@@ -103,7 +103,7 @@ idCVar ui_retainedMultiplayer( "ui_retainedMultiplayer", "0", CVAR_GUI | CVAR_BO
 // openD3: the stock interface is the default. Doom 3 has retained documents
 // for the title, the single-player pause, the message box, the death screen's
 // choices, the level loading screens' furniture, the in-game multiplayer
-// menu's Main and Exit panels and the Load Game,
+// menu but for its System page, and the Load Game,
 // Save Game, Controls, Game Options, System, Mods, Credits, Game Browser,
 // Create Server and Multiplayer Settings pages only
 // (docs/dev/ui/retained-menus.md).
@@ -3367,7 +3367,19 @@ bool idSessionLocal::RetainedControlsKey( const sysEvent_t *event ) {
 #ifdef ID_DEDICATED
 	return false;
 #else
-	if ( event == NULL || guiRetainedControls == NULL || guiActive != guiRetainedControls ) {
+	idUserInterface *host = ( guiRetainedControls != NULL && guiActive == guiRetainedControls ) ? guiRetainedControls : NULL;
+#if defined( OPEND3 )
+	// Doom 3's in-game multiplayer menu has the bindings on its Controls
+	// panel, among text fields: there Delete and Backspace clear a binding
+	// only while a binding row has the focus.
+	const bool card = host == NULL && RetainedMultiplayerCovers();
+	if ( card ) {
+		host = guiRetainedMultiplayer;
+	}
+#else
+	const bool card = false;
+#endif
+	if ( event == NULL || host == NULL ) {
 		return false;
 	}
 	if ( event->evType == SE_KEY && !event->evValue2 && event->evValue == retainedControlsCaptured ) {
@@ -3376,12 +3388,15 @@ bool idSessionLocal::RetainedControlsKey( const sysEvent_t *event ) {
 	}
 	if ( retainedControlsCapture < 0 ) {
 		if ( event->evType == SE_KEY && event->evValue2 && ( event->evValue == K_DEL || event->evValue == K_BACKSPACE ) ) {
+			if ( card && Session_RetainedControlsRow( host ) < 0 ) {
+				return false;
+			}
 			// The page never sees this key, so the clear sounds here; the
 			// page sounds its own presses, the controller's clear included.
-			if ( Session_RetainedControlsRow( guiRetainedControls ) >= 0 ) {
+			if ( Session_RetainedControlsRow( host ) >= 0 ) {
 				HandleMainMenuCommands( "play main_menu_selection" );
 			}
-			HandleRetainedControlsRequest( guiRetainedControls, "controlsClear" );
+			HandleRetainedControlsRequest( host, "controlsClear" );
 			return true;
 		}
 		return false;
@@ -3406,7 +3421,7 @@ bool idSessionLocal::RetainedControlsKey( const sysEvent_t *event ) {
 	retainedControlsCapture = -1;
 	retainedControlsCaptured = key;
 	HandleMainMenuCommands( "play main_menu_selection" );
-	PublishRetainedControls( guiRetainedControls );
+	PublishRetainedControls( host );
 	return true;
 #endif
 }
@@ -6296,6 +6311,12 @@ void idSessionLocal::MenuEvent( const sysEvent_t *event ) {
 		if ( RetainedSummaryChatEvent( event ) ) {
 			return;
 		}
+#if defined( OPEND3 )
+		// The card's Controls panel waiting for a key takes the next one.
+		if ( RetainedControlsKey( event ) ) {
+			return;
+		}
+#endif
 		// The card owns input while it covers the game's menu. A function key
 		// it leaves alone runs its binding, as over the stock menu (F1 and F2
 		// vote).
@@ -8256,6 +8277,30 @@ static void Session_PublishRetainedMpSettings( idUserInterface *home ) {
 	home->SetStateString( "mpsettings.name", cvarSystem->GetCVarString( "ui_name" ) );
 	home->StateChanged( common->GetPresentationTime() );
 }
+
+// The panel's two requests, from the title or from the in-game multiplayer
+// menu: mpRateNext steps the data rate through the stock rates and back to
+// the rate the player had; mpName takes the text the panel entered.
+static void Session_ApplyRetainedMpSetting( idUserInterface *gui, const char *request ) {
+	if ( !idStr::Icmp( request, "mpRateNext" ) ) {
+		const int rate = cvarSystem->GetCVarInteger( "net_clientMaxRate" );
+		int next = RETAINED_MP_RATES[0];
+		for ( int i = 0; i < RETAINED_MP_RATE_COUNT; ++i ) {
+			if ( rate == RETAINED_MP_RATES[i] ) {
+				next = i + 1 < RETAINED_MP_RATE_COUNT ? RETAINED_MP_RATES[ i + 1 ] :
+					retainedMpRateOther > 0 ? retainedMpRateOther : RETAINED_MP_RATES[0];
+			}
+		}
+		cvarSystem->SetCVarInteger( "net_clientMaxRate", next );
+	} else {
+		idStr name = gui->State().GetString( "mpsettings.name" );
+		name.StripTrailingWhitespace();
+		if ( name.Length() > 0 ) {
+			cvarSystem->SetCVarString( "ui_name", name.c_str() );
+		}
+	}
+	Session_PublishRetainedMpSettings( gui );
+}
 #endif
 
 void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const char *request ) {
@@ -8493,26 +8538,8 @@ void idSessionLocal::HandleRetainedSessionRequest( idUserInterface *gui, const c
 	// the stock rates and the engine's default; Player Name takes the text
 	// the panel entered.
 	if ( guiRetainedHome == guiRetainedTitle && ( !idStr::Icmp( request, "mpRateNext" ) || !idStr::Icmp( request, "mpName" ) ) ) {
-		if ( !idStr::Icmp( request, "mpRateNext" ) ) {
-			const int rate = cvarSystem->GetCVarInteger( "net_clientMaxRate" );
-			int next = RETAINED_MP_RATES[0];
-			for ( int i = 0; i < RETAINED_MP_RATE_COUNT; ++i ) {
-				if ( rate == RETAINED_MP_RATES[i] ) {
-					next = i + 1 < RETAINED_MP_RATE_COUNT ? RETAINED_MP_RATES[ i + 1 ] :
-						retainedMpRateOther > 0 ? retainedMpRateOther : RETAINED_MP_RATES[0];
-				}
-			}
-			HandleMainMenuCommands( "play main_menu_selection" );
-			cvarSystem->SetCVarInteger( "net_clientMaxRate", next );
-		} else {
-			idStr name = guiRetainedHome->State().GetString( "mpsettings.name" );
-			name.StripTrailingWhitespace();
-			if ( name.Length() > 0 ) {
-				cvarSystem->SetCVarString( "ui_name", name.c_str() );
-				HandleMainMenuCommands( "play guisounds_chirpconnect" );
-			}
-		}
-		Session_PublishRetainedMpSettings( guiRetainedHome );
+		HandleMainMenuCommands( !idStr::Icmp( request, "mpName" ) ? "play guisounds_chirpconnect" : "play main_menu_selection" );
+		Session_ApplyRetainedMpSetting( guiRetainedHome, request );
 		return;
 	}
 	if ( !idStr::Icmp( request, "mpSettings" ) && guiRetainedHome == guiRetainedTitle && !mapSpawned && retainedPagePending == NULL ) {
@@ -11982,10 +12009,21 @@ card hands off to keeps the menu until it closes.
 // Doom 3's game answers no cover protocol and publishes nothing to a card: its
 // menu (guis/mpmain.gui) holds what a player sees in it, and the card shows a
 // copy. True when the copy changed.
+// The game's vote types (vote_flags_t in the game's MultiplayerGame.h), and
+// how many rows the New Vote panel's list holds.
+static const int RETAINED_MP_VOTE_TIMELIMIT = 1, RETAINED_MP_VOTE_FRAGLIMIT = 2, RETAINED_MP_VOTE_GAMETYPE = 3, RETAINED_MP_VOTE_KICK = 4,
+	RETAINED_MP_VOTE_MAP = 5, RETAINED_MP_VOTE_TYPES = 8;
+static const int RETAINED_MP_VOTE_ITEMS = 16;
+
 static bool Session_CopyGameMenuState( idUserInterface *menu, idUserInterface *card ) {
 	const idDict &state = menu->State();
 	const idStr say = Session_RetainedChoiceName( "#str_04240", state.GetInt( "messagemode" ) != 0 ? 1 : 0, "" );
-	idStr signature = va( "%d|%d|%d|%d|", state.GetInt( "readyon" ), state.GetInt( "teamon" ), state.GetInt( "team" ), state.GetInt( "voteon" ) );
+	idStr signature = va( "%d|%d|%d|%d|%d|", state.GetInt( "readyon" ), state.GetInt( "teamon" ), state.GetInt( "team" ), state.GetInt( "voteon" ),
+		state.GetInt( "callvote" ) );
+	for ( int i = 0; i < RETAINED_MP_VOTE_TYPES; ++i ) {
+		signature += state.GetBool( va( "vote%d", i ) ) ? "1" : "0";
+	}
+	signature += "|";
 	signature += state.GetString( "ui_ready" );
 	signature += "|";
 	signature += state.GetString( "spectext" );
@@ -12002,7 +12040,65 @@ static bool Session_CopyGameMenuState( idUserInterface *menu, idUserInterface *c
 	card->SetStateInt( "mp.team", state.GetInt( "team" ) );
 	card->SetStateBool( "mp.vote", state.GetInt( "voteon" ) != 0 );
 	card->SetStateString( "mp.say", say.c_str() );
+	// New Vote: 1 while a vote may be called, 0 with every vote off, 2 with
+	// one under way; and each type the server allows.
+	card->SetStateInt( "vote.allowed", state.GetInt( "callvote" ) );
+	for ( int i = 0; i < RETAINED_MP_VOTE_TYPES; ++i ) {
+		card->SetStateBool( va( "vote.on%d", i ), state.GetBool( va( "vote%d", i ) ) );
+	}
 	return true;
+}
+
+// The New Vote panel's list for the chosen vote type: the game types, the
+// players who may be kicked or the maps, as the game's menu holds them; the
+// other types take no list. For a map, its picture too.
+static void Session_PublishRetainedVoteItems( idUserInterface *menu, idUserInterface *card, int type ) {
+	idStrList items;
+	int selected = -1;
+	idStr shot;
+	if ( type == RETAINED_MP_VOTE_GAMETYPE ) {
+		// The game takes the type by its place among these four.
+		for ( int i = 0; i < 4; ++i ) {
+			const idStr name = Session_RetainedChoiceName( "#str_04228", i, "" );
+			if ( name.Length() == 0 ) {
+				break;
+			}
+			items.Append( name );
+		}
+		selected = 0;
+	} else if ( type == RETAINED_MP_VOTE_KICK ) {
+		const idStr players = menu->State().GetString( "kickChoices" );
+		for ( int start = 0; start < players.Length(); ) {
+			int end = players.Find( ';', start );
+			if ( end < 0 ) {
+				end = players.Length();
+			}
+			items.Append( players.Mid( start, end - start ) );
+			start = end + 1;
+		}
+		selected = items.Num() > 0 ? 0 : -1;
+	} else if ( type == RETAINED_MP_VOTE_MAP ) {
+		game->HandleGuiCommands( "MAPScan" );
+		for ( int i = 0; i < RETAINED_MP_VOTE_ITEMS; ++i ) {
+			const idKeyValue *item = menu->State().FindKey( va( "mapList_item_%d", i ) );
+			if ( item == NULL ) {
+				break;
+			}
+			items.Append( item->GetValue() );
+		}
+		selected = menu->State().GetInt( "mapList_sel_0", "-1" );
+		shot = menu->State().GetString( "current_levelshot" );
+	}
+	for ( int i = 0; i < RETAINED_MP_VOTE_ITEMS; ++i ) {
+		idStr name = i < items.Num() ? items[i] : idStr();
+		name.RemoveColors();
+		card->SetStateString( va( "vote.item%d", i ), name.c_str() );
+	}
+	card->SetStateInt( "vote.item_count", Min( items.Num(), RETAINED_MP_VOTE_ITEMS ) );
+	card->SetStateInt( "vote.item_selected", selected < RETAINED_MP_VOTE_ITEMS ? selected : -1 );
+	card->SetStateString( "vote.shot", UI_RetainedImageSource( shot.c_str() ) ? shot.c_str() : "" );
+	card->SetStateInt( "vote.type", type );
+	card->StateChanged( common->GetPresentationTime() );
 }
 #endif
 
@@ -12107,6 +12203,11 @@ void idSessionLocal::UpdateRetainedMultiplayer() {
 		card->SetStateString( "mp.copied", "" );
 		Session_CopyGameMenuState( guiActive, card );
 		UI_SetLegacyWindowHidden( guiActive, "Desktop", true );
+		// Its Multiplayer and Controls panels: the player's name and data
+		// rate, and each binding's keys.
+		Session_PublishRetainedMpSettings( card );
+		retainedControlsCapture = -1;
+		PublishRetainedControls( card );
 #else
 		card->SetStateInt( "mp.protocol", 0 );
 		card->SetStateBool( "mp.cover_allowed", false );
@@ -12308,6 +12409,69 @@ void idSessionLocal::HandleRetainedMultiplayerRequest( idUserInterface *gui, con
 		const char *const click = "play guisounds_menuclickup";
 		if ( !idStr::Icmp( request, "mpClick" ) ) {
 			game->HandleGuiCommands( click );
+			return;
+		}
+		if ( !idStr::Icmp( request, "mpRateNext" ) || !idStr::Icmp( request, "mpName" ) ) {
+			game->HandleGuiCommands( click );
+			Session_ApplyRetainedMpSetting( gui, request );
+			return;
+		}
+		if ( !idStr::Icmp( request, "controlsBind" ) || !idStr::Icmp( request, "controlsClear" ) ) {
+			game->HandleGuiCommands( click );
+			HandleRetainedControlsRequest( gui, request );
+			return;
+		}
+		// New Vote: a vote type lists its choices; a row chooses one (a map
+		// through the game's own list, which finds its picture); Call New
+		// Vote hands the game the type and its value as the stock panel does.
+		if ( !idStr::Icmp( request, "mpVoteType" ) ) {
+			const int type = gui->State().GetInt( "vote.pick_type", "-1" );
+			if ( type < 0 || type >= RETAINED_MP_VOTE_TYPES || !guiActive->State().GetBool( va( "vote%d", type ) ) ) {
+				return;
+			}
+			game->HandleGuiCommands( click );
+			Session_PublishRetainedVoteItems( guiActive, gui, type );
+			return;
+		}
+		if ( !idStr::Icmp( request, "mpVoteItem" ) ) {
+			const int row = gui->State().GetInt( "vote.pick_item", "-1" );
+			if ( row < 0 || row >= gui->State().GetInt( "vote.item_count" ) ) {
+				return;
+			}
+			game->HandleGuiCommands( click );
+			gui->SetStateInt( "vote.item_selected", row );
+			if ( gui->State().GetInt( "vote.type", "-1" ) == RETAINED_MP_VOTE_MAP ) {
+				guiActive->SetStateInt( "mapList_sel_0", row );
+				game->HandleGuiCommands( "click_mapList" );
+				const idStr shot = guiActive->State().GetString( "current_levelshot" );
+				gui->SetStateString( "vote.shot", UI_RetainedImageSource( shot.c_str() ) ? shot.c_str() : "" );
+			}
+			gui->StateChanged( common->GetPresentationTime() );
+			return;
+		}
+		if ( !idStr::Icmp( request, "mpCallVote" ) ) {
+			const int type = gui->State().GetInt( "vote.type", "-1" );
+			const int row = gui->State().GetInt( "vote.item_selected", "-1" );
+			if ( type < 0 || type >= RETAINED_MP_VOTE_TYPES || guiActive->State().GetInt( "callvote" ) != 1 ||
+					!guiActive->State().GetBool( va( "vote%d", type ) ) ) {
+				return;
+			}
+			const bool listed = type == RETAINED_MP_VOTE_GAMETYPE || type == RETAINED_MP_VOTE_KICK || type == RETAINED_MP_VOTE_MAP;
+			if ( listed && ( row < 0 || row >= gui->State().GetInt( "vote.item_count" ) ) ) {
+				return;
+			}
+			guiActive->SetStateInt( "voteIndex", type );
+			if ( type == RETAINED_MP_VOTE_TIMELIMIT || type == RETAINED_MP_VOTE_FRAGLIMIT ) {
+				guiActive->SetStateString( "str_voteValue", va( "%d", gui->State().GetInt( "vote.number" ) ) );
+			} else if ( type == RETAINED_MP_VOTE_MAP ) {
+				guiActive->SetStateInt( "mapList_sel_0", row );
+			} else if ( listed ) {
+				guiActive->SetStateString( "str_voteValue", va( "%d", row ) );
+			}
+			HandleGameMenuReturn( game->HandleGuiCommands( va( "%s ; callVote", click ) ) );
+			if ( !Session_IsCoveredGameGui( guiActive ) ) {
+				RetireRetainedMultiplayer( guiActive == NULL && mapSpawned );
+			}
 			return;
 		}
 		if ( !idStr::Icmp( request, "mpChatMode" ) ) {

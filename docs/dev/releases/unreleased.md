@@ -78,7 +78,7 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
 - Add the first retained Doom 3 menus, behind `ui_retained 1`: the title screen
   with its difficulty list and exit dialog, the single-player pause, the
   engine message box, the death screen's choices, the level loading screens'
-  furniture, the in-game multiplayer menu's Main and Exit panels, the options
+  furniture, the in-game multiplayer menu but for its System page, the options
   list and the Load Game, Save Game,
   Controls, Game Options, System, Mods, Credits, Game Browser, Create Server
   and Multiplayer Settings pages, drawn

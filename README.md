@@ -59,7 +59,7 @@ Not yet checked, so don't rely on it: playing beyond the first cinematic, loadin
 Not working yet:
 
 - **Resurrection of Evil.** `+set fs_game d3xp` loads the expansion's game module, but no expansion map has been run yet. See [Campaigns](docs/user/campaigns.md#resurrection-of-evil).
-- **The retained menus and HUD.** Only the title screen, the pause menu, the message box, the death screen, the level loading screens, the in-game multiplayer menu's Main and Exit panels and the Load Game, Save Game, Controls, Game Options, System, Mods, Credits, Game Browser, Create Server and Multiplayer Settings pages have Doom 3 pages so far, as a preview behind `ui_retained 1`; openD3 uses Doom 3's own menus, which is why you launch with `ui_retained 0`.
+- **The retained menus and HUD.** Only the title screen, the pause menu, the message box, the death screen, the level loading screens, the in-game multiplayer menu but for its System page and the Load Game, Save Game, Controls, Game Options, System, Mods, Credits, Game Browser, Create Server and Multiplayer Settings pages have Doom 3 pages so far, as a preview behind `ui_retained 1`; openD3 uses Doom 3's own menus, which is why you launch with `ui_retained 0`.
 
 [Release status](docs/user/release-status.md) puts this in player terms. The [rebase record](docs/dev/doom3-rebase.md) is the detailed and current statement of what has been verified and what is open.
 

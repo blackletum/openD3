@@ -191,6 +191,17 @@ release of Doom 3 (1.3.1 packs):
   draws as before. Not run: a remote client against a server (network
   protocol 2.42), the updater, texture packs, PNG textures, the expansion, and
   upstream's native tests (`build_native_tests`).
+- In-world GUIs after that sync. Upstream's mirrored-model winding
+  (`1a09a52a2`) turned the front face for any space with a reflecting model
+  matrix, and a surface GUI's matrix through its texture axes is one, so the
+  merged build drew `mars_city1`'s Traffic Monitoring Station and console
+  screens black on OpenGL. A surface GUI's space now winds by its host's
+  reflection alone (`R_SpaceWindsReflected` in `tr_local.h`, used by
+  `RB_SetSurfaceWinding` and the Vulkan `VK_Exec_SurfaceMirrored`). Captured
+  on OpenGL and Vulkan: the station screen during the intro and the control
+  room's consoles after a save and load draw as before the sync, the text
+  reads the right way round, and the OpenGL log has the same warnings as the
+  build before the sync.
 - Stock specular follows Doom 3 on every path. `r_correctspecular` and
   `r_normalizebumpmap` default to 0 (they came from Prey at 1), and the OpenGL
   ARB path passes the specular constant unscaled, as id's `draw_arb2.cpp`

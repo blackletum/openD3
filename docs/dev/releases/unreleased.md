@@ -104,9 +104,15 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
   protocol 2.42, the in-game updater (with no release key, so it can only
   point at the release page), PCSS-lite soft shadows on the modern OpenGL
   path, characters shadowing themselves under shadow maps, and faster
-  light-interaction and collision bookkeeping. The Awakening's menus and levelshots, the multiplayer
-  modifiers and presets, the map database hook and the smart weapon switch
-  stay out of the engine.
+  light-interaction and collision bookkeeping. The Awakening's menus and
+  levelshots, the multiplayer modifiers and presets, the map database hook
+  and the smart weapon switch stay out of the engine.
+- Draw in-world GUIs again after that sync. Upstream's handling of mirrored
+  models turned the front face for every surface placed by a reflection, and
+  the matrix that lays a GUI on its surface through the texture axes is one,
+  so OpenGL culled every in-world screen (the Vulkan passes use the same
+  test). A surface GUI now turns
+  only when the surface carrying it is itself mirrored.
 - Skip upstream's startup system check, which offers the detected performance
   preset, until openD3 ships a screen for it.
 - Default `g_showPlayerShadow` to 1 in both game modules.

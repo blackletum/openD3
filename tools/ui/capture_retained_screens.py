@@ -443,6 +443,11 @@ SCENARIOS = {
         'opend3_retainedGui pending loading_detail Corporal', 'opend3_retainedGui pending loading_phase ASSETS',
         'opend3_retainedGui pending loading_count "412/1630"',
         'opend3_retainedGui state map_loading 0.62', 'waitMsec 600', 'screenshot "screenshots/loading.tga"',
+        # The framing entrance (section 14.17): present parks the framing past
+        # the view's edges, and frameIn scrolls it in.
+        'opend3_retainedGui event present', 'waitMsec 300', 'screenshot "screenshots/loading-parked.tga"',
+        'opend3_retainedGui event frameIn', 'waitMsec 60', 'screenshot "screenshots/loading-entrance.tga"',
+        'waitMsec 700', 'screenshot "screenshots/loading-seated.tga"',
         # Pending values commit with the next state operation.
         'opend3_retainedGui pending loading_phase "LOAD TIME"', 'opend3_retainedGui pending loading_count "12.4 s"',
         'opend3_retainedGui event FinishedLoading', 'opend3_retainedGui state map_loading 1', 'waitMsec 600',
@@ -937,13 +942,27 @@ SCENARIOS = {
         'screenshot "screenshots/createserver-banlist-removed.tga"',
         'opend3_retainedGui focus banModal_no', 'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 600',
         'opend3_retainedGui report',
-        # RULES: Instagib turned on sets si_instagib and dims Weapon Stay and
-        # buying, which have nothing to act on under it; turned off again after.
-        'opend3_retainedGui event advancedTab2', 'waitMsec 400', 'opend3_retainedGui focus "create-instagib"',
-        'screenshot "screenshots/createserver-rules.tga"',
+        # RULES, then MODIFIERS: Instagib turned on sets si_instagib and dims the
+        # rules it overrides (and, on RULES, Weapon Stay and buying, which have
+        # nothing to act on under it); turned off again after.
+        'opend3_retainedGui event advancedTab2', 'waitMsec 400', 'screenshot "screenshots/createserver-rules.tga"',
+        'opend3_retainedGui event advancedTab3', 'waitMsec 400', 'opend3_retainedGui focus "create-instagib"',
+        'screenshot "screenshots/createserver-modifiers.tga"',
         'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 400', 'si_instagib',
         'screenshot "screenshots/createserver-instagib.tga"',
         'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 300', 'si_instagib',
+        # Preset: Rocket Arena (the seventh choice) sets the arena, the powerups and the
+        # two percentages and names itself; Standard (the second) puts them all back.
+        'opend3_retainedGui focus "create-preset"', 'waitMsec 100', 'opend3_retainedGui choice open "create-preset"', 'waitMsec 400',
+        'screenshot "screenshots/createserver-presets.tga"',
+        'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0', 'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0', 'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0', 'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0', 'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0', 'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0', 
+        'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 600',
+        'si_preset', 'si_weaponArena', 'si_powerups', 'si_selfDamage', 'si_fallDamage', 'opend3_retainedGui report',
+        'screenshot "screenshots/createserver-rocketarena.tga"',
+        'opend3_retainedGui focus "create-preset"', 'waitMsec 100', 'opend3_retainedGui choice open "create-preset"', 'waitMsec 400',
+        'opend3_retainedGui menu home 1', 'opend3_retainedGui menu home 0', 'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0', 
+        'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 600',
+        'si_preset', 'si_weaponArena', 'si_powerups', 'si_selfDamage', 'si_fallDamage',
         'opend3_retainedGui event advancedModalHide', 'waitMsec 600',
         'opend3_retainedGui focus create_back', 'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0',
         'waitMsec 150', 'screenshot "screenshots/createserver-back.tga"', 'waitMsec 1200', 'opend3_retainedGui report',
@@ -1151,7 +1170,7 @@ SCENARIOS = {
     ]),
     # The retained GAME OPTIONS page (UI-01): the GAME OPTIONS button opens it
     # on GENERAL's first row; the HUD tab's custom crosshair turns on and steps
-    # to the next one; the gun position and a mouse row apply; the language
+    # to the next one; the gun position applies; the language
     # list switches to German, which reloads the language and the menus; Back
     # returns to the settings screen.
     'game': (None, [
@@ -1163,10 +1182,6 @@ SCENARIOS = {
         'g_crosshairCustomFile', 'waitMsec 400', 'screenshot "screenshots/game-crosshair.tga"',
         'opend3_retainedGui event tab_general', 'waitMsec 400',
         'opend3_retainedGui focus game_gunposition', *menu_step('accept'), *menu_step('down'), *menu_step('accept'), 'g_gunY',
-        'opend3_retainedGui event tab_mouse', 'waitMsec 400',
-        'sensitivity', 'opend3_retainedGui focus game_msensitivity', *menu_step('right'), 'sensitivity',
-        'screenshot "screenshots/game-mouse.tga"',
-        'opend3_retainedGui event tab_general', 'waitMsec 400',
         'opend3_retainedGui focus game_language', *menu_step('accept'), *[step for _ in range(6) for step in menu_step('down')],
         *menu_step('accept'), 'waitMsec 3000', 'sys_lang', 'opend3_retainedGui report', 'ui_retainedStatus',
         'screenshot "screenshots/game-language.tga"',
@@ -1194,7 +1209,8 @@ SCENARIOS = {
     # The retained CONTROLS page (UI-01): the CONTROLS button opens the page on Move
     # Forward; Accept waits for a key and testControlsKey stands in for F,
     # which joins the row's keys; a second wait ends with Escape, binding
-    # nothing; Delete clears the row; Back returns to the settings screen.
+    # nothing; Delete clears the row. MOUSE (issue #220) steps the sensitivity
+    # and CONTROLLER shows; Back returns to the settings screen.
     'controls': (None, [
         'waitMsec 4000', 'opend3_guiAction main_b_settings', 'waitMsec 1500', 'opend3_guiAction set_b_controls',
         'waitMsec 1500', 'ui_retainedStatus', 'opend3_retainedGui report', 'screenshot "screenshots/controls.tga"',
@@ -1203,7 +1219,11 @@ SCENARIOS = {
         *menu_step('accept'), 'testControlsKey ESCAPE', 'waitMsec 300', 'bind ESCAPE', 'bind f',
         'testControlsKey DEL', 'waitMsec 400', 'bind f', 'bind w', 'screenshot "screenshots/controls-cleared.tga"',
         'opend3_retainedGui event tab_other', 'waitMsec 400',
-        'opend3_retainedGui focus controls_bind_48', 'waitMsec 400', 'screenshot "screenshots/controls-other.tga"',
+        'opend3_retainedGui focus controls_bind_49', 'waitMsec 400', 'screenshot "screenshots/controls-other.tga"',
+        'opend3_retainedGui event tab_mouse', 'waitMsec 400',
+        'sensitivity', 'opend3_retainedGui focus controls_msensitivity', *menu_step('right'), 'sensitivity',
+        'screenshot "screenshots/controls-mouse.tga"',
+        'opend3_retainedGui event tab_controller', 'waitMsec 400', 'screenshot "screenshots/controls-controller.tga"',
         'opend3_retainedGui event onBack', 'waitMsec 1500', 'ui_retainedStatus', 'opend3_guiGet p_settings_ctrls::visible',
         'screenshot "screenshots/controls-back.tga"',
     ]),
@@ -1237,24 +1257,25 @@ SCENARIOS = {
         'opend3_retainedGui focus game', 'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0',
         'waitMsec 175', 'screenshot "screenshots/subpages-game-change.tga"', 'waitMsec 1200', 'ui_retainedStatus',
         'opend3_retainedGui report', 'screenshot "screenshots/subpages-game.tga"',
-        *[step for name in ('mouse', 'controller', 'hud', 'vr') for step in (
+        *[step for name in ('hud', 'vr') for step in (
             'opend3_retainedGui event onTabNext', 'waitMsec 400', 'opend3_retainedGui report',
             f'screenshot "screenshots/subpages-game-{name}.tga"')],
         'opend3_retainedGui focus game_vrsnap', 'waitMsec 100', 'opend3_retainedGui choice open game_vrsnap', 'waitMsec 400',
         'screenshot "screenshots/subpages-game-list.tga"', *menu_step('back'),
-        # A typed sensitivity with a third decimal place shows the field's own
-        # range over the row's label; the controller tab's last row scrolls
-        # into a tall view's single column.
-        'opend3_retainedGui event tab_mouse', 'waitMsec 400', 'opend3_retainedGui focus game_msensitivity_number',
-        'opend3_retainedGui number begin game_msensitivity_number', 'opend3_retainedGui number replace game_msensitivity_number "7.255"',
-        'waitMsec 300', 'opend3_retainedGui report', 'screenshot "screenshots/subpages-game-entry.tga"',
-        'opend3_retainedGui number cancel game_msensitivity_number', 'opend3_retainedGui event tab_controller', 'waitMsec 400',
-        'opend3_retainedGui focus game_swapconfirm', 'waitMsec 300', 'screenshot "screenshots/subpages-game-last.tga"',
         'opend3_retainedGui event onBack', 'waitMsec 150', 'screenshot "screenshots/subpages-game-back.tga"', 'waitMsec 1200',
         'opend3_retainedGui report', 'screenshot "screenshots/subpages-returned.tga"',
         'opend3_retainedGui focus controls', *menu_step('accept'), 'waitMsec 1500', 'opend3_retainedGui report',
         'screenshot "screenshots/subpages-controls.tga"',
         'opend3_retainedGui event onTabNext', 'waitMsec 400', 'screenshot "screenshots/subpages-controls-weapons.tga"',
+        # A typed sensitivity with a third decimal place shows the field's own
+        # range over the row's label; the controller tab's last row scrolls
+        # into a tall view's single column.
+        'opend3_retainedGui event tab_mouse', 'waitMsec 400', 'opend3_retainedGui focus controls_msensitivity_number',
+        'opend3_retainedGui number begin controls_msensitivity_number',
+        'opend3_retainedGui number replace controls_msensitivity_number "7.255"',
+        'waitMsec 300', 'opend3_retainedGui report', 'screenshot "screenshots/subpages-controls-entry.tga"',
+        'opend3_retainedGui number cancel controls_msensitivity_number', 'opend3_retainedGui event tab_controller', 'waitMsec 400',
+        'opend3_retainedGui focus controls_swapconfirm', 'waitMsec 300', 'screenshot "screenshots/subpages-controls-last.tga"',
         'opend3_retainedGui event onBack', 'waitMsec 1500',
         'opend3_retainedGui focus audio', *menu_step('accept'), 'waitMsec 1500', 'opend3_retainedGui report',
         'screenshot "screenshots/subpages-audio.tga"',
@@ -1303,6 +1324,18 @@ SCENARIOS = {
         'waitMsec 1200', 'ui_retainedStatus', 'opend3_retainedGui report', 'screenshot "screenshots/settings-pause.tga"',
         'opend3_retainedGui event onBack', 'waitMsec 1500', 'ui_retainedStatus', 'opend3_retainedGui report',
         'screenshot "screenshots/settings-pause-back.tga"',
+    ]),
+    # CONTROLS over the paused game (issue #220): its MOUSE tab steps the
+    # sensitivity and its CONTROLLER tab shows; Back returns to SETTINGS.
+    'controls-pause': ('game/airdefense1', [
+        'opend3_assertMenuActivation 10000', 'waitMsec 1200', 'opend3_retainedGui focus nav_settings', *menu_step('accept'),
+        'waitMsec 1200', 'opend3_retainedGui focus controls', *menu_step('accept'), 'waitMsec 1500', 'ui_retainedStatus',
+        'opend3_retainedGui report', 'screenshot "screenshots/controls-pause.tga"',
+        'opend3_retainedGui event tab_mouse', 'waitMsec 400', 'sensitivity', 'opend3_retainedGui focus controls_msensitivity',
+        *menu_step('right'), 'sensitivity', 'opend3_retainedGui report', 'screenshot "screenshots/controls-pause-mouse.tga"',
+        'opend3_retainedGui event tab_controller', 'waitMsec 400', 'screenshot "screenshots/controls-pause-controller.tga"',
+        'opend3_retainedGui event onBack', 'waitMsec 1500', 'ui_retainedStatus', 'opend3_retainedGui report',
+        'screenshot "screenshots/controls-pause-back.tga"',
     ]),
     'settings-strogg': ('game/recomp', [
         'opend3_assertMenuActivation 10000', 'waitMsec 1200', 'opend3_retainedGui focus nav_settings', *menu_step('accept'),

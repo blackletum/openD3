@@ -87,7 +87,7 @@ extern glconfig_t glConfig;
 idCVar	idSessionLocal::gui_configServerRate( "gui_configServerRate", "0", CVAR_GUI | CVAR_ARCHIVE | CVAR_ROM | CVAR_INTEGER, "" );
 idCVar gui_set_sys_scroll( "gui_set_sys_scroll", "0", CVAR_GUI | CVAR_INTEGER, "display menu scroll step", 0, 28 );
 idCVar gui_set_audio_scroll( "gui_set_audio_scroll", "0", CVAR_GUI | CVAR_INTEGER, "audio menu scroll step", 0, 7 );
-idCVar gui_set_game_scroll( "gui_set_game_scroll", "0", CVAR_GUI | CVAR_INTEGER, "game menu scroll step", 0, 78 );
+idCVar gui_set_game_scroll( "gui_set_game_scroll", "0", CVAR_GUI | CVAR_INTEGER, "game menu scroll step", 0, 83 );
 // The opt-ins are unarchived, so each lasts until the player quits, and
 // CVAR_NOCHEAT, because the engine counts any other unarchived CVar as a
 // cheat: joining or hosting a server without cheats resets it to its default,
@@ -3400,7 +3400,8 @@ While the CONTROLS page waits for a key it takes the next key pressed, as
 the stock binding field does: Escape, Start or Back cancel, Backspace or
 Delete clear the row, any other key joins its keys (at most two of each device
 family, idKeyInput::BindForMenu). The key's release and characters are its own. Out of
-a wait, Delete or Backspace on a row clears it.
+a wait, Delete or Backspace on a binding row clears it; on the device tabs'
+rows they reach the page.
 ===============
 */
 bool idSessionLocal::RetainedControlsKey( const sysEvent_t *event ) {
@@ -6007,10 +6008,10 @@ static const mainMenuSettingsScrollPage_t MAINMENU_SETTINGS_SCROLL_PAGES[] = {
 		"game_section_choice",
 		21,
 		0,
-		78,
+		83,
 		-24,
 		-41,
-		2186,
+		2306,
 		24.0f
 	}
 };
@@ -6035,25 +6036,25 @@ static bool MainMenuSetWindowVar( idUserInterface *gui, const char *stateName, c
 
 static int MainMenuSettingsSectionChoiceForScroll( const mainMenuSettingsScrollPage_t &page, int scrollValue ) {
 	if ( idStr::Icmp( page.name, "game" ) == 0 ) {
-		if ( scrollValue < 11 ) {
+		if ( scrollValue < 13 ) {
 			return 0;
 		}
-		if ( scrollValue < 21 ) {
+		if ( scrollValue < 23 ) {
 			return 1;
 		}
-		if ( scrollValue < 41 ) {
+		if ( scrollValue < 43 ) {
 			return 2;
 		}
-		if ( scrollValue < 48 ) {
+		if ( scrollValue < 50 ) {
 			return 3;
 		}
-		if ( scrollValue < 60 ) {
+		if ( scrollValue < 62 ) {
 			return 4;
 		}
-		if ( scrollValue < 65 ) {
+		if ( scrollValue < 69 ) {
 			return 5;
 		}
-		if ( scrollValue < 72 ) {
+		if ( scrollValue < 76 ) {
 			return 6;
 		}
 		return 7;
@@ -6343,9 +6344,13 @@ void idSessionLocal::MenuEvent( const sysEvent_t *event ) {
 		if ( RetainedHomeInputBlocked() ) {
 			return;
 		}
+		// A function key the screen leaves alone runs its binding, as over the
+		// stock menu: F12 takes a screenshot of the title or pause menu (#224).
 		menuCommand = guiRetainedHome->HandleEvent( event, common->GetPresentationTime() );
 		if ( menuCommand && menuCommand[0] ) {
 			DispatchCommand( guiRetainedHome, menuCommand );
+		} else if ( event->evType == SE_KEY && event->evValue2 == 1 && event->evValue >= K_F1 && event->evValue <= K_F12 ) {
+			idKeyInput::ExecKeyBinding( event->evValue );
 		}
 		return;
 	}
@@ -11733,6 +11738,88 @@ void idSessionLocal::PrefetchRetainedNextPages() {
 		UI_RetainedPrefetchDocuments( pages, 4 );
 		return;
 	}
+#endif
+}
+
+/*
+===============
+idSessionLocal::WarmRetainedPages
+
+A page's first presented frame compiled every vector path it draws (40 to
+140 ms of one frame on a laptop), and a page loaded when first opened also
+built its view then. Once the page on screen has rested (the page and its
+focused control unchanged) for RETAINED_WARM_DELAY_MSEC, each frame takes
+one step for the pages it leads to, before the page draws: a page whose
+parse the shown page started (PrefetchRetainedNextPages) and that has
+finished is loaded, the slower part of opening it; a loaded page that has
+never presented is prepared out of sight, its compilations on the job
+workers (UI_RetainedWarm). Nothing runs during a change of page, under a
+message box or a multiplayer game. Any navigation restarts the wait; a
+compilation in flight is still installed meanwhile. The SYSTEM page is a
+unique instance each open and is left alone.
+===============
+*/
+static const int RETAINED_WARM_DELAY_MSEC = 500;
+void idSessionLocal::WarmRetainedPages() {
+#ifndef ID_DEDICATED
+	static const char *const leads[][5] = {
+		{ RETAINED_TITLE_GUI, RETAINED_SINGLEPLAYER_GUI, RETAINED_SETTINGSPAGE_GUI, RETAINED_MPPAGE_GUI, RETAINED_LOADGAME_GUI },
+		{ RETAINED_PAUSE_GUI, RETAINED_SETTINGSPAGE_GUI, RETAINED_LOADGAME_GUI, NULL, NULL },
+		{ RETAINED_PAUSE_STROGG_GUI, RETAINED_SETTINGSPAGE_GUI, NULL, NULL, NULL },
+		{ RETAINED_SINGLEPLAYER_GUI, RETAINED_CAMPAIGNS_GUI, RETAINED_ARENA_GUI, NULL, NULL },
+		{ RETAINED_CAMPAIGNS_GUI, RETAINED_SKILL_GUI, RETAINED_CHAPTERS_GUI, NULL, NULL },
+		{ RETAINED_SETTINGSPAGE_GUI, RETAINED_CONTROLS_GUI, RETAINED_GAME_GUI, RETAINED_AUDIO_GUI, NULL },
+		{ RETAINED_MPPAGE_GUI, RETAINED_CREATE_SERVER_GUI, RETAINED_JOIN_GAME_GUI, RETAINED_DEMOS_GUI, NULL }
+	};
+	if ( !Session_RetainedScreensEnabled() || guiActive == NULL || guiTest != NULL || insideExecuteMapChange ) {
+		return;
+	}
+	const idUserInterface *shown = guiRetainedHome != NULL && guiActive == guiMainMenu ? guiRetainedHome : guiActive;
+	const int now = Sys_Milliseconds();
+	const idStr focus = UI_RetainedFocusedControl( const_cast<idUserInterface *>( shown ) ).c_str();
+	if ( shown != retainedWarmShown || focus != retainedWarmFocus ) {
+		retainedWarmShown = shown;
+		retainedWarmFocus = focus;
+		retainedWarmFrom = now + RETAINED_WARM_DELAY_MSEC;
+		retainedWarmDone = false;
+	}
+	if ( retainedWarmDone ) {
+		UI_RetainedEndWarm();
+		return;
+	}
+	if ( now < retainedWarmFrom || guiActive == guiMsg || retainedSubpageFrom != NULL || retainedHomeReturning ||
+			common->GetPresentationTime() < retainedHandoffUntil || ( mapSpawned && IsMultiplayer() ) ) {
+		return;
+	}
+	for ( int i = 0; i < static_cast<int>( sizeof( leads ) / sizeof( leads[0] ) ); ++i ) {
+		if ( idStr::Icmp( shown->Name(), leads[ i ][ 0 ] ) != 0 ) {
+			continue;
+		}
+		for ( int next = 1; next < 5; ++next ) {
+			const char *page = leads[ i ][ next ];
+			if ( page == NULL || retainedStock.FindIndex( page ) >= 0 ) {
+				continue;
+			}
+			idUserInterface *gui = UI_RetainedLoaded( page );
+			if ( gui == NULL ) {
+				// Its parse is done: build its view now, rather than in the
+				// frame that opens it. One a frame.
+				if ( UI_RetainedPrefetchReady( page ) ) {
+					const int started = Sys_Milliseconds();
+					FindRetainedGui( page, true, false );
+					common->DPrintf( "retained GUI %s loaded ahead, while %s rested (%d ms)\n", page, shown->Name(), Sys_Milliseconds() - started );
+					return;
+				}
+				continue;
+			}
+			bool finished = false;
+			if ( UI_RetainedWarm( gui, finished ) ) {
+				return;
+			}
+		}
+		break;
+	}
+	retainedWarmDone = true;
 #endif
 }
 

@@ -18,6 +18,7 @@ ROOT_RUNTIME_PATTERNS = (
     "openD3-client_*.pdb",
     "openD3-ded_*.exe",
     "openD3-ded_*.pdb",
+    "openD3-updater_*.exe",
     "renderer-gl_*.dll",
     "renderer-gl_*.pdb",
     "renderer-vk_*.dll",
@@ -30,6 +31,7 @@ POSIX_ENGINE_RUNTIME_PATTERNS = (
 )
 LINUX_ROOT_RUNTIME_PATTERNS = (
     *POSIX_ENGINE_RUNTIME_PATTERNS,
+    "openD3-updater_*",
     "renderer-gl_*.so",
     "renderer-vk_*.so",
 )

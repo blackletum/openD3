@@ -1941,7 +1941,6 @@ struct Runtime::Impl {
 	}
 	// Immutable, JSON-escaped identity, rebuilt with each document replacement.
 	// HUD source can be several MiB; checkpoints must not escape it every time.
-	std::string snapshotDocumentIdentity;
 	Motion motion;
 	State state;
 	struct StateSource { std::string id, cvar, view; size_t type; };
@@ -2836,6 +2835,10 @@ struct Runtime::Impl {
 		const Rml::Vector2f point(pointerX,pointerY);
 		std::map<Rml::Element*,bool> checked;
 		const auto allowed = [&](Rml::Element* element) {
+			// A prompt-bar entry (an unfocusable button) outside the input scope,
+			// or faded out, lets the pointer through: a bar left under a page or
+			// a dialog never covers that page's own controls.
+			bool prompt = false, scoped = true; float opacity = 1;
 			for (auto* ancestor = element; ancestor && ancestor != document; ancestor = ancestor->GetParentNode()) {
 				if (ancestor->GetTagName() != "q4-node" && ancestor->GetTagName() != "q4-vector") continue;
 				// Popup parts have live visibility owned by the widget view; their
@@ -2845,8 +2848,13 @@ struct Runtime::Impl {
 				auto [entry,inserted] = checked.emplace(ancestor,false);
 				if (inserted) entry->second = static_cast<VectorElement*>(ancestor)->AllowsMaskedPoint(point);
 				if (!entry->second) return false;
+				opacity *= ancestor->GetComputedValues().opacity();
+				if (!prompt && canonical) {
+					const auto* node = canonical->Model().FindNode(ancestor->GetId());
+					if (node && node->control && !node->control->focusable) { prompt = true; scoped = interaction.AllowsNode(node->id); }
+				}
 			}
-			return true;
+			return !prompt || (scoped && opacity > .01f);
 		};
 		return context->GetElementAtPoint(point,nullptr,document,allowed);
 	}
@@ -3382,7 +3390,7 @@ void Runtime::Shutdown() {
 	impl->hud = nullptr;
 	impl->paintDirty=true;
 	impl->changedProjections.clear();
-	impl->canonical.reset(); impl->snapshotDocumentIdentity.clear(); impl->documentFontCss.clear(); impl->inlineAuthored=false; impl->inlineOverridden.clear();
+	impl->canonical.reset(); impl->documentFontCss.clear(); impl->inlineAuthored=false; impl->inlineOverridden.clear();
 	impl->appliedInputs.clear(); impl->deferredInputs.clear(); impl->inputKeys.clear(); impl->indexedKeys = nullptr; impl->motion.Reset(DocumentModel{});
 	impl->state = {}; impl->stateSources.clear(); impl->appliedStateRevision = 0; impl->stateError.clear();
 	impl->interaction.Reset({}); impl->controls.clear(); impl->pointerPresent = impl->pointerNavigation = false;
@@ -3409,7 +3417,7 @@ void Runtime::CloseDocument() {
 	if (impl->backend) impl->backend->renderer.InvalidateFrame();
 	impl->paintDirty=true;
 	impl->changedProjections.clear();
-	impl->canonical.reset(); impl->snapshotDocumentIdentity.clear(); impl->documentFontCss.clear(); impl->inlineAuthored=false; impl->inlineOverridden.clear();
+	impl->canonical.reset(); impl->documentFontCss.clear(); impl->inlineAuthored=false; impl->inlineOverridden.clear();
 	impl->appliedInputs.clear(); impl->deferredInputs.clear(); impl->inputKeys.clear(); impl->indexedKeys = nullptr; impl->motion.Reset(DocumentModel{});
 	impl->state = {}; impl->stateSources.clear(); impl->appliedStateRevision = 0; impl->stateError.clear();
 	impl->interaction.Reset({}); impl->controls.clear(); impl->pointerPresent = impl->pointerNavigation = false;
@@ -3452,11 +3460,9 @@ bool Runtime::LoadDocument(const Document& document, const std::string& sourcePa
 }
 bool Runtime::LoadCanonical(std::unique_ptr<Document> candidate, const std::string& sourcePath, std::vector<Diagnostic>& diagnostics) {
 	if (!Mutate() || !Initialize()) return false;
-	Json::Value identity(Json::objectValue);
-	identity["version"] = 1; identity["id"] = candidate->Model().id;
-	identity["path"] = sourcePath; identity["source"] = candidate->Source();
-	Json::StreamWriterBuilder identityWriter; identityWriter["indentation"] = ""; identityWriter["precision"] = 17;
-	std::string snapshotIdentity = Json::writeString(identityWriter,identity);
+	// Encoded at load, as always (a prefetched document's worker already did),
+	// so a later save never pays for it.
+	candidate->SnapshotIdentity(sourcePath);
 	{
 		ContextClock clock(*impl->services,impl->time,impl->strictPreparation?&impl->preparationFailed:nullptr);
 		// The document is built from the model, each node's element with its
@@ -3481,7 +3487,6 @@ bool Runtime::LoadCanonical(std::unique_ptr<Document> candidate, const std::stri
 		impl->stateSources.push_back({id,declaration.cvar,declaration.view,declaration.initial.index()});
 	impl->canonical = std::move(candidate);
 	impl->sourcePath = sourcePath;
-	impl->snapshotDocumentIdentity = std::move(snapshotIdentity);
 	// The build mapped every node to its element, so the load resolves each
 	// node without a search.
 	std::vector<const Node*> nodes{&impl->canonical->Model().root};
@@ -3685,7 +3690,7 @@ bool Runtime::SaveSnapshot(std::string& snapshot, std::string& error, double sec
 		}
 		Json::StreamWriterBuilder writer; writer["indentation"] = ""; writer["precision"] = 17;
 		const std::string dynamic = Json::writeString(writer,root);
-		const auto& identity = impl->snapshotDocumentIdentity;
+		const auto& identity = impl->canonical->SnapshotIdentity(impl->sourcePath);
 		constexpr std::size_t prefixBytes = sizeof("{\"document\":")-1;
 		if (identity.size() > MaxSnapshotBytes-prefixBytes || dynamic.size() > MaxSnapshotBytes-prefixBytes-identity.size()) {
 			error = "Instance snapshot exceeds the 128 MiB limit"; return false;
@@ -3729,7 +3734,7 @@ bool Runtime::RestoreSnapshot(const std::string& snapshot, std::string& error, d
 		builder["allowSpecialFloats"] = false; builder["stackLimit"] = 32; builder["skipBom"] = false;
 		std::unique_ptr<Json::CharReader> reader(builder.newCharReader()); Json::Value root;
 		if (!reader->parse(snapshot.data(),snapshot.data()+snapshot.size(),&root,nullptr)) return reject("Invalid instance snapshot JSON");
-		if ((root["format"] != "retained-ui-instance" && root["format"] != "openq4-ui-instance") || !root["version"].isUInt() || root["version"].asUInt() < 1 || root["version"].asUInt() > 4)
+		if ((root["format"] != "retained-ui-instance" && root["format"] != "opend3-ui-instance") || !root["version"].isUInt() || root["version"].asUInt() < 1 || root["version"].asUInt() > 4)
 			return reject("Unsupported instance snapshot schema");
 		const bool authoredModals = root["version"].asUInt() == 4;
 		if (authoredModals != impl->interaction.HasAuthoredModals()) return reject("Instance snapshot modal schema does not match the document");
@@ -4250,6 +4255,7 @@ bool Runtime::SetText(const std::string& id, const std::string& text) {
 	return true;
 }
 bool Runtime::IsLoaded() const { return impl->document != nullptr; }
+void Runtime::InvalidatePaint() { impl->paintDirty = true; }
 RuntimeStatistics Runtime::Statistics() const {
 	auto statistics = impl->Stats();
 	if (impl->services) {

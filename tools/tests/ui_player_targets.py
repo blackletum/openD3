@@ -33,7 +33,10 @@ constexpr int VOTE_NONE=0,VOTE_KICK=1,VOTE_MULTIFIELD=2,VOTEFLAG_KICK=16;
 constexpr int MAX_GAME_MESSAGE_SIZE=16384,GAME_RELIABLE_MESSAGE_CALLVOTE=20,GAME_RELIABLE_MESSAGE_CALLPACKEDVOTE=21;
 using vote_flags_t=int;
 constexpr int VOTEFLAG_RESTART=1,VOTEFLAG_BUYING=2,VOTEFLAG_TEAMBALANCE=4,VOTEFLAG_SHUFFLE=8,VOTEFLAG_MAP=32,
- VOTEFLAG_GAMETYPE=64,VOTEFLAG_TIMELIMIT=128,VOTEFLAG_TOURNEYLIMIT=256,VOTEFLAG_CAPTURELIMIT=512,VOTEFLAG_FRAGLIMIT=1024,VOTEFLAG_CONTROLTIME=2048;
+ VOTEFLAG_GAMETYPE=64,VOTEFLAG_TIMELIMIT=128,VOTEFLAG_TOURNEYLIMIT=256,VOTEFLAG_CAPTURELIMIT=512,VOTEFLAG_FRAGLIMIT=1024,VOTEFLAG_CONTROLTIME=2048,
+ VOTEFLAG_NEXTMAP=0x1000,VOTEFLAG_ROUNDLIMIT=0x2000,VOTEFLAG_RULESET=0x4000,VOTEFLAG_INSTAGIB=0x8000,VOTEFLAG_OVERTIME=0x10000,
+ VOTEFLAG_COINTOSS=0x20000,VOTEFLAG_RANDOMMAP=0x40000,VOTEFLAG_READYALL=0x80000;
+struct {int GetInteger()const{return 51;}} g_votePercent;
 struct idMath {static int ClampChar(int n){return n;}static int ClampShort(int n){return n;}
     static int ClampInt(int lo,int hi,int n){return n<lo?lo:n>hi?hi:n;}};
 // The buying vote carries the mode: off, Quake 4's rules or The Awakening's (mp/Buying.h).
@@ -74,7 +77,8 @@ struct idPlayer:idEntity {
 struct Common {const char* GetLocalizedString(const char* s){return s;}template<class... T>void DPrintf(T...){}template<class... T>void Printf(T...){}template<class... T>void Warning(T...){}} commonObject,*common=&commonObject;
 struct Commands {std::vector<std::string> commands;void BufferCommandText(int,const char* s){commands.emplace_back(s);}} commandsObject,*cmdSystem=&commandsObject;
 struct Network {std::vector<idBitMsg> sent;void ClientSendReliableMessage(const idBitMsg& m){sent.push_back(m);}} networkObject,*networkSystem=&networkObject;
-struct voteStruct_t {int m_fieldFlags=0,m_kick=-1;idStr m_map;int m_gameType=0,m_timeLimit=0,m_fragLimit=0,m_tourneyLimit=0,m_captureLimit=0,m_buying=0,m_teamBalance=0,m_controlTime=0;};
+struct voteStruct_t {int m_fieldFlags=0,m_kick=-1;idStr m_map;int m_gameType=0,m_timeLimit=0,m_fragLimit=0,m_tourneyLimit=0,m_captureLimit=0,m_buying=0,m_teamBalance=0,m_controlTime=0,
+    m_roundLimit=0,m_ruleset=0,m_instagib=0,m_overtime=0;};
 struct serverAdminData_t {};
 static bool IsValidVotePlayerSlot(int);
 static bool IsCurrentPlayerTarget(int,int);
@@ -96,6 +100,7 @@ struct idMultiplayerGame {
     bool IsArenaCampaignMatch()const{return arena;}bool IsManagedMatch()const{return managed;}
     bool RetainedAdminChanges(serverAdminData_t&)const{return false;}
     bool RejectManagedLegacyMutation(const char*)const{return managed;}
+    void BeginServerDrop(int){} void EndServerDrop(int){}
     void ClientVoiceMute(int,bool);void ServerHandleVoiceMuting(int,int,int,bool);
     bool VoteKickTargetCurrent()const;void CheckVote();bool AbortInheritedVoteForManagedMatch(){return false;}
     void ClientUpdateVote(int v,int,int,const voteStruct_t&){updates.push_back(v);}
@@ -170,24 +175,24 @@ int main(){
     m.ClientCallVote(VOTE_KICK,"31",original);m.ClientCallPackedVote(mixed,original);
     assert(networkObject.sent.size()==2);
     auto legacy=networkObject.sent[0],packed=networkObject.sent[1];
-    assert(legacy.bytes.size()==9 && packed.bytes.size()==8);
-    legacy.cursor=5;packed.cursor=4;admitted=0;
+    assert(legacy.bytes.size()==9 && packed.bytes.size()==10); // the packed flag word is a long since MP-12
+    legacy.cursor=5;packed.cursor=6;admitted=0;
     AdmitLegacy(legacy,"31");AdmitPacked(packed,mixed);assert(admitted==2);
-    legacy.cursor=5;packed.cursor=4;++g.generations[31];
+    legacy.cursor=5;packed.cursor=6;++g.generations[31];
     AdmitLegacy(legacy,"31");AdmitPacked(packed,mixed);assert(admitted==2);
     const auto sent=networkObject.sent.size();
     m.ClientCallVote(VOTE_KICK,"31",original);m.ClientCallPackedVote(mixed,original);assert(networkObject.sent.size()==sent);
     // Missing/truncated/trailing identity bytes fail the complete mixed request.
-    for(int size=0;size<=7;++size){if(size==4)continue;auto bad=packed;bad.bytes.resize(4+size);bad.cursor=4;AdmitPacked(bad,mixed);
+    for(int size=0;size<=7;++size){if(size==4)continue;auto bad=packed;bad.bytes.resize(6+size);bad.cursor=6;AdmitPacked(bad,mixed);
         auto old=legacy;old.bytes.resize(5+size);old.cursor=5;AdmitLegacy(old,"31");assert(admitted==2);}
     for(const char* capability:{"","0","1"}){
         g.serverInfo.values["si_uiTargetProtocol"]=capability;m.ClientCallVote(VOTE_KICK,"31");m.ClientCallPackedVote(mixed);assert(networkObject.sent.size()==sent);
     }
     // Non-kick packets keep their old shape on an older server.
     voteStruct_t restart;restart.m_fieldFlags=VOTEFLAG_RESTART;m.ClientCallPackedVote(restart);
-    assert(networkObject.sent.back().bytes==std::vector<byte>({GAME_RELIABLE_MESSAGE_CALLPACKEDVOTE,1,0}));
+    assert(networkObject.sent.back().bytes==std::vector<byte>({GAME_RELIABLE_MESSAGE_CALLPACKEDVOTE,1,0,0,0}));
     g.serverInfo.values["si_uiTargetProtocol"]="2";m.ClientCallPackedVote(mixed);
-    auto currentPacket=networkObject.sent.back();currentPacket.cursor=4;AdmitPacked(currentPacket,mixed);assert(admitted==3);
+    auto currentPacket=networkObject.sent.back();currentPacket.cursor=6;AdmitPacked(currentPacket,mixed);assert(admitted==3);
     // An ordered catalog binds a compact menu row. Replacement with the same
     // entity address/name invalidates the selection and the mixed draft.
     m.retainedVoteDraft[m.RVF_KICK]=-1;m.RetainedVoteChoices();const auto catalog=m.retainedVoteKickCatalog;

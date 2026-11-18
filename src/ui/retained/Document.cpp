@@ -301,8 +301,8 @@ public:
 	State Read(const Json::Value& root, bool treeCheck) {
 		if (treeCheck) FiniteTree(root);
 		Fields(root,"",{"format","version","id","canvas","tokens","symbols","root","timelines","state","bindings","actions","presentationVariables","aliases","events","detail","editor","extensions"});
-		// "openq4-ui" is the name the format had before the id Tech 4 ports shared it.
-		Require(root["format"] == "retained-ui" || root["format"] == "openq4-ui",root,"/format","Expected format 'retained-ui'");
+		// "opend3-ui" is the name the format had before the id Tech 4 ports shared it.
+		Require(root["format"] == "retained-ui" || root["format"] == "opend3-ui",root,"/format","Expected format 'retained-ui'");
 		Require(root["version"].isUInt() && root["version"].asUInt() == 1,root["version"],"/version","Unsupported document version; expected 1");
 		model.id = Id(root["id"],"/id");
 		if (root.isMember("extensions")) {
@@ -736,7 +736,7 @@ private:
 				Fields(value,at,{"op","control","extensions"}); step.op = EventOp::Focus;
 				step.target = Id(value["control"],at+"/control");
 				const auto* node = model.FindNode(step.target);
-				Require(node && node->control,value["control"],at+"/control","An event can focus only a declared control");
+				Require(node && node->control && node->control->focusable,value["control"],at+"/control","An event can focus only a declared control that can take the focus");
 			} else if (op == "if") {
 				Fields(value,at,{"op","condition","then","else","extensions"}); step.op = EventOp::If;
 				step.condition = ReadExpression(value["condition"],at+"/condition",0,true);
@@ -1271,7 +1271,7 @@ private:
 			const auto& control = value["control"]; const auto p = path+"/control";
 			Require(control.isObject() && control["role"].isString(),control,p,"Expected a semantic control role");
 			const auto role = control["role"].asString();
-			if (role == "button") Fields(control,p,{"role","action","event","label","enabled","states","navigation","detail","context","prompt","extensions"});
+			if (role == "button") Fields(control,p,{"role","action","event","input","focusable","label","enabled","states","navigation","detail","context","prompt","extensions"});
 			else if (role == "toggle") Fields(control,p,{"role","action","label","enabled","states","navigation","value","mixed","parts","extensions"});
 			else if (role == "slider") Fields(control,p,{"role","action","label","enabled","states","navigation","value","minimum","maximum","step","decimals","orientation","parts","extensions"});
 			else if (role == "choice") Fields(control,p,{"role","action","label","enabled","states","navigation","value","context","parts","visibleRows","options","optionCount","scrollbar","placementBounds","extensions"});
@@ -1280,9 +1280,25 @@ private:
 			else if (role == "scrollbar") Fields(control,p,{"role","label","enabled","states","navigation","viewport","orientation","lineStep","minimumThumb","parts","extensions"});
             else Require(false,control["role"],p+"/role","Supported roles are button, toggle, slider, choice, number, text and scrollbar");
 			result.control.emplace(); auto& parsed = *result.control;
-			Require(role == "scrollbar" || control.isMember("action") != control.isMember("event"),control,p,"Controls require exactly one action or event");
-			if (control.isMember("action")) parsed.action = Id(control["action"],p+"/action");
-			else if (role != "scrollbar") parsed.event = EventName(control["event"],p+"/event");
+			// A prompt button (section 13.4) replays a menu input in place of an
+			// action or event, and never takes the focus.
+			if (control.isMember("focusable")) {
+				Require(control["focusable"].isBool(),control["focusable"],p+"/focusable","Expected a Boolean");
+				parsed.focusable = control["focusable"].asBool();
+				Require(parsed.focusable || !control.isMember("navigation"),control,p,"A control that cannot take the focus has no navigation");
+			}
+			if (control.isMember("input")) {
+				Require(control["input"] == "accept" || control["input"] == "back",control["input"],p+"/input","Expected accept or back");
+				Require(!control.isMember("action") && !control.isMember("event"),control,p,"A control with an input has no action or event");
+				Require(!parsed.focusable,control,p,"A control with an input cannot take the focus");
+				Require(!control.isMember("detail") && !control.isMember("context") && !control.isMember("prompt") && !control.isMember("navigation"),
+					control,p,"A control with an input names no detail, context, prompt or navigation");
+				parsed.input = control["input"] == "accept" ? ControlInput::Accept : ControlInput::Back;
+			} else {
+				Require(role == "scrollbar" || control.isMember("action") != control.isMember("event"),control,p,"Controls require exactly one action or event");
+				if (control.isMember("action")) parsed.action = Id(control["action"],p+"/action");
+				else if (role != "scrollbar") parsed.event = EventName(control["event"],p+"/event");
+			}
 			parsed.label = ControlLabel(control["label"],p+"/label");
 			if (control.isMember("context")) {
 				parsed.context = ReadExpression(control["context"],p+"/context");
@@ -1773,7 +1789,7 @@ private:
 			const auto& value = sourceNode["modal"]; const auto p = path+"/modal";
 			Require(!ancestorControl,value,p,"A modal cannot be nested inside a semantic control");
 			const auto* focus = model.FindNode(node.modal->initialFocus);
-			Require(focus && focus->control && Descendant(focus->id,node.id),value["initialFocus"],p+"/initialFocus","Initial focus must be a control inside this modal");
+			Require(focus && focus->control && focus->control->focusable && Descendant(focus->id,node.id),value["initialFocus"],p+"/initialFocus","Initial focus must be a control inside this modal");
 			std::vector<const Node*> pending;
 			for (const auto& child : node.children) pending.push_back(&child);
 			while (!pending.empty()) {
@@ -1821,6 +1837,7 @@ private:
 			for (const auto& [name,target] : node.control->navigation) {
 				const auto* next = model.FindNode(target);
 				Require(next && next->control,value["navigation"][name],p+"/navigation/"+name,"Navigation target must be a control in this document");
+				Require(next->control->focusable,value["navigation"][name],p+"/navigation/"+name,"Navigation target must be able to take the focus");
 			}
 		}
 		for (size_t i = 0; i < node.children.size(); ++i)
@@ -2125,7 +2142,7 @@ const Json::Value* detail::ResolveDocumentSource(const Json::Value& root, const 
 // The parsed tree is a load-time intermediate: the model copies what it keeps,
 // and a tree of a large document costs several times its source. An edit
 // parses the retained source again to find the span it replaces.
-struct Document::Impl { std::string source; DocumentModel model; };
+struct Document::Impl { std::string source; DocumentModel model; std::string identityPath, identity; };
 Document::Document() : impl(std::make_unique<Impl>()) {}
 Document::~Document() = default;
 Document::Document(Document&&) noexcept = default;
@@ -2149,6 +2166,17 @@ bool Document::Load(const std::string& source, std::vector<Diagnostic>& diagnost
 	}
 	impl = std::move(candidate);
 	return true;
+}
+const std::string& Document::SnapshotIdentity(const std::string& sourcePath) const {
+	if (impl->identity.empty() || impl->identityPath != sourcePath) {
+		Json::Value identity(Json::objectValue);
+		identity["version"] = 1; identity["id"] = impl->model.id;
+		identity["path"] = sourcePath; identity["source"] = impl->source;
+		Json::StreamWriterBuilder writer; writer["indentation"] = ""; writer["precision"] = 17;
+		impl->identity = Json::writeString(writer,identity);
+		impl->identityPath = sourcePath;
+	}
+	return impl->identity;
 }
 bool Document::ReplaceValue(const std::string& pointer, const std::string& replacement, std::vector<Diagnostic>& diagnostics) {
 	diagnostics.clear();

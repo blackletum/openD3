@@ -99,6 +99,14 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
   resident map for both ownerships of a light, and the shared interaction
   domain draws every shadow-map form. Quake 4's multiplayer buy card, Classic
   ruleset, Instagib and The Awakening campaign support stay out of the engine.
+- Merge openQ4 through `65305957d`: PNG textures and screenshots, BC7
+  texture-pack inputs, block-format render demos with keyframes, network
+  protocol 2.42, the in-game updater (with no release key, so it can only
+  point at the release page), PCSS-lite soft shadows on the modern OpenGL
+  path, characters shadowing themselves under shadow maps, and faster
+  light-interaction and collision bookkeeping. The Awakening's menus and levelshots, the multiplayer
+  modifiers and presets, the map database hook and the smart weapon switch
+  stay out of the engine.
 - Skip upstream's startup system check, which offers the detected performance
   preset, until openD3 ships a screen for it.
 - Default `g_showPlayerShadow` to 1 in both game modules.

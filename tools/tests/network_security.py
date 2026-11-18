@@ -183,8 +183,15 @@ def validate_oob_budgets() -> None:
     require_before(rcon_challenge, "AllowConnectionlessResponse( from, false )", "serverPort.SendPacket", "rcon2 response budget")
     require_before(connect, "ValidateChallenge( from, challenge, clientId )", "protocol != ASYNC_PROTOCOL_VERSION", "challenge before protocol reply")
     require_before(connect, "OS < 0 || OS >= MAX_GAME_OS", "ValidateChallenge( from, challenge, clientId )", "client OS bounds before challenge state")
-    require_before(connect, "AllowConnectionlessResponse( from, false )", "protocol != ASYNC_PROTOCOL_VERSION", "connect reply budget")
-    require_before(connect, "AllowConnectionlessResponse( from, false )", "clientDataChecksum != serverDataChecksum", "checksum reply budget")
+    # A connect that proves its challenge came from the address the challenge went
+    # to, so it cannot be a reflection; charging it let a challenge flood turn real
+    # players away (audit 17 November). ValidateChallenge charges the failures.
+    reject(connect, "AllowConnectionlessResponse( from, false )", "proven connect is not charged to the reply budget")
+    validate_body = function_body(server, "int idAsyncServer::ValidateChallenge(", "ValidateChallenge")
+    require(validate_body, "AllowConnectionlessResponse( from, false )", "a failed challenge proof is charged")
+    # Rate limits key an IPv6 source on its /64; link-local neighbours on the whole address.
+    require(server, "IPv6PrefixMatches( left.ip6, right.ip6, 64 )", "IPv6 rate source is the /64")
+    require(limiter, "AsyncServer_SameRateSource( from, oobRateLimits[ index ].address )", "OOB budget keys on the rate source")
     require(pure, "AllowConnectionlessResponse( from, false )", "pure failure reply budget")
     require(download, "AllowConnectionlessResponse( from, false )", "download response budget")
     inactive = connectionless[connectionless.index("if ( !active )") :]
@@ -1128,6 +1135,267 @@ def validate_network_rate_budget() -> None:
     )
 
 
+def validate_session_lifecycle_and_flood_bounds() -> None:
+    """The 14 November 2026 netcode audit: one begin per connect, bounded client floods,
+    a session that ends when the server cannot be read, and entity ids that survive a
+    long map."""
+    server = read("src/framework/async/AsyncServer.cpp")
+    client = read("src/framework/async/AsyncClient.cpp")
+    channel = read("src/framework/async/MsgChannel.cpp")
+
+    unreliable = function_body(server, "void idAsyncServer::ProcessUnreliableClientMessage(", "client unreliable messages")
+    require_before(unreliable, "if ( client.clientState == SCS_INGAME || client.gameBegun ) {",
+                   "client.clientState = SCS_CONNECTED;", "a client in the game is never set back to connected")
+    require_before(unreliable, "serverTime - client.lastGameInitTime < GAME_INIT_RESEND_TIME",
+                   "SendGameInitToClient( clientNum );", "game-init resends are paced")
+    require_before(unreliable, "if ( client.gameBegun ) {", "client.clientState = SCS_INGAME;", "the game begins a client once")
+    require_before(unreliable, "if ( client.clientState != SCS_INGAME ) {", "client.gameBegun = true;",
+                   "a joiner dropped by the join burst is not begun")
+    require_before(unreliable, "client.gameBegun = true;", "game->ServerClientBegin( clientNum, false, NULL );", "begin is recorded")
+    require(function_body(server, "void idAsyncServer::InitClient(", "client init"), "client.gameBegun = false;", "a connect clears the begin")
+    pure = function_body(server, "void idAsyncServer::ProcessReliablePure(", "reliable pure")
+    require_before(pure, "clients[ clientNum ].clientState == SCS_INGAME || clients[ clientNum ].gameBegun",
+                   "clients[ clientNum ].clientState = SCS_CONNECTED;", "a pure message from a client in the game drops it")
+    connect = function_body(server, "void idAsyncServer::ProcessConnectMessage(", "connect")
+    require_before(connect, "if ( clients[ clientNum ].clientState >= SCS_PUREWAIT ) {",
+                   "clients[ clientNum ].channel.Init( from, serverId, challenge );", "a connect onto a live slot drops its old client first")
+
+    reliable = function_body(server, "void idAsyncServer::ProcessReliableClientMessages(", "client reliable messages")
+    require_before(reliable, "client.userInfoBudget -= msg.GetSize();", "SendUserInfoBroadcast( clientNum, info );",
+                   "user info changes are charged before they are sent on")
+    require(reliable, "if ( client.userInfoBudget < 0 ) {", "an overspent user info allowance drops the sender")
+    require_before(reliable, "if ( client.gameMessageBudget <= 0 ) {", "game->ServerProcessReliableMessage( clientNum, msg );",
+                   "reliable game messages are budgeted")
+    print_case = reliable[reliable.index("case CLIENT_RELIABLE_MESSAGE_PRINT:"):reliable.index("case CLIENT_RELIABLE_MESSAGE_DISCONNECT:")]
+    reject(print_case, "common->Printf", "client text printed to the server console")
+    require(server, "const int CLIENT_USERINFO_BUDGET_BYTES\t= 2 * CLIENT_USERINFO_MAX_BYTES;", "a whole user info fits the allowance")
+
+    send_reliable = function_body(server, "void idAsyncServer::SendReliableMessage(", "server reliable send")
+    require_before(send_reliable, 'outMsg.WriteString( "disconnect" );', "clients[ clientNum ].channel.ClearReliableMessages();",
+                   "an overflow drop is announced outside the channel before the queue is cleared")
+    connectionless = function_body(server, "bool idAsyncServer::ConnectionlessMessage(", "connectionless dispatch")
+    if connectionless.count("return rconCommandExecuted;") != 2:
+        raise AssertionError("a remote console packet ends the frame only when a command ran")
+    require(function_body(server, "void idAsyncServer::ExecuteRemoteConsoleCommand(", "rcon execute"),
+            "rconCommandExecuted = true;", "rcon execution is recorded")
+
+    snapshot = function_body(server, "bool idAsyncServer::SendSnapshotToClient(", "snapshot send")
+    require(snapshot, "framesSinceSnapshot < AsyncServer_SnapshotFrameInterval()", "snapshots are paced in game frames")
+    reject(snapshot, "serverTime - client.lastSnapshotTime <", "snapshot pacing by elapsed milliseconds")
+    frame = function_body(server, "void idAsyncServer::RunFrame(", "server frame")
+    if frame.count("AsyncServer_SendFragmentBurst( client.channel, serverPort, serverTime );") != 2:
+        raise AssertionError("the rest of a fragmented message follows within the rate, before and after a new message")
+    require_before(frame, "msec = UpdateTime( 100 );\n\t\t\tgameTimeResidual += msec;\n\n\t\t\tif ( newPacket ) {",
+                   "// send heart beat to master servers", "the clock is read before a packet is handled")
+    require(frame, "realTime - client.lastPingTime >= 2 * PING_RESEND_TIME", "an overdue ping takes the pass")
+
+    require(function_body(channel, "bool idMsgChannel::ReadMessageData(", "channel read"),
+            "if ( messageSize > 4 * msg.GetRemaingData() + 8 ) {", "claimed message size bounded by the packed bytes")
+    require(function_body(channel, "bool idMsgChannel::SendReliableMessage(", "channel reliable send"),
+            "msg.GetSize() <= MAX_RELIABLE_MESSAGE_SIZE &&", "an unsendable reliable message is refused")
+
+    for warning in (
+        "server sent a truncated unreliable message; disconnecting safely",
+        "server sent a truncated ping; disconnecting safely",
+        "server sent a truncated game-init message; disconnecting safely",
+        "server sent invalid game-init timing; disconnecting safely",
+        "server sent a truncated snapshot header; disconnecting safely",
+        "server sent invalid snapshot timing; disconnecting safely",
+        "server sent an empty reliable message; disconnecting safely",
+        "SERVER_RELIABLE_MESSAGE_CLIENTINFO: truncated base flag",
+        "SERVER_RELIABLE_MESSAGE_CLIENTINFO: malformed userinfo dictionary",
+        "SERVER_RELIABLE_MESSAGE_SYNCEDCVARS: malformed CVar dictionary",
+    ):
+        at = client.index(warning)
+        following = client[at:at + 200]
+        require(following, "AsyncClient_StopAfterProtocolError();", f"session teardown after '{warning}'")
+        reject(following, "DisconnectFromServer();", f"channel-only teardown after '{warning}'")
+    for helper in ("static void AsyncClient_StopAfterProtocolError(", "static void AsyncClient_StopAfterMalformedSnapshot("):
+        require_before(function_body(client, helper, helper), "session->Stop();", "session->StartMenu();", "teardown returns to the menu")
+    timing = function_body(client, "static ID_INLINE bool AsyncClient_ValidNetworkTiming", "network timing helper")
+    require(timing, "return gameTime >= earliest && gameTime <= latest;", "a snapshot's game time follows its game frame")
+    client_unreliable = function_body(client, "void idAsyncClient::ProcessUnreliableServerMessage(", "server unreliable messages")
+    require(client_unreliable, "if ( serverGameInitId != gameInitId || gameInitId == GAME_INIT_ID_INVALID ) {",
+            "no snapshot is read without a game")
+    require(client_unreliable, "predictionResynced ? static_cast<std::int64_t>( clientPrediction ) :", "a resync starts from the target")
+    require(function_body(client, "void idAsyncClient::ProcessConnectResponseMessage(", "connect response"),
+            "lastPacketTime = clientTime > 0 ? clientTime : 1;", "the time-out arms with the connection")
+    reject(client, ")[ 0 ]", "message box answers read without a NULL test")
+    run_frame = function_body(client, "void idAsyncClient::RunFrame(", "client frame")
+    require_before(run_frame, "const bool lastReplayFrame = ( snapshotGameFrame + 1 >= gameFrame );", "game->ClientEndFrame();",
+                   "a snapshot read between tics is replayed before the frame is drawn")
+    require_before(function_body(client, "bool idAsyncClient::SendVoiceMessage(", "client voice"),
+                   "channel.SendMessage( clientPort, clientTime, msg )", "while ( channel.UnsentFragmentsLeft() ) {",
+                   "voice never leaves a fragment behind")
+
+    for tree in ("src/mpgame", "src/game"):
+        header = (GAME_LIBS_ROOT / tree / "Game_local.h").read_text(encoding="utf-8", errors="replace")
+        game = (GAME_LIBS_ROOT / tree / "Game_local.cpp").read_text(encoding="utf-8", errors="replace")
+        require(header, "return static_cast<int>( static_cast<unsigned int>( packedId ) >> GENTITYNUM_BITS );",
+                f"{tree}: spawn ids unpack unsigned")
+        reject(header, "( spawnId >> GENTITYNUM_BITS )", f"{tree}: signed spawn id shift")
+        reject(header, "( id >> GENTITYNUM_BITS )", f"{tree}: signed spawn id shift")
+        register = function_body(game, "void idGameLocal::RegisterEntity(", f"{tree}: register entity")
+        require(register, "spawnCount = MAX_GENTITIES;", f"{tree}: the spawn count wraps")
+        reject(register, "spawn count overflow", f"{tree}: fatal spawn count overflow")
+    entity = (GAME_LIBS_ROOT / "src/mpgame/Entity.cpp").read_text(encoding="utf-8", errors="replace")
+    require(function_body(entity, "bool idEntity::ClientReceiveEvent(", "entity client events"),
+            "if ( time < gameLocal.clientSnapshotTime - 300 ) {", "sound events age against the server's clock")
+    network = (GAME_LIBS_ROOT / "src/mpgame/Game_network.cpp").read_text(encoding="utf-8", errors="replace")
+    require(function_body(network, "void idGameLocal::ClientProcessEntityNetworkEventQueue(", "client event queue"),
+            "} else if ( ( ent = entPtr.GetEntity() ) == NULL ) {", "client events test the entity for NULL")
+    player = (GAME_LIBS_ROOT / "src/mpgame/Player.cpp").read_text(encoding="utf-8", errors="replace")
+    require(player, "const bool feedbackHitch = stateHitch && ( snapshotAge <= 0 || snapshotAge > FEEDBACK_HITCH_MSEC );",
+            "one missed snapshot does not hide a death or a hit")
+    for gated in ("if ( !feedbackHitch ) {\n \t\t\tStartSound( \"snd_death\"", "if ( feedbackHitch ) {\n\t\t\tlastDmgTime = gameLocal.time;"):
+        require(player, gated, "death and hit feedback follow the feedback gap, not any gap")
+
+
+def validate_protocol_2_42() -> None:
+    """Network protocol 2.42 (15 November 2026): keyed channel packets, one fragment size,
+    the command-slack report, and the game's snapshot layout with its 2.41 demo reader."""
+    header = read("src/framework/async/AsyncNetwork.h")
+    channel = read("src/framework/async/MsgChannel.cpp")
+    server = read("src/framework/async/AsyncServer.cpp")
+    client = read("src/framework/async/AsyncClient.cpp")
+    require(header, "const int ASYNC_PROTOCOL_MINOR\t\t= 42;", "protocol number")
+
+    process = function_body(channel, "bool idMsgChannel::Process(", "channel receive")
+    tag_test = "if ( msg.ReadUShort() != Net_PacketTag( key, sequence ) ) {"
+    for later, context in (
+        ("remoteAddress.port = from.port;", "the tag is checked before the port is followed"),
+        ("UpdateIncomingRate( time, msg.GetSize() );", "the tag is checked before the rate is charged"),
+        ("if ( sequence <= incomingSequence ) {", "the tag is checked before the sequence is judged"),
+        ("incomingSequence = sequence;", "the tag is checked before the sequence moves"),
+    ):
+        require_before(process, tag_test, later, context)
+    require(function_body(channel, "void idMsgChannel::SendNextFragment(", "fragment send"),
+            "msg.WriteUShort( Net_PacketTag( key, sequenceWord ) );", "fragments carry the tag")
+    require(function_body(channel, "int idMsgChannel::SendMessage(", "message send"),
+            "unsentMsg.WriteUShort( Net_PacketTag( key, outgoingSequence ) );", "messages carry the tag")
+    require(function_body(channel, "static unsigned short Net_PacketTag(", "packet tag"),
+            "unsigned int hash = static_cast<unsigned int>( key ) * 0x9E3779B1u;", "the tag is keyed")
+    require(function_body(channel, "void idMsgChannel::Init(", "channel init"), "this->key = key;", "the channel keeps its key")
+    require(function_body(server, "void idAsyncServer::ProcessConnectMessage(", "connect"),
+            "clients[ clientNum ].channel.Init( from, serverId, challenge );", "the server keys the channel with the challenge it issued")
+    require(function_body(client, "void idAsyncClient::ProcessConnectResponseMessage(", "connect response"),
+            "channel.Init( from, clientId, serverChallenge );", "the client keys the channel with the server's challenge")
+    disconnect = function_body(client, "void idAsyncClient::ProcessDisconnectMessage(", "out-of-band disconnect")
+    require_before(disconnect, "msg.ReadLong() == channel.GetKey()", "session->Stop();",
+                   "an out-of-band disconnect needs the key while the server is still heard")
+    require(disconnect, "clientTime - lastPacketTime < UNKEYED_DISCONNECT_SILENCE", "an unkeyed disconnect waits for silence")
+    require(function_body(server, "void idAsyncServer::SendReliableMessage(", "server reliable send"),
+            "outMsg.WriteLong( clients[ clientNum ].channel.GetKey() );", "the overflow disconnect carries the key")
+
+    require(function_body(channel, "static int Net_FragmentSize(", "fragment size"), "\treturn FRAGMENT_SIZE;", "one fragment size")
+    require(channel, "#define\tFRAGMENT_SIZE\t\t\t(MAX_PACKETLEN6 - 100)", "fragments fit a 1280-byte path on either family")
+
+    snapshot = function_body(server, "bool idAsyncServer::SendSnapshotToClient(", "snapshot send")
+    require_before(snapshot, "msg.WriteShort( idMath::ClampShort( client.clientAheadTime ) );",
+                   "msg.WriteShort( client.commandSlack );", "the snapshot header reports the command slack")
+    require(function_body(client, "void idAsyncClient::ProcessUnreliableServerMessage(", "server unreliable messages"),
+            "if ( msg.GetRemainingReadBits() < 32 + 32 + 32 + 8 + 16 + 16 ) {", "the client expects the longer snapshot header")
+
+    game_header = (GAME_LIBS_ROOT / "src/mpgame/Game_local.h").read_text(encoding="utf-8", errors="replace")
+    network = (GAME_LIBS_ROOT / "src/mpgame/Game_network.cpp").read_text(encoding="utf-8", errors="replace")
+    player = (GAME_LIBS_ROOT / "src/mpgame/Player.cpp").read_text(encoding="utf-8", errors="replace")
+    physics = (GAME_LIBS_ROOT / "src/mpgame/physics/Physics_Player.cpp").read_text(encoding="utf-8", errors="replace")
+    projectile = (GAME_LIBS_ROOT / "src/mpgame/Projectile.cpp").read_text(encoding="utf-8", errors="replace")
+    require(game_header, "const int GAME_SNAPSHOT_PROTOCOL\t\t\t= 42;", "the game's snapshot layout number")
+    require(game_header, "demoState == DEMO_PLAYING && serverDemo && demo_protocol == GAME_SNAPSHOT_PROTOCOL_LEGACY",
+            "the older layout is read only from a demo recorded with it")
+    require(function_body(network, "bool idGameLocal::IsDemoProtocolCompatible(", "demo protocol"),
+            "( minor_ref == GAME_SNAPSHOT_PROTOCOL && minor == GAME_SNAPSHOT_PROTOCOL_LEGACY )", "2.41 demos stay playable")
+    write = function_body(player, "void idPlayer::WritePlayerStateToSnapshot(", "player state write")
+    read_state = function_body(player, "void idPlayer::ReadPlayerStateFromSnapshot(", "player state read")
+    require(write, "msg.WriteBits( hitFeedbackCount & HIT_FEEDBACK_COUNT_MASK, HIT_FEEDBACK_COUNT_BITS );", "the hit confirm is a count")
+    reject(write, "lastHitFrame > lastSnapshotFrame", "the one-snapshot hit flag")
+    require_before(write, "msg.WriteBits( lastHitArmor, 1 );", "msg.WriteDeltaFloat( 0.0f, exactVelocity[0] );",
+                   "the owner's exact velocity follows the hit state")
+    require_before(read_state, "if ( gameLocal.LegacySnapshotFormat() ) {", "const int hitCount = msg.ReadBits( HIT_FEEDBACK_COUNT_BITS );",
+                   "the reader keeps the 2.41 layout for demos")
+    require(read_state, "hitCount != netHitFeedbackCount", "a moved count sounds the hit")
+    require(read_state, "physicsObj.SetLinearVelocity( exactVelocity );", "the owner predicts from the exact velocity")
+    physics_write = function_body(physics, "void idPhysics_Player::WriteToSnapshot(", "player physics write")
+    physics_read = function_body(physics, "bool idPhysics_Player::DecodeSnapshotState(", "player physics read")
+    if physics_write.count("PLAYER_VELOCITY_EXPONENT_BITS, PLAYER_VELOCITY_MANTISSA_BITS") != 3:
+        raise AssertionError("every velocity component is written in 16 bits")
+    if physics_read.count("PLAYER_VELOCITY_EXPONENT_BITS, PLAYER_VELOCITY_MANTISSA_BITS") != 3:
+        raise AssertionError("every velocity component is read in 16 bits")
+    require_before(physics_read, "if ( gameLocal.LegacySnapshotFormat() ) {", "PLAYER_VELOCITY_EXPONENT_BITS",
+                   "the velocity reader keeps the 2.41 layout for demos")
+    projectile_write = function_body(projectile, "void idProjectile::WriteToSnapshot(", "projectile write")
+    projectile_read = function_body(projectile, "void idProjectile::ReadFromSnapshot(", "projectile read")
+    reject(projectile_write, "msg.WriteDir( launchDir, 24 )", "the 24-bit launch direction")
+    if projectile_write.count("* 32767.0f ) ) );") != 3:
+        raise AssertionError("the launch direction is written in 16 bits a component")
+    require_before(projectile_read, "newLaunchDir = msg.ReadDir( 24 );", "newLaunchDir[ 0 ] = msg.ReadShort() * ( 1.0f / 32767.0f );",
+                   "the direction reader keeps the 2.41 layout for demos")
+    require(network, "msg.WriteBits( tagRandom.RandomInt() & SNAPSHOT_ENTITY_TAG_MASK, SNAPSHOT_ENTITY_TAG_BITS );", "entity tags are one byte")
+    require(network, "LegacySnapshotFormat() ? ( msg.ReadLong() != entityTag ) :", "the tag reader keeps the 2.41 layout for demos")
+    reject(network, "tagRandom.SetSeed( random.RandomInt() );", "snapshot tags drawn from the gameplay random stream")
+
+
+def validate_mp_audit_round_2026_11_17() -> None:
+    """The second round on the 17 November multiplayer audit's open network items."""
+    server = read("src/framework/async/AsyncServer.cpp")
+    channel = read("src/framework/async/MsgChannel.cpp")
+    bitmsg = read("src/idlib/BitMsg.cpp")
+    session = read("src/framework/Session.cpp")
+    mvd = read("src/framework/async/MultiViewDemo.cpp")
+
+    # rcon: an entry holding failures or a lockout is never handed to another source
+    slot = function_body(server, "int idAsyncServer::RconRateSlot(", "RconRateSlot")
+    require(slot, "RconLimitIsPenalised( limit )", "penalised rcon entries are not evicted")
+    for name in ("bool idAsyncServer::AllowRconChallenge(", "bool idAsyncServer::AllowRconProofAttempt(",
+                 "void idAsyncServer::RecordRconFailure("):
+        require(function_body(server, name, name), "RconRateSlot( from, true )", f"{name} takes a slot or refuses")
+    reject(function_body(server, "void idAsyncServer::RecordRconFailure(", "RecordRconFailure"),
+           "Sys_CompareNetAdrBase( from, limit.address )", "a failure is recorded even after an eviction")
+    require(server, "limit.failureWindowStart = -static_cast<int>( AsyncServer_Elapsed( serverTime, limit.failureWindowStart ) );",
+            "rcon failure windows survive the map change")
+
+    # malformed packets: counted, a run of them drops the client, none prints a line by default
+    require(channel, "lastPacketMalformed = true;", "the channel flags an unreadable tagged packet")
+    process = function_body(server, "bool idAsyncServer::ProcessMessage(", "ProcessMessage")
+    require_before(process, "client.channel.LastPacketMalformed()", "NoteMalformedPacket( i )", "malformed packets are counted")
+    note = function_body(server, "void idAsyncServer::NoteMalformedPacket(", "NoteMalformedPacket")
+    require(note, "client.malformedCount >= CLIENT_MALFORMED_MAX", "a run of malformed packets drops the client")
+    require(note, 'DropClient( clientNum, "#str_07138" )', "malformed drop reason")
+    require(server, "const int CLIENT_MALFORMED_MAX			= 8;", "malformed threshold")
+    for text in ('"%s: bad message size %d\\n"', '"%s: bad reliable message\\n"'):
+        index = channel.index(text)
+        require(channel[max(0, index - 120):index], "net_channelShowDrop.GetBool()", "malformed packets print only on request")
+
+    # join burst: staged by the joiner's free reliable queue, never all in one frame
+    require(server, "SendPendingUserInfo( clientNum, JOIN_USERINFO_RESERVE_BYTES );", "join sends what fits")
+    pending = function_body(server, "void idAsyncServer::SendPendingUserInfo(", "SendPendingUserInfo")
+    require_before(pending, "client.channel.GetReliableSpaceLeft() < msg.GetSize() + 8 + reserveBytes",
+                   "SendReliableMessage( clientNum, msg )", "a pending user info waits for queue room")
+    require(server, "SendPendingUserInfo( i, PENDING_USERINFO_RESERVE_BYTES );", "the rest follows in later frames")
+    broadcast = function_body(server, "void idAsyncServer::SendUserInfoBroadcast(", "SendUserInfoBroadcast")
+    require(broadcast, "clients[i].pendingUserInfo & ( 1u << userInfoNum )", "no delta to a client still owed the whole info")
+
+    # byte 255 cannot end a string early
+    write_string = function_body(bitmsg, "void idBitMsg::WriteString(", "idBitMsg::WriteString")
+    require(write_string, "dataPtr[i] == 255", "WriteString sends no byte 255")
+
+    # the map database publishes its two keys only
+    require(session, '"publishSI", Session_PublishSI_f', "publishSI registered")
+    publish = function_body(session, "void Session_PublishSI_f(", "Session_PublishSI_f")
+    require(publish, "CVAR_SERVERINFO", "publishSI publishes server info cvars only")
+    reject(publish, "MoveCVarsToDict", "publishSI does not rescan every server info cvar")
+    mapdb = read("src/mpgame/mp/MapDatabaseHost.cpp")
+    require(mapdb, "publishSI si_nextMap si_mapPick", "map database publishes named keys")
+    reject(mapdb, '"rescanSI\\n"', "map database no longer rescans")
+
+    # MVD snapshots on the frames' real times
+    capture = function_body(mvd, "void idMultiViewDemo::CaptureServerFrame(", "CaptureServerFrame")
+    require(capture, "common->GetUserCmdTime( gameFrame ) - common->GetUserCmdTime( lastSnapshotGameFrame )",
+            "MVD pacing uses the real frame ladder")
+    reject(capture, "gameTime - lastSnapshotGameTime < static_cast<int>( header.snapshotDelay )", "MVD pacing on the 16 ms label")
+
+
 def main() -> None:
     validate_crypto_and_native_vectors()
     validate_secure_random_and_connection_challenges()
@@ -1141,6 +1409,9 @@ def main() -> None:
     validate_remote_dictionary_authority()
     validate_network_rate_budget()
     validate_channel_and_message_abuse_bounds()
+    validate_session_lifecycle_and_flood_bounds()
+    validate_protocol_2_42()
+    validate_mp_audit_round_2026_11_17()
     validate_documentation_and_registration()
     print("network_security: ok")
 

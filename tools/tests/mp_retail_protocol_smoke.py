@@ -39,7 +39,7 @@ from mp_round_remote_smoke import read_log, verify_runtime_is_current, write_scr
 
 ROOT = Path(__file__).resolve().parents[2]
 SUFFIX = ".exe" if os.name == "nt" else ""
-OPEND3_PROTOCOL = (2, 41)
+OPEND3_PROTOCOL = (2, 42)
 RETAIL_PROTOCOL = (2, 85)
 
 

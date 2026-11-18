@@ -720,7 +720,7 @@ opend3::ui::Runtime* RetainedUI_ViewRuntime(retainedUIView_t* view) { return vie
 bool RetainedUI_PrepareView(retainedUIView_t* view) { return view && view->runtime.loaded; }
 bool RetainedUI_LoadView(retainedUIView_t*,const std::string&,const std::string&,std::vector<opend3::ui::Diagnostic>&) { return !rejectLoad; }
 bool RetainedUI_LoadParsedView(retainedUIView_t*,const opend3::ui::Document&,const std::string&,std::vector<opend3::ui::Diagnostic>&) { return !rejectLoad; }
-bool UI_RetainedTakePrefetched(const std::string&,const std::string&,opend3::ui::Document&) { return false; }
+bool UI_RetainedTakePrefetched(const std::string&,int,std::string&,ID_TIME_T&,opend3::ui::Document&) { return false; }
 bool RetainedUI_DefaultViewport(opend3::ui::Viewport& result) { result=viewport; return viewport.width>0 && viewport.height>0; }
 double RetainedUI_PresentationTime() { return presentationTime; }
 int promptGlyphsValue=0;
@@ -3230,7 +3230,8 @@ def main():
         ('scrollbar-output-accepted',
          'if (!control.action.empty() || !control.event.empty() || control.value ||', 'if (false ||'),
         ('ordinary-action-check-skipped',
-         '} else if (node->control && (node->control->event.empty() ?', '} else if (false && (node->control->event.empty() ?'),
+         '} else if (node->control && node->control->input == ControlInput::None && (node->control->event.empty() ?',
+         '} else if (false && (node->control->event.empty() ?'),
         ('draft-caller-authority', 'if (!NumberDraftState(name)) return true;', 'return true;'),
         ('draft-application-authority', ' || NumberDraftState(name.c_str())) return true;', ') return true;'),
         ('draft-settings-dispatch', 'impl->ConflictsWithNumberDraft(pending,drafts)', 'false'),

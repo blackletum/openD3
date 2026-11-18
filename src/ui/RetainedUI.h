@@ -45,6 +45,17 @@ void RetainedUI_DestroyPreparedEdit(retainedUIPreparedEdit_t*);
 // Root/UI-viewport output only. This does not render world surfaces or permit
 // callers to reuse layer zero as an arbitrary render texture.
 bool RetainedUI_DrawViewRoot(retainedUIView_t* view, const opend3::ui::Viewport& viewport);
+// The same frame drawn into a hidden target instead (ui_retainedWarm), so a
+// page's first presented frame finds its meshes and layers made. EndWarm
+// releases the target once no page is left to draw, from a later frame than
+// the last such draw; false while it cannot yet.
+bool RetainedUI_WarmViewRoot(retainedUIView_t* view, const opend3::ui::Viewport& viewport);
+bool RetainedUI_EndWarm();
+// A hidden frame that tessellates nothing: each vector the page's first
+// presented frame would compile is queued in the batch instead
+// (opend3::ui::DeferVectorCompilations), and the page paints afresh next time.
+namespace opend3::ui { class VectorCompileBatch; }
+bool RetainedUI_GatherViewCompilations(retainedUIView_t* view, const opend3::ui::Viewport& viewport, opend3::ui::VectorCompileBatch& batch);
 bool RetainedUI_DefaultViewport(opend3::ui::Viewport& viewport);
 // openD3: soft focus (REN-016) over the whole window as drawn so far, for a
 // stock GUI that draws over a blurred view (the PDA's "softfocus"). sigma is in

@@ -45,6 +45,8 @@ If you have questions concerning this license or the applicable additional terms
 #include "RenderDoc.h"
 #include "ParallelJobSystem.h"
 #include "LevelEditor.h"
+#include "Updater.h"
+#include "opend3_build_id_generated.h"
 #include "DurableFile.h"
 #include "SettingsPersistence.h"
 #include "PerformancePreset.h"
@@ -2055,6 +2057,16 @@ void idCommonLocal::Quit( void ) {
 			WriteConfiguration();
 		}
 #endif
+		// openD3: a multiplayer map can carry its own settings (mapdb.txt). They go
+		// into archived cvars while the map runs and are taken back when the server
+		// stops, but the configuration is written from the frame loop, and a quit
+		// has no frame after the stop: the file kept the map's values, and the next
+		// launch read them as the operator's own on every map. Stop the server while
+		// the configuration can still be written.
+		if ( idAsyncNetwork::server.IsActive() ) {
+			idAsyncNetwork::server.Kill();
+			WriteConfiguration();
+		}
 		Shutdown();
 	}
 
@@ -3588,7 +3600,10 @@ bool Common_CapturePerformancePresetSignals(opend3::PerformancePresetSignals& ou
  signals.arm64=Common_HostCpuIsArm64();
 #if defined( __ANDROID__ )
  signals.mobile=true;
+#elif defined( __linux__ )
+ signals.linuxHost=true;
 #endif
+ signals.appleGpu=RendererIsAppleGpu(config.renderer_string);
 #if defined( USE_SDL3 )
  // Unlike the legacy platform getters, SDL reports 0 on query failure instead
  // of inventing 512/1024/2048 MiB. Use one observation on all supported hosts.
@@ -3639,6 +3654,7 @@ static bool Common_DetectPerformancePreset( openD3PerformancePreset_t &preset, i
   case Reason::Shared:policy="shared-memory GPU budget";break;
   case Reason::Resolution:policy="drawable resolution budget";break;
   case Reason::Cpu:policy="limited or unknown CPU concurrency";break;
+  case Reason::ArmBoard:policy="ARM board power budget";break;
   default:break;
  }
  reason=va("%s; GPU=%s, RAM=%d MiB, dedicated VRAM=%d MiB (0=unknown/shared), drawable=%dx%d, CPUs=%d, scene scale=%d%%, post AA=%d, display=%d Hz (0=unknown), frame cap=%d",
@@ -4126,11 +4142,12 @@ static bool Common_ValidatePerformancePresetIntent( const openD3PerformancePrese
 	// tier maps them, and the stencil tiers keep the inert default.
 	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapPointLights", preset.shadowMapPointLights, Common_PerformancePresetIsNamed( preset, "enhanced" ) ? 0 : 1 );
 	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_crt", preset.crt, 0 );
-	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_useLightGrid", preset.useLightGrid, 1 );
-	// Only the two tiers below the documented minimum hardware draw no shadows;
-	// Low restores the stencil shadows every tier above it keeps.
+	// Only the two tiers below the documented minimum hardware draw no shadows
+	// and skip the light-grid indirect pass; Low restores both, and every tier
+	// above it keeps them.
 	const bool shadowlessTier = Common_PerformancePresetIsNamed( preset, "minimum" ) || Common_PerformancePresetIsNamed( preset, "lowpower" );
 	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadows", preset.shadows, shadowlessTier ? 0 : 1 );
+	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_useLightGrid", preset.useLightGrid, shadowlessTier ? 0 : 1 );
 
 	if ( shadowlessTier || Common_PerformancePresetIsNamed( preset, "low" ) ) {
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "com_maxfps", preset.maxFps, shadowlessTier ? 30 : 60 );
@@ -4289,6 +4306,7 @@ static bool Common_ValidatePerformancePresetProgression( void ) {
 		passed &= Common_PerformancePresetCheckNonDecreasingBudget( previousPreset, preset, "image_downSizeLimit", previousPreset.downSizeLimit, preset.downSizeLimit );
 		passed &= Common_PerformancePresetCheckNonDecreasingBudget( previousPreset, preset, "s_maxSoundsPerShader", previousPreset.maxSoundsPerShader, preset.maxSoundsPerShader );
 		passed &= Common_PerformancePresetCheckNonDecreasingInt( previousPreset, preset, "r_shadows", previousPreset.shadows, preset.shadows );
+		passed &= Common_PerformancePresetCheckNonDecreasingInt( previousPreset, preset, "r_useLightGrid", previousPreset.useLightGrid, preset.useLightGrid );
 		passed &= Common_PerformancePresetCheckNonDecreasingInt( previousPreset, preset, "r_useShadowMap", previousPreset.useShadowMap, preset.useShadowMap );
 		passed &= Common_PerformancePresetCheckNonDecreasingInt( previousPreset, preset, "r_shadowMapSize", previousPreset.shadowMapSize, preset.shadowMapSize );
 		passed &= Common_PerformancePresetCheckNonDecreasingInt( previousPreset, preset, "r_shadowMapPointSize", previousPreset.shadowMapPointSize, preset.shadowMapPointSize );
@@ -4496,6 +4514,50 @@ static bool Common_ValidatePerformancePresetApplied( const openD3PerformancePres
 	return passed;
 }
 
+// Synthetic machines for the platform ceilings, so a self-test on any host
+// covers the small boards and Apple Silicon it is not running on.
+static bool Common_ValidatePerformancePresetPlatformCeilings( void ) {
+	opend3::PerformancePresetSignals board;
+	board.arm64 = board.linuxHost = true;
+	board.gpuClass = RendererGpuClass::Integrated;
+	board.systemRamMB = 16384;
+	board.modernEffects = board.postAAAvailable = true;
+	board.logicalCpus = 8;
+	board.drawableWidth = 1920;
+	board.drawableHeight = 1080;
+	board.displayRefreshHz = 144;
+	struct platformCase_t {
+		const char *label;
+		opend3::PerformancePresetSignals signals;
+		const char *preset;
+		int maxFps;
+	};
+	platformCase_t cases[] = {
+		{ "16 GiB ARM board", board, "performance", 60 },
+		{ "Raspberry Pi", board, "lowpower", 30 },
+		{ "Apple Silicon on Asahi Linux", board, "balanced", 144 },
+		{ "Apple Silicon on macOS", board, "balanced", 144 },
+		{ "Windows on ARM", board, "balanced", 144 },
+	};
+	cases[1].signals.raspberryPi = true;
+	cases[1].signals.systemRamMB = 8058;
+	cases[1].signals.logicalCpus = 4;
+	cases[2].signals.appleGpu = true;
+	cases[3].signals.appleGpu = true;
+	cases[3].signals.linuxHost = false;
+	cases[4].signals.linuxHost = false;
+	bool passed = true;
+	for ( const platformCase_t &entry : cases ) {
+		const opend3::PerformancePresetDetection detected = opend3::DetectPerformancePreset( entry.signals );
+		if ( detected.preset == NULL || idStr::Icmp( detected.preset->name, entry.preset ) != 0 || detected.maxFps != entry.maxFps ) {
+			common->Printf( "PerformancePreset self-test failed: %s detected '%s' at %d Hz, expected '%s' at %d Hz\n", entry.label,
+				detected.preset != NULL ? detected.preset->name : "", detected.maxFps, entry.preset, entry.maxFps );
+			passed = false;
+		}
+	}
+	return passed;
+}
+
 static void Com_PerformancePresetSelfTest_f( const idCmdArgs &args ) {
 	bool passed = true;
 
@@ -4538,6 +4600,7 @@ static void Com_PerformancePresetSelfTest_f( const idCmdArgs &args ) {
 		common->Printf( "PerformancePreset self-test failed: memory telemetry sanitizer returned an unexpected value\n" );
 		passed = false;
 	}
+	passed &= Common_ValidatePerformancePresetPlatformCeilings();
 
 	openD3PerformancePresetCVarBackup_t backups[OPEND3_PERFORMANCE_PRESET_TOUCHED_CVAR_COUNT];
 	const int savedModifiedFlags = cvarSystem->GetModifiedFlags();
@@ -5647,6 +5710,71 @@ static bool Common_ResolveLanguageSelection( const idStr &requestedLanguage, con
 idCommonLocal::InitLanguageDict
 ===============
 */
+/*
+===============
+Common_LoadLanguageFileLayers
+
+A mod that ships a string table under the same name as one beneath it (a copy of
+english_opend3.lang taken from an older openD3, say) replaces that whole file in
+the search path, and every string its copy leaves out disappears: newer menus
+then show raw #str_ ids. As idDeclManagerLocal::LoadDeclFileLayers does for decl
+files, the copies the mod shadows are read first, from their own directories
+(retail, the openD3 runtime, then fs_game_base), and the mod's copy last, so its
+strings win and only the ones it lacks come from below. A table no mod
+directory holds loads as before.
+===============
+*/
+static bool Common_IsLanguageModDir( const char *gameDir ) {
+	return gameDir != NULL && gameDir[0] != '\0' && idStr::Icmp( gameDir, BASE_GAMEDIR ) && idStr::Icmp( gameDir, OPEND3_GAMEDIR );
+}
+
+static bool Common_DirHoldsLanguageFile( const char *fileName, const char *gameDir ) {
+	idFile *copy = fileSystem->OpenFileRead( fileName, false, gameDir );
+	if ( copy == NULL ) {
+		return false;
+	}
+	fileSystem->CloseFile( copy );
+	return true;
+}
+
+static void Common_LoadLanguageFileLayers( idLangDict &dict, const char *fileName ) {
+	const char *topGameDir = cvarSystem->GetCVarString( "fs_game" );
+	const char *modBaseDir = cvarSystem->GetCVarString( "fs_game_base" );
+	const char *modDir = NULL;
+	if ( Common_IsLanguageModDir( topGameDir ) && Common_DirHoldsLanguageFile( fileName, topGameDir ) ) {
+		modDir = topGameDir;
+	} else if ( Common_IsLanguageModDir( modBaseDir ) && idStr::Icmp( modBaseDir, topGameDir ) &&
+			Common_DirHoldsLanguageFile( fileName, modBaseDir ) ) {
+		// the mod leaves the table to its base; layer beneath the base's copy
+		modDir = modBaseDir;
+		modBaseDir = "";
+	}
+
+	if ( modDir != NULL ) {
+		// lowest first: each later copy's strings take precedence
+		const char *lowerDirs[] = { BASE_GAMEDIR, OPEND3_GAMEDIR, modBaseDir };
+		const int numLowerDirs = (int)( sizeof( lowerDirs ) / sizeof( lowerDirs[0] ) );
+		for ( int i = 0; i < numLowerDirs; i++ ) {
+			const char *gameDir = lowerDirs[i];
+			if ( gameDir[0] == '\0' || !idStr::Icmp( gameDir, modDir ) ) {
+				continue;
+			}
+			// fs_game_base may name the runtime or retail directory itself
+			bool alreadyLayered = false;
+			for ( int j = 0; j < i; j++ ) {
+				if ( !idStr::Icmp( lowerDirs[j], gameDir ) ) {
+					alreadyLayered = true;
+				}
+			}
+			if ( !alreadyLayered && Common_DirHoldsLanguageFile( fileName, gameDir ) ) {
+				dict.Load( fileName, false, gameDir );
+			}
+		}
+	}
+
+	dict.Load( fileName, false );
+}
+
 void idCommonLocal::InitLanguageDict( bool applyStartupSysLang, bool allowAutoLanguageSelect ) {
 	idStr fileName;
 	languageDict.Clear();
@@ -5727,13 +5855,12 @@ void idCommonLocal::InitLanguageDict( bool applyStartupSysLang, bool allowAutoLa
 		idStrList englishLangList = langList;
 		FilterLangList( &englishLangList, "english" );
 		for ( int i = 0; i < englishLangList.Num(); i++ ) {
-			languageDict.Load( englishLangList[i], false );
+			Common_LoadLanguageFileLayers( languageDict, englishLangList[i] );
 		}
 	}
 
 	for( int i = 0; i < currentLangList.Num(); i++ ) {
-		//common->Printf("%s\n", currentLangList[i].c_str());
-		languageDict.Load( currentLangList[i], false );
+		Common_LoadLanguageFileLayers( languageDict, currentLangList[i] );
 	}
 
 	fileSystem->FreeFileList(langFiles);
@@ -6524,6 +6651,24 @@ void idCommonLocal::InitCommands( void ) {
 
 /*
 =================
+Common_SettingsRecoveryFatal
+
+A recovery that cannot finish stops every later start the same way. Name the
+journal so a player can delete it: the configuration it guards keeps the last
+saved settings (an unconfirmed choice never reaches it).
+=================
+*/
+static void Common_SettingsRecoveryFatal( const char *stage, const std::string &reason ) {
+	std::string journal, lock, pathError;
+	if ( Common_SettingsPersistencePaths( journal, lock, pathError ) ) {
+		common->FatalError( "Settings %s recovery failed: %s. Recovery data was retained. Delete %s to start with your last saved settings.",
+			stage, reason.c_str(), journal.c_str() );
+	}
+	common->FatalError( "Settings %s recovery failed: %s. Recovery data was retained.", stage, reason.c_str() );
+}
+
+/*
+=================
 idCommonLocal::InitRenderSystem
 =================
 */
@@ -6535,7 +6680,7 @@ void idCommonLocal::InitRenderSystem( void ) {
 	if ( UI_SettingsStartupActive() ) {
 		std::string recoveryError;
 		if ( !UI_SettingsInitializeDisplay( recoveryError ) ) {
-			FatalError( "Settings display recovery failed: %s. Recovery data was retained.", recoveryError.c_str() );
+			Common_SettingsRecoveryFatal( "display", recoveryError );
 			return;
 		}
 	} else renderSystem->InitOpenGL();
@@ -7049,6 +7194,8 @@ void idCommonLocal::Frame( void ) {
 		// its listen server is active, idSessionLocal::Frame is intentionally not
 		// called by the ordinary multiplayer branch below.
 		arenaCampaign.Frame();
+		// Report a finished update check or install once the title is idle.
+		Updater_Frame();
 #endif
 		Common_MarkFrameWork(opend3::FrameWorkPhase::Commands);
 
@@ -8289,7 +8436,7 @@ void idCommonLocal::InitGame( void ) {
 	Sys_DoPreferences();
 	std::string settingsRecoveryError;
 	if ( !UI_SettingsStartup( settingsRecoveryError ) ) {
-		FatalError( "Settings startup recovery failed: %s. Recovery data was retained.", settingsRecoveryError.c_str() );
+		Common_SettingsRecoveryFatal( "startup", settingsRecoveryError );
 		return;
 	}
 
@@ -8305,6 +8452,7 @@ void idCommonLocal::InitGame( void ) {
 
 	// init async network
 	idAsyncNetwork::Init();
+	Updater_Init();
 
 #ifdef	ID_DEDICATED
 	idAsyncNetwork::server.InitPort();

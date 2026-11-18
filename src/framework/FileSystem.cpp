@@ -1655,7 +1655,7 @@ typedef struct searchpath_s {
 #define BINARY_CONFIG "binary.conf"
 #define ADDON_CONFIG "addon.conf"
 
-// Protocol 2.41 identifies compatible game code with the official 1.4.2
+// openD3's network protocol identifies compatible game code with the official 1.4.2
 // q4base/game300.pk4 checksum. openD3 never loads executable code from that
 // archive; the unchanged value is a platform-independent wire token for a
 // module that FindDLL resolved from the trusted package/module roots.
@@ -1806,6 +1806,8 @@ public:
 	virtual bool			GeneratedCacheReadsEnabled( generatedCacheKind_t kind ) const;
 	virtual bool			GeneratedCacheWritesEnabled( generatedCacheKind_t kind ) const;
 	virtual bool			TakePureImageCacheEviction( void );
+	virtual fsFileOrigin_t	GetFileOrigin( const char *relativePath );
+	bool					IsShippedPack( const pack_t *pak ) const;
 	virtual idFile *		GetNewFileMemory( void );
 	virtual idFile *		GetNewFilePermanent( void );
 	virtual idFile *		OpenFileReadFlags( const char *relativePath, int searchFlags, pack_t **foundInPak = NULL, bool allowCopyFiles = true, const char* gamedir = NULL );
@@ -1973,6 +1975,8 @@ private:
 	bool					ValidateConfiguredGameDir( const char *gameDir, idStr *reason = NULL );
 	bool					NormalizeMapPath( const char *mapName, idStr &relativePath ) const;
 	bool					AddonPackProvidesMap( const pack_t *pak, const char *relativeMapPath ) const;
+	bool					PackHasFile( const pack_t *pak, const char *relativePath ) const;
+	bool					IsopenD3CorePackCopy( const pack_t *pak ) const;
 	void					FreePack( pack_t *pack ) const;
 	void					StageStartupAddonPaks( void );
 
@@ -5582,6 +5586,17 @@ void idFileSystemLocal::AddGameDirectory( const char *path, const char *dir ) {
 		if ( !pak ) {
 			continue;
 		}
+		// openD3's own packs belong only in baseod3. A copy of its core pack in
+		// any other folder, usually a mod's, outranks the current one and hides
+		// every newer menu, string and shader behind the copy's old ones (#219),
+		// so it is skipped.
+		if ( idStr::Icmp( dir, OPEND3_GAMEDIR ) && FS_ParseNumberedPakName( pakfiles[ i ].c_str(), numberedPak ) &&
+			 numberedPak.digitCount == 1 && IsopenD3CorePackCopy( pak ) ) {
+			common->Warning( "Ignoring %s: it is a copy of openD3's own content pack, which belongs only in the %s folder. It can be deleted.",
+				pakfile.c_str(), OPEND3_GAMEDIR );
+			FreePack( pak );
+			continue;
+		}
 		// insert the pak after the directory it comes from
 		search = new searchpath_t;
 		search->dir = NULL;
@@ -5715,11 +5730,8 @@ bool idFileSystemLocal::AddonPackProvidesMap( const pack_t *pak, const char *rel
 		return false;
 	}
 
-	const int hash = HashFileName( relativeMapPath );
-	for ( const fileInPack_t *pakFile = pak->hashTable[ hash ]; pakFile; pakFile = pakFile->next ) {
-		if ( !FilenameCompare( pakFile->name, relativeMapPath ) ) {
-			return true;
-		}
+	if ( PackHasFile( pak, relativeMapPath ) ) {
+		return true;
 	}
 
 	if ( !pak->addon_info ) {
@@ -5739,6 +5751,39 @@ bool idFileSystemLocal::AddonPackProvidesMap( const pack_t *pak, const char *rel
 	}
 
 	return false;
+}
+
+/*
+================
+idFileSystemLocal::PackHasFile
+================
+*/
+bool idFileSystemLocal::PackHasFile( const pack_t *pak, const char *relativePath ) const {
+	if ( !pak || !relativePath || !relativePath[0] ) {
+		return false;
+	}
+
+	const int hash = HashFileName( relativePath );
+	for ( const fileInPack_t *pakFile = pak->hashTable[ hash ]; pakFile; pakFile = pakFile->next ) {
+		if ( !FilenameCompare( pakFile->name, relativePath ) ) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/*
+================
+idFileSystemLocal::IsopenD3CorePackCopy
+
+True for a copy of openD3's own core pack (pak0.pk4 in baseod3) from any
+release. Every one carries openD3's defaults config at its root and openD3's
+English string table; a mod that overrides one of them has no reason to carry
+both.
+================
+*/
+bool idFileSystemLocal::IsopenD3CorePackCopy( const pack_t *pak ) const {
+	return PackHasFile( pak, "opend3_defaults.cfg" ) && PackHasFile( pak, "strings/english_opend3.lang" );
 }
 
 /*
@@ -6984,7 +7029,7 @@ bool idFileSystemLocal::UpdateGamePakChecksums( void ) {
 		return false;
 	}
 
-	// Protocol 2.41 defines Windows, Linux and macOS as OS IDs 0..2. The
+	// The network protocol defines Windows, Linux and macOS as OS IDs 0..2. The
 	// compatibility token is deliberately platform-independent; executable
 	// bytes remain outside the downloadable/pure-PK4 path.
 	for ( int os = 0; os <= 2; ++os ) {
@@ -7107,7 +7152,7 @@ can be:
   wrong order - if the pak order doesn't match, means some stuff could have been loaded from somewhere else
 server referenced files are prepended to the list if possible ( that doesn't break pureness )
 Game code:
-  protocol 2.41 carries the official q4base/game300.pk4 checksum as a
+  the network protocol carries the official q4base/game300.pk4 checksum as a
   compatibility token, but openD3 resolves executable modules only from its
   trusted package/module roots and never from a server-selected PK4
 =====================
@@ -7246,6 +7291,52 @@ bool idFileSystemLocal::TakePureImageCacheEviction( void ) {
 	// is cleared.
 	loadedImageCacheFromDir = false;
 	return true;
+}
+
+/*
+=====================
+idFileSystemLocal::IsShippedPack
+
+A retail Quake 4 PK4 in the base game directory whose checksum matches the
+official one, or one of openD3's own runtime packs in its own directory.
+=====================
+*/
+bool idFileSystemLocal::IsShippedPack( const pack_t *pak ) const {
+	if ( pak == NULL ) {
+		return false;
+	}
+	idStr name = pak->pakFilename;
+	name.StripPath();
+	const officialPk4Info_t *official = FindOfficialPk4Info( name.c_str() );
+	if ( official != NULL && (unsigned int)pak->checksum == official->checksum && IsBaseGamePack( pak ) ) {
+		return true;
+	}
+	return FS_FindopenD3PackTableEntry( name.c_str() ) != NULL && IsGameDirPack( pak, OPEND3_GAMEDIR );
+}
+
+/*
+=====================
+idFileSystemLocal::GetFileOrigin
+
+Resolves relativePath exactly as a read would, without reading it or marking
+its pak referenced, and reports whether the winning copy ships with the game.
+=====================
+*/
+fsFileOrigin_t idFileSystemLocal::GetFileOrigin( const char *relativePath ) {
+	if ( !searchPaths || relativePath == NULL || relativePath[0] == '\0' ) {
+		return FS_FILE_ORIGIN_NOT_FOUND;
+	}
+	pack_t *pak = NULL;
+	packMemberProbe_t probe;
+	idFile *loose = OpenFileReadSearch( relativePath, FSFLAG_SEARCH_DIRS | FSFLAG_SEARCH_PAKS | FSFLAG_PURE_NOREF, &pak, false, NULL, &probe );
+	if ( loose != NULL ) {
+		CloseFile( loose );
+		return FS_FILE_ORIGIN_ADDED;
+	}
+	if ( !probe.found || pak == NULL ) {
+		return FS_FILE_ORIGIN_NOT_FOUND;
+	}
+	return IsShippedPack( pak ) ? FS_FILE_ORIGIN_SHIPPED : FS_FILE_ORIGIN_ADDED;
 }
 
 /*
@@ -7580,7 +7671,7 @@ bool idFileSystemLocal::FileAllowedFromDir( const char *path ) {
 		return true;
 	}
 	// screen shots
-	if ( strstr( path, "screenshots" ) == path && l >= 4 && !strcmp( path + l - 4, ".tga" ) ) {
+	if ( strstr( path, "screenshots" ) == path && l >= 4 && ( !strcmp( path + l - 4, ".tga" ) || !strcmp( path + l - 4, ".png" ) ) ) {
 		return true;
 	}
 	// objective tgas

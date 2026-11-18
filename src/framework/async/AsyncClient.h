@@ -77,12 +77,6 @@ typedef enum {
 	AUTHKEY_BAD_MSG
 } authBadKeyStatus_t;
 
-typedef enum {
-	UPDATE_NONE,
-	UPDATE_SENT,
-	UPDATE_READY,
-	UPDATE_DONE
-} clientUpdateState_t;
 
 typedef struct {
 	idStr	url;
@@ -198,15 +192,13 @@ private:
 	int					gameFrame;					// local game frame
 	int					gameTime;					// local game time
 	int					gameTimeResidual;			// left over time from previous frame
+	idPredictionMargin	predictionMargin;			// how much further a long frame makes this client predict
+	int					usercmdsSentThisFrame;		// user command packets this frame has sent so far
 
 	usercmd_t			userCmds[MAX_USERCMD_BACKUP][MAX_ASYNC_CLIENTS];
 
 	idUserInterface *	guiNetMenu;
 
-	clientUpdateState_t updateState;
-	int					updateSentTime;
-	idStr				updateMSG;
-	bool				showUpdateMessage;
 
 	backgroundDownload_t	backgroundDownload;
 

@@ -836,6 +836,10 @@ def validate_validation_wiring() -> None:
         "generate_checkpoint_storage_test.py",
         "generate_dict_identity_test.py",
         "generate_save_dict_test.py",
+        # The update core's committed fixtures, and the helper test the
+        # opend3-updater-helper-apply Meson test runs against the built helper.
+        "update_core_fixtures.py",
+        "updater_helper_apply.py",
         "mp_bot_walk_replay.py",
         "mp_liquid_air_smoke.py",
         "mp_mvd_quota_smoke.py",
@@ -854,6 +858,9 @@ def validate_validation_wiring() -> None:
         # LAN discovery, successive reconnects and retail 2.85 refusal launch a
         # staged dedicated server and client (and the retail Quake4Ded.exe).
         "mp_lan_reconnect_smoke.py",
+        # The map database's rotation, queue and pick on a staged dedicated
+        # server with bots and one client; mp_map_database_contract.py is wired.
+        "mp_map_rotation_smoke.py",
         # A 12-player match over a simulated small path MTU.
         "mp_path_mtu_soak.py",
         "mp_mod_admission_smoke.py",
@@ -949,6 +956,8 @@ def validate_validation_wiring() -> None:
         "mp_remote_weapon_capture.py",
         "mp_firing_view_capture.py",
         "mp_match_flow_smoke.py",
+        "mp_modifiers_smoke.py",
+        "mp_spectator_casting_smoke.py",
         "mp_mvd_smoke.py",
         "mp_pause_lifecycle_smoke.py",
         "mp_pause_world_smoke.py",
@@ -982,6 +991,15 @@ def validate_validation_wiring() -> None:
         # Vulkan support evidence runs need a staged client, a GPU and retail
         # assets.
         "renderer_vulkan_qualification.py",
+        # Enhanced-physics qualification (PHYS): each launches the staged client
+        # or dedicated server on retail assets; physics_enhanced_solver.py runs
+        # the solver kernels natively in CI and the workflows py_compile these.
+        "physics_workloads.py",
+        "physics_envelope.py",
+        "physics_integration.py",
+        "physics_defects.py",
+        "physics_coverage.py",
+        "physics_campaign.py",
         # Campaign runtime checks require user-supplied retail/expansion assets.
         "campaign_runtime.py",
         "campaign_selection_runtime.py",
@@ -1050,6 +1068,8 @@ def validate_validation_wiring() -> None:
         "mp_bot_hit_recovery_replay.py",
         "mp_bot_pad_traffic_replay.py",
         # Need a staged OpenXR client, the built test runtime and retail assets.
+        "openxr_vr_controller_profiles_smoke.py",
+        "openxr_vr_hold_closeup.py",
         "openxr_vr_playspace_smoke.py",
         "openxr_vr_stereo_cost.py",
         "openxr_vr_stereo_share_smoke.py",

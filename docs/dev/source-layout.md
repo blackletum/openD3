@@ -48,6 +48,7 @@ directories (`builddir*/`), the staged package (`.install/`), save paths
 | `sys` | Platform layer: `sdl3`, `posix`, `win32`, `linux`, `macos`, `android`, `openxr`, `stub` |
 | `tools` | dmap and AAS compilers, the level editor, and the legacy MFC editors |
 | `ui` | GUI system, the `retained` RmlUi interface and its `application` layer |
+| `updater` | The in-game updater's manifest, verification and staging core, and `openD3-updater`, the helper that installs a staged update after the game exits |
 
 `src/game` and `src/d3xp` are the same game. A fix that applies to both goes
 into both trees. openD3 has no `src/mpgame`: Doom 3's multiplayer is part of

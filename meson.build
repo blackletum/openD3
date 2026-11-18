@@ -131,6 +131,7 @@ version_iteration = get_option('version_iteration').strip()
 version_base_override = get_option('version_base_override').strip()
 openal_root_override = get_option('openal_root_override').strip()
 generated_version_header_path = meson.current_build_dir() / 'opend3_version_generated.h'
+generated_build_id_header_path = meson.current_build_dir() / 'opend3_build_id_generated.h'
 version_metadata_command = [
   py,
   meson.project_source_root() / 'tools' / 'build' / 'opend3_version.py',
@@ -150,19 +151,31 @@ if version_iteration != ''
   version_metadata_command += ['--iteration', version_iteration]
 endif
 version_metadata_result = run_command(
-  version_metadata_command + ['--header-out', generated_version_header_path],
+  version_metadata_command + [
+    '--header-out', generated_version_header_path,
+    '--build-id-header-out', generated_build_id_header_path,
+  ],
   check: true,
 )
 
 # Git metadata changes whenever HEAD or the worktree changes, without changing
 # meson.build. Re-run the lightweight generator for every build invocation;
-# write_if_changed keeps downstream recompilation limited to real version
-# changes. The configure-time invocation above ensures the header also exists
-# before a backend performs its first dependency scan.
+# write_if_changed keeps downstream recompilation limited to real changes. The
+# configure-time invocation above ensures both headers also exist before a
+# backend performs its first dependency scan.
+#
+# The output is split so a commit does not recompile the whole tree:
+# opend3_version_generated.h holds only the release version and is safe to
+# include everywhere (licensee.h, precompiled.h); opend3_build_id_generated.h
+# holds the Git SHA, dirty flag, commit count and date, and only the few files
+# that print or compare those include it.
 generated_version_header = custom_target(
   'opend3_version_generated',
-  output: 'opend3_version_generated.h',
-  command: version_metadata_command + ['--header-out', '@OUTPUT@'],
+  output: ['opend3_version_generated.h', 'opend3_build_id_generated.h'],
+  command: version_metadata_command + [
+    '--header-out', '@OUTPUT0@',
+    '--build-id-header-out', '@OUTPUT1@',
+  ],
   depend_files: files('tools/build/opend3_version.py'),
   build_always_stale: true,
   build_by_default: true,
@@ -332,6 +345,37 @@ if get_option('build_native_tests')
     include_directories: root_include_dir, install: false,
   )
   test('opend3-crc32', opend3_crc32_test, timeout: 30)
+
+  # PNG/zlib codec: fixtures compressed by CPython's zlib, and the native test's
+  # encoder output decoded again by the script's independent reader
+  opend3_png_fixtures = custom_target(
+    'opend3-png-fixtures', input: files('tools/tests/png_codec.py'),
+    output: 'PngFixtures.inc',
+    command: [py, '@INPUT@', '--generate-native', '@OUTPUT@'],
+  )
+  opend3_png_codec_test = executable(
+    'opend3-png-codec-test', [files('tools/tests/native/PngCodecTest.cpp'), opend3_png_fixtures],
+    include_directories: root_include_dir, install: false,
+  )
+  test('opend3-png-codec', py,
+    args: [files('tools/tests/png_codec.py'), '--run', opend3_png_codec_test, meson.project_build_root() / 'png-codec-test'],
+    depends: opend3_png_codec_test, timeout: 300)
+
+  # BC7 decoder: seeded blocks for every mode against digests from two
+  # independent decoders (tools/tests/bc7_reference.py)
+  opend3_bc7_codec_test = executable(
+    'opend3-bc7-codec-test', files('tools/tests/native/Bc7CodecTest.cpp'),
+    include_directories: root_include_dir, install: false,
+  )
+  test('opend3-bc7-codec', opend3_bc7_codec_test, timeout: 60)
+
+  # Render demo block container: the codec, the stream of blocks cut at any
+  # byte or damaged anywhere, and the timeline its headers alone give
+  opend3_demo_block_codec_test = executable(
+    'opend3-demo-block-codec-test', files('tools/tests/native/DemoBlockCodecTest.cpp'),
+    include_directories: root_include_dir, install: false,
+  )
+  test('opend3-demo-block-codec', opend3_demo_block_codec_test, timeout: 300)
 
   opend3_save_dict_under_test = custom_target(
     'opend3-save-dict-under-test', input: files('src/game/gamesys/SaveGame.cpp', 'src/mpgame/gamesys/SaveGame.cpp'),
@@ -1210,6 +1254,15 @@ if build_engine or get_option('build_native_tests')
     endif
   endif
   if get_option('build_native_tests')
+    # The in-game updater's core: versions, the signed manifest, asset names,
+    # the plan hand-off, hashing and zip extraction (fixtures from
+    # tools/tests/update_core_fixtures.py).
+    opend3_update_core_test = executable('opend3-update-core-test',
+      files('tools/tests/native/UpdateCoreTest.cpp'),
+      include_directories: root_include_dir,
+      dependencies: jsoncpp_project.get_variable('jsoncpp_dep'), install: false)
+    test('opend3-update-core', opend3_update_core_test,
+      args: [meson.project_build_root() / 'update-core-test'], timeout: 60)
     opend3_ui_scroll_geometry_test = executable('opend3-ui-scroll-geometry-test',
       files('tools/tests/native/UiScrollGeometryTest.cpp'),
       dependencies: opend3_retained_dep, install: false)
@@ -2641,6 +2694,8 @@ if build_engine
   client_deps += jsoncpp_project.get_variable('jsoncpp_dep')
   if host_system == 'windows'
     client_deps += opend3_windows_text_store_dep
+    # The updater's HTTPS transport (sys/win32/win_update.cpp).
+    client_deps += cc.find_library('winhttp', required: true)
   endif
 endif
 
@@ -3142,6 +3197,14 @@ if build_engine
     client_engine_cpp_args += ['-DOPEND3_OPENXR=1']
   endif
 
+  # The in-game updater (manifest, verification, staging and its HTTPS
+  # transport) is client-only too; win_update.cpp, globbed for both, compiles
+  # to nothing in the dedicated server.
+  opend3_engine_sources += files('src/updater/UpdateCore.cpp')
+  if host_system != 'windows'
+    opend3_engine_sources += files('src/sys/posix/posix_update.cpp')
+  endif
+
   bse_library = static_library(
     'opend3_bse',
     bse_sources,
@@ -3296,6 +3359,40 @@ if build_engine
       install: true,
       install_dir: install_root_dir,
     )
+  endif
+
+  # openD3-updater swaps in an update the client downloaded and staged, once
+  # the client has exited (Windows cannot replace a running program), then
+  # starts the client again. It has no network access and links nothing from
+  # the engine. macOS and Android packages are updated as a whole instead.
+  if host_system in ['windows', 'linux']
+    updater_helper_deps = []
+    updater_helper_cpp_args = []
+    updater_helper_link_args = []
+    if host_system == 'windows'
+      updater_helper_deps += windows_shell_dep
+    else
+      # The same hardening the release verifier requires of every shipped binary.
+      updater_helper_cpp_args += linux_compile_hardening_args
+      updater_helper_link_args += linux_link_hardening_args
+    endif
+    updater_helper_exe = executable(
+      meson.project_name() + '-updater_' + binary_arch,
+      files('src/updater/UpdateHelper.cpp'),
+      dependencies: updater_helper_deps,
+      cpp_args: updater_helper_cpp_args,
+      link_args: updater_helper_link_args,
+      pie: linux_executable_pie,
+      win_subsystem: 'windows',
+      install: true,
+      install_dir: install_root_dir,
+    )
+    if get_option('build_native_tests')
+      test('opend3-updater-helper-apply', py,
+        args: [files('tools/tests/updater_helper_apply.py'), '--helper', updater_helper_exe,
+          '--scratch', meson.project_build_root() / 'updater-helper-test'],
+        depends: updater_helper_exe, timeout: 300)
+    endif
   endif
 
   dedicated_engine_cpp_args = engine_cpp_args

@@ -21,6 +21,11 @@ point):
   passes through bodies and reports the wall behind) and still inside the
   gauntlet's reach; the shooter holds still and fires. A moving target (the
   rest of 7.2) stays with the by-eye checklist;
+- hitches: the shooter's frame stalls 350 ms once a second, nine times
+  (com_presentationStallProbe), and settles for three seconds. Nothing is fired;
+  the respawn and rejoin bursts after it must still fall on the server's frames
+  with the server's directions, so a client whose prediction does not recover
+  from a hitch fails them. The report counts the stalls the frame-work trace saw;
 - respawn (7.4): the shooter fires the machinegun while turning, kills
   itself, and keeps firing through the respawn. The client's weapon for the
   new life raises from the frame the server's began its raise, so the burst
@@ -31,6 +36,18 @@ point):
   join from spectating) and fires the machinegun while turning; its weapon
   for the new life must raise with the server's too.
 
+Under simulated jitter the shooter's channel drops a server packet that arrives
+after a later one (`net_channelShowDrop` on the shooter logs each loss), so a
+new life can be read across a dropped snapshot. The report counts the losses,
+their lengths and the delay line's reorders (`netImpairment`), and gives, for
+each new life, whether the client read it across a hitch, how many snapshots
+it missed and how long after the last one. The spawn's knockback places the
+server's raise across one dropped snapshot, so such a life is judged like any
+other. Jitter does this to perhaps one life in ten, so `--drop-respawn-snapshot`
+makes it certain: the shooter discards every other snapshot around the respawn
+(`net_clientSnapshotDropProbe 2`), and the run fails unless the respawn was read
+across exactly one dropped snapshot.
+
 The harness feeds the host a control file it executes every 100 ms, which is
 how the bots are paused and the host is placed and moved on cue. Both
 processes log every hit-scan shot (`net_mpHitscanDebug`): the server's shots,
@@ -39,8 +56,19 @@ with how far each started from the gun and aim the client held at that moment
 and what it hit. The report pairs server shots with the client's predictions
 by game time, compares directions and hits, counts the server's copies drawn
 in full (a round trip late) and those that only added the confirmed impacts on
-a body, and summarises the gaps per step. Engine captures of every step are
-kept for review by eye.
+a body, and summarises the gaps per step. Every matched direction must be the
+server's, with or without simulated latency. A retained HUD view built inside a
+burst (`RETAINED_HUD_LOADED`) fails the run: the frame it holds sends the server
+no commands. Engine captures of every step are kept for review by eye.
+
+The report also measures the late commands behind a wrong server direction. The host
+(`com_showAsyncStats`) logs each run of frames it ran on a repeated command of the
+shooter's, because the shooter's own had not come (`late_commands`: inside the measured
+steps, outside them, the short runs that long frames leave, and the server shots fired
+on such a frame). The shooter
+traces its frame times over the steps (`frame_tail`: frames past the two tics the
+median prediction target covers) and logs each rise of its prediction margin
+(`prediction_margin`). `--prediction-margin 0` measures the median target alone.
 
 With `--predict-hitscan 0` the client keeps the old behaviour (every shot drawn
 from the server's copy), the baseline the gaps are measured against.
@@ -77,6 +105,20 @@ BODY_STEP = "target_machinegun"
 MEASURED_STEPS = (*HITSCAN_SWEEPS, "target_railgun", BODY_STEP, "respawn", "rejoin")
 BURST = 12
 INTERVAL_MSEC = 150
+# The hitch step: HITCHES stalls of HITCH_MSEC, one a second, inside a frame-work trace long
+# enough to hold them (at 60 fps).
+HITCHES = 9
+HITCH_MSEC = 350
+HITCH_FRAMES = 1200
+# Frame-work traces of the steps before and after the hitch step (frame_tail), long enough
+# for either at 60 fps.
+TAIL_FRAMES = 6000
+# A frame this long is past what the median prediction target covers (two tics), so its
+# commands reach the server late unless the client's prediction margin covers them.
+LONG_FRAME_MSEC = 36
+# A run of repeated commands this long or shorter comes from a long frame; a stall of
+# 100 ms or more (the join, the hitch step) makes longer ones.
+SHORT_RUN_FRAMES = 6
 FIRE_MSEC = 4000
 # sensitivity 5 and m_yaw 0.022 make one count 0.11 degrees: 2000 counts a second turn 220 degrees a second.
 SENSITIVITY = 5
@@ -85,6 +127,13 @@ LINE = re.compile(r"MP_HITSCAN kind=(\w+) client=(\d) owner=(-?\d+) local=(\d) d
                   r"newFrame=(\d) seed=(-?\d+) fx=(\S+) dir=(\S+) gunGap=(\S+) aimGap=(\S+) hit=(-?\d+) actor=(\d)")
 WEAPON = re.compile(r"MP_WEAPON (\w+) client=(\d) owner=(-?\d+) local=(\d) time=(-?\d+)(?:.* start=(-?\d+) done=(-?\d+))?")
 VIEWPOS = re.compile(r"\((-?[\d.]+) (-?[\d.]+) (-?[\d.]+)\) (-?[\d.]+)")
+FIELD = re.compile(r"(\w+)=(-?\d+)")
+# net_channelShowDrop on the shooter: a packet that arrives after a later one is dropped, and
+# the later one, processed first, logs the loss.
+CHANNEL_LOSS = re.compile(r"dropped (\d+) packets at (\d+)")
+CHANNEL_LATE = re.compile(r"out of order packet (\d+) at (\d+)")
+IMPAIR = re.compile(r"NET_IMPAIR port=(\d+) dir=(\w+) offered=(\d+) dropped=(\d+) duplicated=(\d+) released=(\d+) "
+                    r"reordered=(\d+)")
 
 
 def parse(log: str) -> list[dict]:
@@ -109,12 +158,34 @@ def parse(log: str) -> list[dict]:
 def weapon_events(log: str) -> list[dict]:
     """The MP_WEAPON lines in log order: new lives (respawn, entities) and raises."""
     events = []
-    for match in WEAPON.finditer(log):
+    for line in log.splitlines():
+        match = WEAPON.search(line)
+        if not match:
+            continue
         event, client, owner, local, game_time, start, done = match.groups()
+        # A client's new-life lines also say whether it read the life across a hitch, how many
+        # snapshots it missed, how long after the last one, and the raise it took.
+        fields = dict((key, int(value)) for key, value in FIELD.findall(line[match.end(5):]))
         events.append({"event": event, "client": int(client), "owner": int(owner), "local": int(local),
                        "time": int(game_time), "start": int(start) if start else None,
-                       "done": int(done) if done else None})
+                       "done": int(done) if done else None, "hitch": fields.get("hitch"),
+                       "missed": fields.get("missed"), "age": fields.get("age"), "raise": fields.get("raise")})
     return events
+
+
+def channel_losses(log: str) -> dict:
+    """The server packets the shooter's channel lost, from net_channelShowDrop and netImpairment.
+
+    Without simulated loss a lost packet is one the delay line reordered: it arrived after a
+    later one and the channel dropped it. Each loss is logged once with its length in packets.
+    """
+    runs = [int(match.group(1)) for match in CHANNEL_LOSS.finditer(log)]
+    receive = [match for match in IMPAIR.finditer(log) if match.group(2) == "receive"]
+    line = receive[-1] if receive else None
+    return {"losses": len(runs), "lost_packets": sum(runs), "single_packet_losses": runs.count(1),
+            "longest_loss": max(runs, default=0), "late_packets_dropped": len(CHANNEL_LATE.findall(log)),
+            "delay_line_received": int(line.group(6)) if line else None,
+            "delay_line_reordered": int(line.group(7)) if line else None}
 
 
 def new_life_raises(host_events: list[dict], client_events: list[dict], slot: int, scripted_from: int | None) -> list[dict]:
@@ -137,13 +208,108 @@ def new_life_raises(host_events: list[dict], client_events: list[dict], slot: in
         client = min((e for e in client_events if e["event"] == "raise" and e["local"] and
                       abs(e["start"] - server["start"]) <= 500),
                      key=lambda e: abs(e["start"] - server["start"]), default=None)
+        # The snapshot the client first read the life from (a respawn, or new weapon entities).
+        read = next((e for e in client_events if e["event"] in ("respawn", "entities") and e["local"] and
+                     0 <= e["time"] - event["time"] <= 500), None)
         pairs.append({"respawn_time": event["time"],
                       "judged": scripted_from is not None and event["time"] >= scripted_from,
                       "server_start": server["start"], "server_done": server["done"],
                       "client_start": client["start"] if client else None,
                       "client_done": client["done"] if client else None,
-                      "client_raised_at": client["time"] if client else None})
+                      "client_raised_at": client["time"] if client else None,
+                      "client_read": {key: read[key] for key in ("event", "time", "hitch", "missed", "age", "raise")}
+                      if read else None})
     return pairs
+
+
+def hud_loads(log: str) -> list[tuple[str, str]]:
+    """(step, source) for each retained HUD view built inside a measured step.
+
+    Building a HUD view holds the frame for tens of milliseconds, and parsing the HUD artwork
+    for a few hundred. A client sends no commands while its frame stalls, so the server
+    repeats the last one: inside a burst that turns the server's aim away from the client's.
+    The local player builds its views as it spawns, so none should load mid-burst.
+    """
+    loads, segment = [], None
+    for line in log.splitlines():
+        marker = re.search(r"FIRING_VIEW_SEGMENT(_END)? (\w+)", line)
+        if marker:
+            segment = None if marker.group(1) else marker.group(2)
+            continue
+        loaded = re.search(r"RETAINED_HUD_LOADED (\S+)", line)
+        if loaded and segment:
+            loads.append((segment, loaded.group(1)))
+    return loads
+
+
+def hitches(trace: Path) -> int:
+    """The frames of the hitch step's frame-work trace that stalled most of a hitch."""
+    if not trace.is_file():
+        return 0
+    rows = trace.read_text().splitlines()[1:]
+    return sum(float(row.split(",")[1]) >= 0.8 * HITCH_MSEC for row in rows if row.count(",") >= 1)
+
+
+LATE_RUN = re.compile(r"client (\d+): frames (\d+)-(\d+) \(game time (-?\d+)-(-?\d+)\) ran on a repeated command")
+MARGIN_RISE = re.compile(r"client prediction margin (\d+) ms after a (\d+) ms frame \(game time (-?\d+)\)")
+
+
+def frame_tail(trace: Path) -> dict:
+    """Frame times of a frame-work trace: how many were too long for the median prediction target."""
+    if not trace.is_file():
+        return {"frames": 0}
+    totals = [float(row.split(",")[1]) for row in trace.read_text().splitlines()[1:] if row.count(",") >= 1]
+    if not totals:
+        return {"frames": 0}
+    ordered = sorted(totals)
+    return {"frames": len(ordered), f"at_least_{LONG_FRAME_MSEC}_ms": sum(t >= LONG_FRAME_MSEC for t in ordered),
+            "at_least_56_ms": sum(t >= 56 for t in ordered), "at_least_100_ms": sum(t >= 100 for t in ordered),
+            "p99_ms": round(ordered[max(0, math.ceil(0.99 * len(ordered)) - 1)], 1), "max_ms": round(ordered[-1], 1)}
+
+
+def late_commands(host_log: str, slot: int | None, windows: dict[str, tuple[int, int]], server: list[dict]) -> dict:
+    """The runs of frames the host ran on a repeated command of the shooter's.
+
+    A run belongs to a measured step when its game time falls inside the step's shots
+    (half a second either side); the hitch step makes runs by design. A server shot fired
+    on such a frame took the aim of the command before. Short runs, of at most
+    SHORT_RUN_FRAMES after the shooter's first shot and more than a second from a longer
+    run, are the late commands of long frames: a stall of 100 ms or more (the join, the
+    hitch step) makes the longer runs, and the frames just after it.
+    """
+    runs = [(int(first), int(last), int(start), int(end)) for client, first, last, start, end in LATE_RUN.findall(host_log)
+            if slot is not None and int(client) == slot]
+    started = min((low for low, _ in windows.values()), default=None)
+    stalls = [(start, end) for first, last, start, end in runs if last - first + 1 > SHORT_RUN_FRAMES]
+    short = [(first, last, start) for first, last, start, end in runs
+             if last - first + 1 <= SHORT_RUN_FRAMES and started is not None and start >= started and
+             not any(low - 1000 <= start <= high + 1000 for low, high in stalls)]
+
+    def step_of(start: int, end: int) -> str | None:
+        return next((name for name, (low, high) in windows.items() if start <= high and end >= low), None)
+
+    by_step: dict[str, int] = {}
+    outside = 0
+    for first, last, start, end in runs:
+        name = step_of(start, end)
+        if name is None:
+            outside += last - first + 1
+        else:
+            by_step[name] = by_step.get(name, 0) + last - first + 1
+    stale = [s["time"] for s in server if any(start <= s["time"] <= end + 16 for _, _, start, end in runs)]
+    return {"runs": len(runs), "frames": sum(last - first + 1 for first, last, _, _ in runs),
+            "longest_run": max((last - first + 1 for first, last, _, _ in runs), default=0),
+            "frames_in_steps": sum(by_step.values()), "frames_by_step": by_step, "frames_outside_steps": outside,
+            "short_runs": len(short), "short_run_frames": sum(last - first + 1 for first, last, _ in short),
+            "short_run_times": [start for _, _, start in short],
+            "server_shots_on_repeated_command": stale}
+
+
+def prediction_margin(log: str) -> dict:
+    """Each rise of the shooter's prediction margin, with the frame that caused it."""
+    rises = [(int(margin), int(frame), int(time)) for margin, frame, time in MARGIN_RISE.findall(log)]
+    return {"rises": len(rises), "max_ms": max((m for m, _, _ in rises), default=0),
+            "frames_ms": [f for _, f, _ in rises]}
 
 
 def angle(a: list[float], b: list[float]) -> float:
@@ -187,6 +353,11 @@ def main() -> int:
     parser.add_argument("--latency", type=int, default=0, help="forced one-way latency on the shooter, ms")
     parser.add_argument("--jitter", type=int, default=0, help="forced latency jitter on the shooter, ms")
     parser.add_argument("--turn-rate", type=float, default=220.0, help="degrees per second while firing")
+    parser.add_argument("--drop-respawn-snapshot", action="store_true",
+                        help="discard every other snapshot around the respawn (net_clientSnapshotDropProbe 2), so "
+                             "the client reads it across one dropped snapshot, as jitter makes it now and then")
+    parser.add_argument("--prediction-margin", type=int, choices=(0, 1), default=1,
+                        help="net_clientPredictionMargin on the shooter (0: the median target alone)")
     args = parser.parse_args()
     runtime, output = args.runtime_dir.resolve(), args.output_dir.resolve()
     verify_runtime_is_current(runtime)
@@ -228,7 +399,10 @@ def main() -> int:
     shooter = ['set g_autoExecAfterMapLoad ""', "set net_mpHitscanDebug 1",
                f"set net_mpPredictHitscan {args.predict_hitscan}", f"set net_mpPredictMode {int(args.enhanced)}",
                f"set sensitivity {SENSITIVITY}", f"set m_yaw {M_YAW}", "set ui_retained 1",
-               "waitMsec 8000", "opend3_reportMPState", "echo FIRING_VIEW_JOINED"]
+               "waitMsec 8000", "opend3_reportMPState", "echo FIRING_VIEW_JOINED",
+               # The frame-time tail of the measured steps (frame_tail): a frame longer than the
+               # prediction target covers sends its commands late unless the margin covers it.
+               f"profileFrameWork {TAIL_FRAMES} diagnostics/frames_steps.csv"]
     shots = []
     hold = max(0, FIRE_MSEC - 300 - BURST * INTERVAL_MSEC)
     # The target steps come first, while the shooter still faces the way its spawn point
@@ -246,11 +420,27 @@ def main() -> int:
         burst(shooter, shots, weapon)
         shooter += [f"waitMsec {hold}", "in_presentationViewProbeAttack 0", "in_presentationViewProbe 0",
                     "waitMsec 1200", f"echo FIRING_VIEW_SEGMENT_END {weapon}"]
+    # Hitches: the shooter's frame stalls 350 ms once a second (com_presentationStallProbe),
+    # HITCHES times, then settles. The respawn and rejoin bursts after it must still fall on the
+    # server's frames: a client whose prediction never recovered from a hitch sends every
+    # command late, and the server repeats its last one.
+    shooter += ["profileFrameWork 0", "echo FIRING_VIEW_HITCHES", f"profileFrameWork {HITCH_FRAMES} diagnostics/hitches.csv",
+                f"com_presentationStallProbe {HITCH_MSEC}", f"waitMsec {HITCHES * 1000 - 500}",
+                "com_presentationStallProbe 0", "profileFrameWork 0", "waitMsec 3000", "echo FIRING_VIEW_HITCHES_END",
+                f"profileFrameWork {TAIL_FRAMES} diagnostics/frames_lives.csv"]
     shooter += [*select("machinegun"), "echo FIRING_VIEW_SEGMENT respawn",
                 f"in_presentationViewProbe {counts:g}", "in_presentationViewProbeAttack 1", "waitMsec 300"]
     burst(shooter, shots, "respawn_before", 4)
     # The held attack respawns the shooter once the death camera's minimum time has passed.
-    shooter += ["echo FIRING_VIEW_RESPAWN", "kill", "waitMsec 3300"]
+    shooter += ["echo FIRING_VIEW_RESPAWN", "kill"]
+    if args.drop_respawn_snapshot:
+        # The respawn comes 3 s after the death, read a round trip on. Discarding every other
+        # snapshot from 1.5 s to 3.8 s after the kill puts one dropped snapshot right before the
+        # first one the client reads the respawn from, wherever it falls.
+        shooter += ["waitMsec 1500", "set net_clientSnapshotDropProbe 2", "waitMsec 2300",
+                    "set net_clientSnapshotDropProbe 0"]
+    else:
+        shooter += ["waitMsec 3300"]
     burst(shooter, shots, "respawn_after", 16)
     shooter += ["in_presentationViewProbeAttack 0", "in_presentationViewProbe 0", "waitMsec 1200",
                 "echo FIRING_VIEW_SEGMENT_END respawn"]
@@ -261,7 +451,8 @@ def main() -> int:
                 "waitMsec 400", f"in_presentationViewProbe {counts:g}", "in_presentationViewProbeAttack 1"]
     burst(shooter, shots, "rejoin", 16)
     shooter += ["in_presentationViewProbeAttack 0", "in_presentationViewProbe 0", "waitMsec 1200",
-                "echo FIRING_VIEW_SEGMENT_END rejoin", "opend3_reportMPState", "echo FIRING_VIEW_COMPLETE",
+                "echo FIRING_VIEW_SEGMENT_END rejoin", "profileFrameWork 0", "opend3_reportMPState", "netImpairment",
+                "echo FIRING_VIEW_COMPLETE",
                 "waitMsec 1000", "disconnect", "quit"]
     write_script(games["host"] / "firing_view.cfg", host)
     write_script(games["shooter"] / "firing_view.cfg", shooter)
@@ -290,8 +481,17 @@ def main() -> int:
                  "si_fragLimit": "999", "si_timeLimit": "0", "g_matchProfile": "casual", "bot_minPlayers": "0",
                  "bot_chat": "0", "com_skipLoadingContinue": "1", "g_autoExecAfterMapLoad": "firing_view.cfg",
                  "g_autoExecAfterMapLoadDelayMs": "500"}
+        if role == "shooter":
+            # Logs each server packet the channel loses (channel_losses).
+            cvars.update(net_channelShowDrop="1")
         if role == "shooter" and (args.latency or args.jitter):
             cvars.update(net_forceLatency=str(args.latency), net_forceJitter=str(args.jitter), net_forceSeed="40708")
+        # The host reports each run of frames it ran on a repeated command of the shooter's
+        # (late_commands); the shooter logs each rise of its prediction margin.
+        if role == "host":
+            cvars.update(com_showAsyncStats="1")
+        else:
+            cvars.update(net_clientPredictionMargin=str(args.prediction_margin), net_verbose="1")
         command = [str(exe), *[part for key, value in cvars.items() for part in ("+set", key, value)]]
         command += ["+spawnServer", "mp/q4dm1"] if role == "host" else ["+connect", f"127.0.0.1:{args.port}"]
         (output / f"{role}-launch.json").write_text(json.dumps(command, indent=2))
@@ -302,6 +502,7 @@ def main() -> int:
 
     failures, placements = [], []
     shooter_log = games["shooter"] / "logs/opend3.log"
+    shooter_seconds = None
     try:
         launch("host")
         until = time.monotonic() + 90
@@ -310,7 +511,8 @@ def main() -> int:
                 raise RuntimeError("host did not start the bot match")
             time.sleep(0.25)
         launch("shooter")
-        until, handled, placed = time.monotonic() + 300, 0, False
+        started = time.monotonic()
+        until, handled, placed = started + 300, 0, False
         while processes["shooter"].poll() is None:
             if time.monotonic() > until:
                 failures.append("shooter timed out")
@@ -336,6 +538,7 @@ def main() -> int:
                 steer()
                 placed = False
             time.sleep(0.1)
+        shooter_seconds = round(time.monotonic() - started, 1)
         if processes["shooter"].poll() not in (None, 0):
             failures.append("shooter exited abnormally")
     except (OSError, RuntimeError) as error:
@@ -438,6 +641,11 @@ def main() -> int:
         respawn_time is not None and s["time"] >= respawn_time for s in extras)
     outside = [s for s in server if s["segment"] != "respawn"]
     outside_matched = sum((s["time"], s["def"]) in by_time for s in outside)
+    windows = {}
+    for name in MEASURED_STEPS:
+        times = [s["time"] for s in local + server if s["segment"] == name]
+        if times:
+            windows[name] = (min(times) - 500, max(times) + 500)
     metrics = {
         "shooter_slot": slot,
         "server_shots": len(server),
@@ -454,6 +662,15 @@ def main() -> int:
         "copy_aim_gap_deg": summary([s["aimGap"] for s in copies]),
         "steps": steps,
         "new_life_raises": lives,
+        "hitches_observed": hitches(games["shooter"] / "diagnostics/hitches.csv"),
+        "channel_losses": dict(channel_losses(log), shooter_seconds=shooter_seconds),
+        "probe_discarded_snapshots": log.count("SNAPSHOT_DROP_PROBE discarded a snapshot"),
+        "prediction_margin_enabled": args.prediction_margin,
+        "late_commands": late_commands(host_log, slot, windows, server),
+        "frame_tail": {"steps": frame_tail(games["shooter"] / "diagnostics/frames_steps.csv"),
+                       "lives": frame_tail(games["shooter"] / "diagnostics/frames_lives.csv")},
+        "prediction_margin": prediction_margin(log),
+        "hud_loads_in_steps": [f"{step}: {source}" for step, source in hud_loads(log)],
         "host_placements": placements,
         "gauntlet_target_captures": sum(1 for s in shots if s.startswith("target_gauntlet")),
     }
@@ -475,8 +692,18 @@ def main() -> int:
             failures.append(f"the client raised its weapon for the life at {life['respawn_time']} over "
                             f"{life['client_start']}-{life['client_done']}, the server over "
                             f"{life['server_start']}-{life['server_done']}")
+    if args.drop_respawn_snapshot and judged:
+        # The probe must have put the respawn behind exactly one dropped snapshot.
+        read = judged[0]["client_read"]
+        if not read or read["event"] != "respawn" or read["missed"] != 1:
+            failures.append(f"the respawn was not read across one dropped snapshot: {read}")
     if len(placements) != len(TARGETS):
         failures.append("the host was not placed for every target step")
+    if metrics["hitches_observed"] < HITCHES - 1:
+        failures.append(f"the hitch step stalled the shooter's frame {metrics['hitches_observed']} times, "
+                        f"expected {HITCHES}")
+    if metrics["hud_loads_in_steps"]:
+        failures.append(f"retained HUD views were built mid-burst: {metrics['hud_loads_in_steps']}")
     if not steps[BODY_STEP]["server_body_hits"]:
         failures.append(f"no shot in the {BODY_STEP} step hit the host, so no impact on a body was drawn")
     if args.predict_hitscan and server:
@@ -497,12 +724,7 @@ def main() -> int:
         if rejoin["predictions_without_server_shot"] > 1:
             failures.append(f"the client predicted {rejoin['predictions_without_server_shot']} shots after the "
                             "rejoin that the server never fired")
-        # Under simulated latency the server's aim can drift from the client's a second into
-        # the burst after a join from spectating (MP-07, open): the rejoin's directions are
-        # then reported, and held only without it.
-        impaired = bool(args.latency or args.jitter)
-        held = [(a, b) for a, b in matched if not (impaired and a["segment"] == "rejoin")]
-        worst = summary([angle(a["dir"], b["dir"]) for a, b in held]).get("max", 0.0)
+        worst = metrics["predicted_vs_server_direction_deg"].get("max", 0.0)
         if worst > 0.1:
             failures.append(f"predicted and server shot directions differ by up to {worst} degrees")
         if metrics["copies_drawn_in_full"] > 0.1 * max(1, len(copies)):
@@ -514,7 +736,9 @@ def main() -> int:
 
     report = {"status": "fail" if failures else "pass", "renderer": args.renderer,
               "predict_hitscan": args.predict_hitscan, "enhanced": args.enhanced, "latency": args.latency,
-              "jitter": args.jitter, "turn_rate": args.turn_rate, "identity": identity, "metrics": metrics,
+              "jitter": args.jitter, "turn_rate": args.turn_rate, "drop_respawn_snapshot": args.drop_respawn_snapshot,
+              "prediction_margin": args.prediction_margin,
+              "identity": identity, "metrics": metrics,
               "captures": [str(games["shooter"] / f"screenshots/{s}.tga") for s in shots],
               "failures": failures,
               "logs": {role: str(game / "logs/opend3.log") for role, game in games.items()}}

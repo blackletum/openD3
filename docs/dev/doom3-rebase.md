@@ -28,9 +28,14 @@ The branch history, oldest first:
 1. **Merge openQ4** through `55bbe166a`, taking the upstream tree unchanged.
    openQ4's history is now part of openD3's, so later syncs are ordinary
    merges of `openq4-upstream/main`. The latest sync merged upstream through
-   `f3b2f9583` (2026-11-14), which brought its later shadow-mapping fixes
-   (FPS-03, REN-01); the one before it, through `7c74cd712` (2026-11-11), the
-   earlier ones.
+   `65305957d` (2026-11-18): PNG textures and screenshots, BC7 decoding and
+   texture-pack bump rebuilds, render demos in checked blocks with keyframes,
+   network protocol 2.42 and its netcode fixes, the in-game updater, PCSS-lite
+   soft shadows on the modern OpenGL path, self-shadowing characters under
+   shadow maps, light-interaction and collision bookkeeping cuts, VR body and
+   controller work, and retained interface warming. The one before it, through `f3b2f9583` (2026-11-14),
+   brought the later shadow-mapping fixes (FPS-03, REN-01), and the one
+   before that, through `7c74cd712` (2026-11-11), the earlier ones.
 2. **Remove the Quake 4 game library and content.** `src/game` and
    `src/mpgame` (Quake 4 SDK), the SDK licence and the Quake 4 runtime content
    leave the tree. The engine-side content moves to `content/baseod3`.
@@ -175,6 +180,17 @@ release of Doom 3 (1.3.1 packs):
   6 times (Vulkan) in one launch; the merged build marks none, in any capture.
   With time running, `mc_underground` and `alphalabs4`, whose lights swing on
   binds, render mapped on both backends with no shadow-map error or fallback.
+- After the `65305957d` sync (2026-11-18), on the staged build: configure,
+  compile and stage of every target; `vk_shader_header_pin` passes.
+  `game/mars_city1` loads on OpenGL (1,969 entities), runs its intro, saves
+  and loads back into the cinematic. Its log carries the same set of warnings
+  as the build before the sync run with the same commands, and no error.
+  `game/alphalabs1` loads and draws with its HUD on Vulkan (2,106 entities).
+  A listen server on `game/mp/d3dm1` (`spawnServer`, Deathmatch) spawns 887
+  entities and shows the warmup HUD. The retained title (`ui_retained 1`)
+  draws as before. Not run: a remote client against a server (network
+  protocol 2.42), the updater, texture packs, PNG textures, the expansion, and
+  upstream's native tests (`build_native_tests`).
 - Stock specular follows Doom 3 on every path. `r_correctspecular` and
   `r_normalizebumpmap` default to 0 (they came from Prey at 1), and the OpenGL
   ARB path passes the specular constant unscaled, as id's `draw_arb2.cpp`
@@ -487,7 +503,20 @@ resolving, reverse those commits' engine hunks (rebranded) and grep the engine
 for their symbols (`FS_AwakeningActive`, `q4xbase`, `RETAINED_MP_BUY`,
 `BUTTON_HOOK`, `Instagib`). A three-way merge of each conflicted file against
 the rebranded base and upstream side (`git merge-file` on the converted
-blobs) leaves only the real conflicts. The script also rewrites openD3's own
+blobs) leaves only the real conflicts.
+
+On the `65305957d` sync the Quake 4 features were The Awakening's pause menu
+and settings-page family (`6b6c48a1f`, `ac1ea4b50`) and its levelshot sets
+(`5ead3e6dd`), the multiplayer modifier layer and presets (`8bd169759`,
+`1308a18fe`), the map database's settings hook (`0210f852a`, which calls a
+Quake 4-only `idGame::ValidateServerSettings`) and the smart weapon switch's
+`ui_autoSwitch` migration (`5afbc3e88`; Doom 3's `ui_autoSwitch` is a switch).
+Their engine hunks were reversed, rebranded, with `git apply -R --3way`. The
+sync also dropped upstream's new tests for the Quake 4 game library (the
+enhanced-physics, live-event, HUD-catalog and clip fast-path checks). The
+in-game updater arrived with upstream's release-signing key, which signs
+openQ4's releases: openD3 empties it (`src/updater/UpdateSigningKey.h`), so an
+update check can only open the release page. The script also rewrites openD3's own
 prose in `docs/` and `assets/` and a few tools that the merge did not touch,
 and the legacy `openq4-ui` format names in `src/ui/retained`: restore those.
 

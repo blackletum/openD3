@@ -123,8 +123,11 @@ def main() -> None:
 
     eligible_vote = body(multiplayer, "static bool IsEligibleVotePlayerSlot")
     require(eligible_vote, "gameLocal.mpGame.IsInGame", "vote electorate connection state")
-    require(eligible_vote, "!player->spectating", "vote electorate spectator exclusion")
-    require(eligible_vote, "!player->wantSpectate", "vote electorate pending spectator exclusion")
+    # A spectator is someone who chose to watch. An eliminated player, or one
+    # looking at the end-of-match scoreboard, is still a player and a voter.
+    require(eligible_vote, "!player->wantSpectate", "vote electorate spectator exclusion")
+    if "!player->spectating" in eligible_vote:
+        raise AssertionError("the vote electorate must not exclude players who are merely in a spectator camera")
     require(eligible_vote, "!player->IsFakeClient()", "vote electorate special-view exclusion")
     require(eligible_vote, "!botManager.IsBot( clientNum )", "vote electorate bot exclusion")
 
@@ -191,13 +194,13 @@ def main() -> None:
     require_before(
         packed,
         "if ( !IsEligibleVotePlayerSlot( clientNum ) )",
-        "const int wireFieldFlags = msg.ReadShort();",
+        "const int wireFieldFlags = msg.ReadLong();",
         "packed in-game caller validation",
     )
     require_before(
         packed,
         "matchRules.Committed().GetBool( MP_RULE_MANAGED_MATCH )",
-        "const int wireFieldFlags = msg.ReadShort();",
+        "const int wireFieldFlags = msg.ReadLong();",
         "managed packed-vote authority convergence",
     )
 
@@ -351,8 +354,9 @@ def main() -> None:
         "managed vote abort before inherited delayed execution",
     )
     require(check_vote, "voteEligibleCount <= 0", "frozen electorate empty check")
-    require(check_vote, "float(yesVotes) / voteEligibleCount", "frozen yes threshold")
-    require(check_vote, "float(noVotes) / voteEligibleCount", "frozen no threshold")
+    require(check_vote, "yesVotes * 100 >= voteEligibleCount * passPercent", "frozen yes threshold")
+    require(check_vote, "( voteEligibleCount - noVotes ) * 100 < voteEligibleCount * passPercent", "frozen no threshold")
+    require(check_vote, "g_votePercent.GetInteger()", "g_votePercent pass percentage")
     reject(check_vote, "numVoters", "moving vote denominator")
 
     managed_abort = body(
@@ -414,10 +418,11 @@ def main() -> None:
     require(callvote, "MPGameTypeIsSelectable", "console hidden-gametype rejection")
     require(callvote, "ParseVoteIntegerRange", "console typed numeric parsing")
 
-    if not re.search(r"#define\s+NUM_VOTES\s+12\b", multiplayer_h):
-        raise AssertionError("vote-mask loop must cover CONTROLTIME bit 11")
+    if not re.search(r"#define\s+NUM_VOTES\s+20\b", multiplayer_h):
+        raise AssertionError("vote-mask loop must cover READYALL bit 19")
     require(multiplayer_h, "#define VOTEFLAG_ALL", "known packed vote mask")
-    require(cvars, '"bit 11 (+2048) control time"', "CONTROLTIME vote-mask help")
+    require(cvars, '"bit 11 (+2048) control time\\n"', "CONTROLTIME vote-mask help")
+    require(cvars, '"bit 19 (+524288) ready all"', "READYALL vote-mask help")
 
     server_messages = body(network, "void idGameLocal::ServerProcessReliableMessage")
     admin = case_block(

@@ -2386,23 +2386,58 @@ def prompt_glyph(doc: Document, ident: str, key_name: str, tint: list[float], ex
                  [cap] + device_glyphs(doc, ident, FACE_FOR_KEY[key_name], tint))
 
 
+# The menu input a prompt's key gives in menus (section 13.4): a click on
+# the prompt gives it too, Accept to the focused control.
+PROMPT_INPUT = {"#str_107019": "accept", "#str_107020": "back"}
+
+
+def prompt_target(doc: Document, node: str, glyph_ident: str, key_name: str, verb_node: str, verb: str, box: dict,
+                  control: dict, *, tint: list[float], verb_face: tuple, hot: str, pad: float, top: float) -> dict:
+    """A prompt the mouse can click (section 13.4): the active device's glyph
+    and its verb in one target, `pad` dp past them either side, with the
+    verb's 22 dp line `top` dp down the target. The pointer turns the verb
+    `hot` and lights the glyph, focus underlines it and a press insets it
+    1 dp. `control` names what the click does: an action or event, which a
+    focusable Back plate carries, or a key's menu `input`, which never takes
+    the focus, so Accept goes to the control that holds it."""
+    face, size, verb_tint = verb_face
+    # The glyph is painted opaque and rests at the legends' 0.85.
+    glyph = prompt_glyph(doc, glyph_ident, key_name, tint[:3] + [1], {"opacity": number(0.85), "transform": transform()})
+    words = label(verb_node, verb, {"position": keyword("relative"), "display": keyword("block"), **typeface(face, size, 22, verb_tint),
+                                    "white-space": keyword("nowrap"), "transform": transform()})
+    focus = vector(f"{node}-focus", {**absolute(left=pad, top=top + 22 + 2, height=2), "right": length(pad),
+                                     "opacity": number(0), "pointer-events": keyword("none")}, [
+        path("inset", [(0, 1), ({"fraction": 1}, 1)], closed=False, stroke=stroke(solid(rgb(hot)), 1.2))])
+    lit, pressed, rest = colour(rgb(hot)), transform(tx=1, ty=1), transform()
+
+    def feedback(glyph_alpha: float, tint_value: dict, moved: dict, underline: float) -> list:
+        return [(f"{glyph_ident}-glyph", "opacity", number(glyph_alpha)), (f"{glyph_ident}-glyph", "transform", moved),
+                (verb_node, "color", tint_value), (verb_node, "transform", moved), (f"{node}-focus", "opacity", number(underline))]
+    ids = doc.states(node, {"default": feedback(0.85, colour(verb_tint), rest, 0), "hover": feedback(1, lit, rest, 0),
+                            "focus": feedback(1, lit, rest, 1), "pressed": feedback(1, lit, pressed, 1),
+                            "disabled": feedback(0.4, colour(verb_tint[:3] + [0.4]), rest, 0)})
+    if "input" in control:
+        control = {**control, "focusable": False}
+    return group(node, {**box, "display": keyword("flex"), "flex-direction": keyword("row"), "align-items": keyword("center"),
+                        "padding-left": length(pad), "padding-right": length(pad)},
+                 [glyph, words, focus], control={"role": "button", "label": verb, "states": ids, **control})
+
+
 def prompt_bar(doc: Document, prompts: list, cap_tint: list[float] | None = None,
-               verb_face: tuple = ("marine", 14, [1, 1, 1, 0.8])) -> dict:
+               verb_face: tuple = ("marine", 14, [1, 1, 1, 0.8]), hot: str = ORANGE) -> dict:
     """The prompt bar in the bottom band's raised trailing section (section
     13.4): per prompt the active device's glyph, the keyboard's keycap plate
     with a 45-degree cut or the controller family's face button that does
-    the same (section 13.5), then its verb. The prompts are legends, which
-    never take the pointer from what lies under them."""
+    the same (section 13.5), then its verb. A click on a prompt gives its
+    key's menu input: Accept on the focused control, or Back."""
     items = []
     tint = cap_tint or [1, 1, 1, 0.85]
     for key_name, verb in prompts:
         name = verb[5:]
-        glyph = prompt_glyph(doc, f"prompt-{name}", key_name, tint)
-        face, size, verb_tint = verb_face
-        verb_node = label(f"prompt-{name}-verb", verb, {"position": keyword("relative"), "display": keyword("block"),
-            "margin-right": length(22), **typeface(face, size, 22, verb_tint), "white-space": keyword("nowrap")})
-        items += [glyph, verb_node]
-    bar = group("prompts", {**absolute(top=U * 447, height=22, right=U * 12), "opacity": number(1), "pointer-events": keyword("none"),
+        items.append(prompt_target(doc, f"prompt-{name}", f"prompt-{name}", key_name, f"prompt-{name}-verb", verb,
+                                   {"position": keyword("relative"), "height": length(22), "margin-right": length(22)},
+                                   {"input": PROMPT_INPUT[key_name]}, tint=tint, verb_face=verb_face, hot=hot, pad=0, top=0))
+    bar = group("prompts", {**absolute(top=U * 447, height=22, right=U * 12), "opacity": number(1),
                             "display": keyword("flex"), "flex-direction": keyword("row"), "align-items": keyword("center")}, items)
     # As on a page's bar, the key caps and verbs keep their size.
     fixed_text(doc, bar)
@@ -2483,8 +2518,9 @@ def page_prompts(doc: Document, back: str | None = None, *, action: str | None =
     can act. With `action` or `event` Back is the button `back`, standing in
     for the stock BACK plate in its 45 dp target: the pointer or focus turns
     its verb `hot` and lights its glyph, focus underlines it and a press
-    insets it 1 dp. Otherwise both are legends. Legends never take the
-    pointer. `select` False leaves Accept out where it has nothing to do.
+    insets it 1 dp. Otherwise Back, like Accept always, is a prompt the
+    mouse clicks for its key, which never takes the focus (prompt_target).
+    `select` False leaves Accept out where it has nothing to do.
     The bar sits in a 4:3 canvas group, or with `in_canvas` False in a node
     spanning the view; Accept starts after `lead_limit` (canvas dp).
     `accept_shown` adds a condition to Accept's own: a page whose Accept
@@ -2494,55 +2530,39 @@ def page_prompts(doc: Document, back: str | None = None, *, action: str | None =
     tint = cap_tint or [1, 1, 1, 0.85]
     middle = (PROMPT_TARGET - 22) / 2
     back_x = PAGE_BACK_X - PAGE_BAR_LEFT
-
-    def verb_label(node: str, key: str, more: dict | None = None) -> dict:
-        return label(node, key, {"position": keyword("relative"), "display": keyword("block"), **typeface(face, size, 22, verb_tint),
-                                 "white-space": keyword("nowrap"), **(more or {})})
-    lead = []
+    style = {"tint": tint, "verb_face": verb_face, "hot": hot, "pad": PROMPT_PAD, "top": middle}
+    # Each prompt's target is the stock plate's 45 dp, PROMPT_PAD past its
+    # glyph and verb: SELECT's ends 6 dp before Back's.
+    children = []
     if select:
         name = f"prompt-{PROMPT_SELECT[5:]}"
-        lead = [prompt_glyph(doc, name, KEY_ENTER, tint), verb_label(f"{name}-verb", PROMPT_SELECT)]
+        children.append(prompt_target(doc, f"{ident}-lead", name, KEY_ENTER, f"{name}-verb", PROMPT_SELECT,
+                                      absolute(top=0, height=PROMPT_TARGET, right=PAGE_BAR_W - back_x + 22 - PROMPT_PAD),
+                                      {"input": "accept"}, **style))
         doc.state[PROMPT_ACCEPT] = {"type": "string", "initial": PROMPT_SELECT}
         doc.bind(f"{name}-verb.text", f"{name}-verb", "text", {"state": PROMPT_ACCEPT})
         idle = {"op": "==", "args": [{"state": PROMPT_ACCEPT}, ""]}
         if accept_shown is not None:
             idle = {"op": "||", "args": [idle, {"op": "!", "args": [accept_shown]}]}
         doc.bind(f"{ident}-lead.display", f"{ident}-lead", "display", {"op": "select", "args": [idle, "none", "flex"]})
-    leading = group(f"{ident}-lead", {**absolute(top=middle, height=22, right=PAGE_BAR_W - back_x + 22), "display": keyword("flex"),
-                                      "flex-direction": keyword("row"), "align-items": keyword("center"),
-                                      "pointer-events": keyword("none")}, lead)
-    legends = action is None and event is None
-    if legends:
-        name = f"prompt-{PROMPT_BACK[5:]}"
-        back_node = group(f"{ident}-back", {**absolute(left=back_x, top=middle, height=22), "display": keyword("flex"),
-                                            "flex-direction": keyword("row"), "align-items": keyword("center")},
-                          [prompt_glyph(doc, name, KEY_ESCAPE, tint), verb_label(f"{name}-verb", PROMPT_BACK)])
     else:
-        # The glyph is painted opaque and rests at the legends' 0.85.
-        glyph = prompt_glyph(doc, back, KEY_ESCAPE, tint[:3] + [1], {"opacity": number(0.85), "transform": transform()})
-        focus = vector(f"{back}-focus", {**absolute(left=PROMPT_PAD, top=middle + 22 + 2, height=2), "right": length(PROMPT_PAD),
-                                         "opacity": number(0), "pointer-events": keyword("none")}, [
-            path("inset", [(0, 1), ({"fraction": 1}, 1)], closed=False, stroke=stroke(solid(rgb(hot)), 1.2))])
-        lit, pressed, rest = colour(rgb(hot)), transform(tx=1, ty=1), transform()
-
-        def feedback(glyph_alpha: float, tint_value: dict, moved: dict, underline: float) -> list:
-            return [(f"{back}-glyph", "opacity", number(glyph_alpha)), (f"{back}-glyph", "transform", moved),
-                    (f"{back}-label", "color", tint_value), (f"{back}-label", "transform", moved), (f"{back}-focus", "opacity", number(underline))]
-        ids = doc.states(back, {"default": feedback(0.85, colour(verb_tint), rest, 0), "hover": feedback(1, lit, rest, 0),
-                                "focus": feedback(1, lit, rest, 1), "pressed": feedback(1, lit, pressed, 1),
-                                "disabled": feedback(0.4, colour(verb_tint[:3] + [0.4]), rest, 0)})
-        control = {"role": "button", "label": PROMPT_BACK, "states": ids}
-        control.update({"action": action} if action else {"event": event})
-        back_node = group(back, {**absolute(left=back_x - PROMPT_PAD, top=0, height=PROMPT_TARGET), "display": keyword("flex"),
-                                 "flex-direction": keyword("row"), "align-items": keyword("center"), "padding-left": length(PROMPT_PAD),
-                                 "padding-right": length(PROMPT_PAD)},
-                          [glyph, verb_label(f"{back}-label", PROMPT_BACK, {"transform": transform()}), focus], control=control)
+        # Nothing for Accept to do: the lead stays, empty.
+        children.append(group(f"{ident}-lead", {**absolute(top=middle, height=22, right=PAGE_BAR_W - back_x + 22), "display": keyword("flex"),
+                                                "flex-direction": keyword("row"), "align-items": keyword("center"),
+                                                "pointer-events": keyword("none")}, []))
+    if action is None and event is None:
+        # The page's own BACK is elsewhere: this one gives Back as its key does.
+        name = f"prompt-{PROMPT_BACK[5:]}"
+        children.append(prompt_target(doc, f"{ident}-back", name, KEY_ESCAPE, f"{name}-verb", PROMPT_BACK,
+                                      absolute(left=back_x - PROMPT_PAD, top=0, height=PROMPT_TARGET), {"input": "back"}, **style))
+    else:
+        children.append(prompt_target(doc, back, back, KEY_ESCAPE, f"{back}-label", PROMPT_BACK,
+                                      absolute(left=back_x - PROMPT_PAD, top=0, height=PROMPT_TARGET),
+                                      {"action": action} if action else {"event": event}, **style))
     box = absolute(left=PAGE_BAR_LEFT, top=PAGE_BAR_TOP, width=PAGE_BAR_W, height=PROMPT_TARGET)
     if not in_canvas:
         box.update({"left": length(50, "%"), "margin-left": length(-CANVAS_W / 2 + PAGE_BAR_LEFT)})
-    if legends:
-        box["pointer-events"] = keyword("none")
-    bar = group(ident, {**box, "opacity": number(1)}, [leading, back_node])
+    bar = group(ident, {**box, "opacity": number(1)}, children)
     # The key caps and verbs keep their size in the bar's fixed slots, so BACK
     # stays on the screen at any text size.
     fixed_text(doc, bar)
@@ -2820,7 +2840,6 @@ MENU_BACKGROUNDS = ["gfx/guis/mainmenu/level_mcc.dds", "gfx/guis/mainmenu/level_
 
 
 BACKDROP_DIM = 0.3         # black over the title's pictures, under their light (user note, 13 November 2026)
-SIGNAL_DITHER = 0.6        # the backdrop's ordered dither (backdrop-dither)
 SIGNAL_LEAD = 150          # ms: a picture change's place in its 5000 ms slot, so the loop's wrap has its lead-in too
 SIGNAL_STEP = 55.0         # ms: how long one arrangement of a fault stands
 # A picture change's fault about the change: (ms, strength). It leads the
@@ -3147,13 +3166,10 @@ def title_document() -> dict:
         # The pictures, dimmed a little so the menu leads, and their light
         # reach the view through a signal: faulting as the picture changes
         # (field-signal) and as the menu opens, leaves for a page and comes
-        # home (field-burst), then an ordered dither over all of it
-        # (field-dither), so a torn row keeps crisp dots. The reticle grid
-        # stays over it, undithered.
+        # home (field-burst). The reticle grid stays over it.
         group("depth-light", {**FULL, "pointer-events": keyword("none")}, [
             group("field-dim", {**FULL, "background-color": colour([0, 0, 0, BACKDROP_DIM])}),
-            *field[:2], signal_layer(doc, "field-signal"), signal_layer(doc, "field-burst"),
-            signal_layer(doc, "field-dither", SIGNAL_DITHER), *field[2:]]),
+            *field[:2], signal_layer(doc, "field-signal"), signal_layer(doc, "field-burst"), *field[2:]]),
         stage,
         group("depth-frame", {**FULL, "pointer-events": keyword("none")}, framing_bands("band")),
         content,
@@ -4637,6 +4653,9 @@ def objectives_page(doc: Document, strogg: bool) -> tuple:
                  modal={"initialFocus": "objectives_scroll", "back": "objectivesHide"})
     for part in ("objectives", "objectives-bar"):
         doc.bind(f"{part}.display", part, "display", {"op": "select", "args": [{"state": visible}, "block", "none"]})
+    # The home's prompt bar fades out over the page but stays over it: while
+    # the page shows, the bar lets the pointer through to the page's Back.
+    doc.bind("prompts.pointer-events", "prompts", "pointer-events", {"op": "select", "args": [{"state": visible}, "none", "auto"]})
     # Choosing OBJECTIVES docks the bands and carries the label as a page
     # hand-off does; the stock entry motion follows at 550 ms. Back fades the
     # page and brings the bands home; the page closes when they arrive, and
@@ -4750,13 +4769,15 @@ def pause_document(strogg: bool = False) -> dict:
         # The Strogg light, crosses and bands.
         field = lit_field("field", 0.55, glow=ST_LIGHT, grid={"tint": rgb(ST_GRID), "arm_u": 5.5})
         bands = framing_bands("band", STROGG_BANDS)
-        prompt = prompt_bar(doc, prompts, cap_tint=rgb(ST_SELECT, 0.85), verb_face=("r_strogg", 14, rgb(ST_READ, 0.8)))
+        prompt = prompt_bar(doc, prompts, cap_tint=rgb(ST_SELECT, 0.85), verb_face=("r_strogg", 14, rgb(ST_READ, 0.8)), hot=ST_SELECT)
         carry = title_carry(doc, carries, face="r_strogg", tint=ST_SELECT)
     else:
         field = lit_field("field", 0.45)
         bands = framing_bands("band")
         prompt = prompt_bar(doc, prompts)
         carry = title_carry(doc, carries)
+    # The Objectives page turns the bar's pointer off while it shows.
+    prompt["properties"]["pointer-events"] = keyword("auto")
     # Everything but the softened view and its stand-in: returning to the
     # game hides it at once (section 8), while the backdrop releases.
     doc.state["pause.released"] = {"type": "boolean", "initial": False}
@@ -4953,8 +4974,11 @@ def loading_document() -> dict:
                                          "bottom" if bottom else "top": U * (54 if bottom else 28),
                                          "width": U * 52, "height": U * 52})
         corners.append(node)
-    brackets = group("brackets", {"display": keyword("block"), **FULL}, corners)
-    doc.bind("brackets.display", "brackets", "display", {"op": "select", "args": [{"state": "loading_intro"}, "none", "block"]})
+    # The leading bracket rides in with the top band, the lower pair with the bottom one.
+    brackets_top = group("brackets-top", {"display": keyword("block"), **FULL}, corners[:1])
+    brackets_bottom = group("brackets-bottom", {"display": keyword("block"), **FULL}, corners[1:])
+    for ident in ("brackets-top", "brackets-bottom"):
+        doc.bind(f"{ident}.display", ident, "display", {"op": "select", "args": [{"state": "loading_intro"}, "none", "block"]})
     # The dot matrix: ten by two 4 u squares on a 9 u pitch, top-leading.
     dots = []
     for column in range(10):
@@ -4980,7 +5004,8 @@ def loading_document() -> dict:
     doc.bind("identity.display", "identity", "display", {"op": "select", "args": [{"state": "loading_intro"}, "none", "block"]})
 
     # Objectives on the leading side, in the objectives display's open plate (section 14.11).
-    objectives = group("objectives", {"display": keyword("block"), **absolute(left=U * 18, top=U * 120, width=U * 250, height=U * 180)}, [
+    objectives = group("objectives", {"display": keyword("block"), "opacity": number(1),
+                                      **absolute(left=U * 18, top=U * 120, width=U * 250, height=U * 180)}, [
         vector("objectives-plate", absolute(left=0, top=0, width=U * 250, height=U * 180), [
             path("fill", [(0, 0), (U * 250, 0), (U * 250, U * 180), (U * 20, U * 180), (0, U * 160)],
                  fill=linear((0, 0), (U * 250, 0), [(0, rgb("#B0CD6B", 0.2)), (0.3, rgb("#B0CD6B", 0.2)), (0.56, rgb("#B0CD6B", 0)), (1, rgb("#B0CD6B", 0))])),
@@ -5040,7 +5065,7 @@ def loading_document() -> dict:
                                              "overflow": keyword("hidden")})]
     server = group("server", {"display": keyword("block"), **FULL, "pointer-events": keyword("none")}, [
         group("server-card", {**absolute(left=U * 18, bottom=720 - U * 384, width=cw), "height": keyword("auto"),
-                              "padding-bottom": length(12)}, [
+                              "padding-bottom": length(12), "opacity": number(1)}, [
             vector("server-frame", {**absolute(left=0, top=0, width=cw), "height": length(100, "%")}, [
                 path("body", outline, fill=solid([0, 0, 0, 0.94])),
                 path("wash", [(minor, 0.75), (cw - major, 0.75), (cw - major + header * 0.3, header), (0.75, header), (0.75, minor)],
@@ -5217,14 +5242,73 @@ def loading_document() -> dict:
     # 250 ms (the runtime's 80 ms under reduced motion) while the card's
     # softening ramps in below. Each load presents it whole again.
     doc.timelines.add("handoff", 250, [track("screen", "opacity", [(0, number(1)), (250, number(0))])])
-    doc.timelines.add("present", 1, [track("screen", "opacity", [(0, number(1)), (1, number(1))])])
+
+    # Framing entrance (section 14.17): the screen presents with the levelshot
+    # alone, its bands parked past the view's edges. When the first frame is
+    # up the session plays frameIn: the bands scroll in from the top and the
+    # bottom, decelerating hard, pass their seat by 2.5 u and lock back; the
+    # top leads the bottom by 40 ms. The furniture each band carries trails
+    # it by 70 ms, a parallax that reads as the frame being drawn in behind
+    # it. As each band locks its inner edge lights in the progress orange and
+    # cools over 300 ms, and the objectives and server card fade in after.
+    # Reduced motion seats the bands at once and skips the light.
+    top_park, bottom_park = transform(ty=-U * 120), transform(ty=U * 140)
+    top_over, bottom_over, seat = transform(ty=U * 2.5), transform(ty=-U * 2.5), transform()
+
+    def flare(ident: str, edge_points: list) -> dict:
+        return vector(ident, {**FULL, "opacity": number(0)}, [
+            path("halo", edge_points, closed=False, blend="additive",
+                 stroke=stroke(solid(rgb(PROGRESS, 0.4)), U * 5, minimum=1, join="round")),
+            path("core", edge_points, closed=False, blend="additive",
+                 stroke=stroke(solid(rgb("#FFC070", 0.8)), U * 0.8, minimum=1, join="miter")),
+        ])
+
+    def framing(ident: str, children: list) -> dict:
+        return group(ident, {**FULL, "transform": transform()}, children)
+
+    frame_top_band = framing("frame-top-band", [top_band, flare("load-top-flare", top_edge)])
+    frame_bottom_band = framing("frame-bottom-band", [bottom_band, flare("load-bottom-flare", bottom_edge)])
+    frame_top = framing("frame-top", [brackets_top, dot_matrix, identity])
+    frame_bottom = framing("frame-bottom", [brackets_bottom, arsenal, tips, progress])
+
+    # A play retargets its first key to the current value, so a 1 ms key
+    # parks each node before it moves, whatever the last load left.
+    def parked_until(lead: int, park: dict) -> list:
+        return [(0, park)] + ([(1, park)] if lead > 1 else []) + [(lead, park, EASE_OUT)]
+
+    def band_keys(lead: int, park: dict, over: dict) -> list:
+        return parked_until(lead, park) + [(lead + 300, over, ACCEL), (lead + 400, seat)]
+
+    def furniture_keys(lead: int, park: dict) -> list:
+        return parked_until(lead, park) + [(lead + 320, seat)]
+
+    def flare_keys(lead: int) -> list:
+        return [(0, number(0)), (lead + 230, number(0)), (lead + 290, number(1)), (lead + 590, number(0))]
+
+    cards_keys = [(0, number(0)), (1, number(0)), (260, number(0)), (460, number(1))]
+    doc.timelines.add("frameIn", 630, [
+        track("frame-top-band", "transform", band_keys(1, top_park, top_over)),
+        track("frame-bottom-band", "transform", band_keys(40, bottom_park, bottom_over)),
+        track("frame-top", "transform", furniture_keys(70, top_park)),
+        track("frame-bottom", "transform", furniture_keys(110, bottom_park)),
+        track("load-top-flare", "opacity", flare_keys(1)),
+        track("load-bottom-flare", "opacity", flare_keys(40)),
+        track("objectives", "opacity", cards_keys),
+        track("server-card", "opacity", cards_keys),
+    ])
+    parked = [("frame-top-band", top_park), ("frame-bottom-band", bottom_park), ("frame-top", top_park), ("frame-bottom", bottom_park)]
+    doc.timelines.add("present", 1, [track("screen", "opacity", [(0, number(1)), (1, number(1))])] +
+                      [track(node, "transform", [(0, value), (1, value)]) for node, value in parked] +
+                      [track(node, "opacity", [(0, number(0)), (1, number(0))])
+                       for node in ("load-top-flare", "load-bottom-flare", "objectives", "server-card")])
     doc.events["handoff"] = [{"op": "playTimeline", "timeline": "handoff"}]
     doc.events["present"] = [{"op": "playTimeline", "timeline": "present"}]
+    doc.events["frameIn"] = [{"op": "playTimeline", "timeline": "frameIn"}]
     root = group("screen", {**FULL, "background-color": colour([0, 0, 0, 1]), "font-family": font("marine"),
                             "font-size": length(16), "color": colour([1, 1, 1, 0.8]), "opacity": number(1)}, [
         shot,
         grid,
-        top_band, bottom_band, brackets, dot_matrix, identity, objectives, server, arsenal, tips, progress,
+        frame_top_band, frame_bottom_band, frame_top, objectives, server, frame_bottom,
     ])
     result = doc.build(root)
     result["canvas"]["minWidth"] = CANVAS_W
@@ -5309,6 +5393,10 @@ def main() -> int:
                  "arena_pause": arena_pause_document(), "audio": audio_document(),
                  "game": game_document(), "controls": controls_document(), "system": system_document(),
                  "settings": settings_page_document()}
+    # The Awakening's in-game menus, carried from the Marine ones.
+    from retained_awakening import AWAKENING_OUTPUTS, awakening_documents
+    documents.update(awakening_documents(documents))
+    OUTPUTS.update(AWAKENING_OUTPUTS)
     # The session's notices (section 13.13) over every retained menu but the
     # loading screen, the Strogg family's pages and the multiplayer cards.
     for name in NOTICE_DOCUMENTS:

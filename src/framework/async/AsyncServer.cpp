@@ -35,6 +35,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "Rcon2Protocol.h"
 
 #include "../Session_local.h"
+#include "../../sys/NetworkEndpoint.h"
 
 #include <cstdint>
 
@@ -68,6 +69,21 @@ const int RETAIL_CHALLENGE_REQUEST_BYTES = 5;
 
 static ID_INLINE bool AsyncServer_SameEndpoint( const netadr_t &left, const netadr_t &right ) {
 	return left.port == right.port && Sys_CompareNetAdrBase( left, right );
+}
+
+// openD3: the source a rate limit counts. An IPv6 host is given a whole /64 and can
+// answer from any address in it, so the limits key on the prefix. IPv4 and a
+// link-local neighbour keep their whole address: every host on a link shares the
+// link-local prefix.
+static ID_INLINE bool AsyncServer_SameRateSource( const netadr_t &left, const netadr_t &right ) {
+	if ( left.type == NA_IP6 && right.type == NA_IP6 ) {
+		const bool linkLocal = left.ip6[ 0 ] == 0xfe && ( left.ip6[ 1 ] & 0xc0 ) == 0x80;
+		if ( linkLocal ) {
+			return Sys_CompareNetAdrBase( left, right );
+		}
+		return idNetworkEndpoint::IPv6PrefixMatches( left.ip6, right.ip6, 64 );
+	}
+	return Sys_CompareNetAdrBase( left, right );
 }
 
 static ID_INLINE std::uint32_t AsyncServer_Elapsed( int now, int then ) {
@@ -118,7 +134,47 @@ static void AsyncServer_ClearChallenges( challenge_t challenges[ MAX_CHALLENGES 
 // dictionary that no longer fits one message is a fatal overflow the next time
 // the server writes it out whole. The game declares 32 user info cvars.
 const int CLIENT_USERINFO_MAX_KEYS		= 128;
-const int CLIENT_USERINFO_MAX_BYTES		= 4096;
+const int CLIENT_USERINFO_MAX_BYTES		= 2048;
+
+// openD3: what a client may spend on user info changes. Every change is sent on to
+// every other client as a reliable message, so five 4 KB changes in one packet filled
+// each of their 16 KiB reliable queues and the server dropped them all, not the
+// sender. A change costs its size; the allowance refills over time, a whole user
+// info still fits it at once, and a client that overspends is the one dropped. The
+// game's own throttle (ThrottleUserInfo) only binds an unmodified client.
+const int CLIENT_USERINFO_BUDGET_BYTES	= 2 * CLIENT_USERINFO_MAX_BYTES;
+const int CLIENT_USERINFO_BUDGET_RATE	= 1024;		// bytes a second
+
+// openD3: reliable game messages a client may send (ready, match requests, stats,
+// kill, drop weapon, chat): thousands fit one packet, each runs game code, several
+// print a console line and some are sent on to every client. An unmodified client
+// sends a handful a second; past the allowance they are discarded.
+const int CLIENT_GAME_MESSAGE_BURST		= 120;
+const int CLIENT_GAME_MESSAGE_RATE		= 60;		// messages a second
+
+// openD3: what a joining client's reliable queue keeps free while the other clients'
+// user info is sent to it (SendPendingUserInfo): room for the synced cvars, the
+// enter-game message and the game's first messages, which follow at once, and
+// for the chat and changes of a busy server after that.
+const int JOIN_USERINFO_RESERVE_BYTES	= 6144;
+const int PENDING_USERINFO_RESERVE_BYTES	= 2048;
+
+// openD3: unreadable packets carrying a client's tag (NoteMalformedPacket)
+const int CLIENT_MALFORMED_MAX			= 8;
+const int CLIENT_MALFORMED_WINDOW_MSEC	= 10000;
+
+// openD3: how long the rest of a fragmented message may run ahead of the rate
+// (idMsgChannel::ReadyToSendFragment): 50 ms of the default 128,000 bytes a second
+// lets a snapshot of up to four fragments leave in the frame it was taken.
+const int SERVER_FRAGMENT_BURST_MSEC	= 50;
+
+// the least time between two game-init messages to one client
+const int GAME_INIT_RESEND_TIME			= 250;
+
+// openD3: a snapshot's report of how early commands arrived (serverClient_t::commandSlack):
+// the value when none came since the last snapshot, and the range it is held to
+const int COMMAND_SLACK_NONE			= 32767;
+const int COMMAND_SLACK_LIMIT			= 30000;
 
 static bool AsyncServer_UserInfoWithinLimits( const idDict &info ) {
 	const int numKeyVals = info.GetNumKeyVals();
@@ -131,6 +187,41 @@ static bool AsyncServer_UserInfoWithinLimits( const idDict &info ) {
 		bytes += keyValue->GetKey().Length() + keyValue->GetValue().Length() + 2;
 	}
 	return bytes <= CLIENT_USERINFO_MAX_BYTES;
+}
+
+/*
+==================
+AsyncServer_SendFragmentBurst
+
+openD3: sends what the rate allows of the message under way, not one fragment a
+frame (idMsgChannel::ReadyToSendFragment).
+==================
+*/
+static void AsyncServer_SendFragmentBurst( idMsgChannel &channel, idPort &port, const int time ) {
+	while ( channel.UnsentFragmentsLeft() && channel.ReadyToSendFragment( time, SERVER_FRAGMENT_BURST_MSEC ) ) {
+		channel.SendNextFragment( port, time );
+	}
+}
+
+/*
+==================
+AsyncServer_SnapshotFrameInterval
+
+openD3: net_serverSnapshotDelay in game frames. The delay used to be compared with
+elapsed milliseconds, and its default of 33 sits exactly on two 60 Hz frames (33 or
+34 ms by the frame ladder). A pass that came a millisecond early read 32 and put the
+snapshot off a frame, so clients got a mix of 33 and 50 ms intervals; on a listen
+server, which tests on every rendered frame, a snapshot could also leave up to a
+frame after the game frame it reports.
+==================
+*/
+static int AsyncServer_SnapshotFrameInterval() {
+	const float frameMsec = common->GetUserCmdMsecFloat();
+	if ( frameMsec <= 0.0f ) {
+		return 1;
+	}
+	const int frames = static_cast<int>( idAsyncNetwork::serverSnapshotDelay.GetInteger() / frameMsec + 0.5f );
+	return idMath::ClampInt( 1, 1000, frames );
 }
 
 // openD3: below this much room in the message channel there is no point building
@@ -189,6 +280,7 @@ idAsyncServer::idAsyncServer( void ) {
 	nextHeartbeatTime = 0;
 	nextAsyncStatsTime = 0;
 	noRconOutput = true;
+	rconCommandExecuted = false;
 	rcon2VerifierInitialized = false;
 	rcon2VerifierValid = false;
 	memset( rcon2Salt, 0, sizeof( rcon2Salt ) );
@@ -523,7 +615,31 @@ void idAsyncServer::ExecuteMapChange( void ) {
 	}
 	serverReloadingEngine = false;
 
+	// openD3: an rcon lockout is a server time and the clock restarts here. A lockout
+	// set late in a long map lasted until the new map's clock reached the old value,
+	// twenty minutes where thirty seconds were meant. Carry over what is left of it.
+	// The windows that count failures and challenges are rebased the same way;
+	// they used to lapse at every change, so a map change reset the counts.
+	for ( int index = 0; index < MAX_RCON_RATE_LIMITS; ++index ) {
+		rconRateLimit_t &limit = rconRateLimits[ index ];
+		if ( !limit.active ) {
+			continue;
+		}
+		if ( limit.blockedUntil != 0 ) {
+			if ( AsyncServer_TimeBefore( serverTime, limit.blockedUntil ) ) {
+				limit.blockedUntil = Max( 1, static_cast<int>( AsyncServer_Elapsed( limit.blockedUntil, serverTime ) ) );
+			} else {
+				limit.blockedUntil = 0;
+			}
+		}
+		limit.challengeWindowStart = -static_cast<int>( AsyncServer_Elapsed( serverTime, limit.challengeWindowStart ) );
+		limit.lastChallengeTime = -static_cast<int>( AsyncServer_Elapsed( serverTime, limit.lastChallengeTime ) );
+		limit.failureWindowStart = -static_cast<int>( AsyncServer_Elapsed( serverTime, limit.failureWindowStart ) );
+	}
 	serverTime = 0;
+	// openD3: server time restarts here; the stats report waited out the whole of
+	// the previous map's time before it printed again.
+	nextAsyncStatsTime = 0;
 
 	// initialize game id and time
 	gameInitId ^= Sys_Milliseconds();	// NOTE: make sure the gameInitId is always a positive number because negative numbers have special meaning
@@ -907,6 +1023,43 @@ void idAsyncServer::DuplicateUsercmds( int frame, int time ) {
 
 /*
 ==================
+idAsyncServer::CountLateUsercmds
+
+openD3: numDuplicatedUsercmds also counts a command copied ahead of a frame and then
+overwritten when the real one arrives in time. This counts only the frames about to
+run on a copy: the frames a client's command reached too late for, when the server
+repeated its last one and a shot fired then took the old aim. com_showAsyncStats
+reports each run of them, with the game time of its frames, and the count per second.
+==================
+*/
+void idAsyncServer::CountLateUsercmds( int frame ) {
+	const bool counting = com_showAsyncStats.GetBool();
+	const usercmd_t *frameCmds = userCmds[frame & ( MAX_USERCMD_BACKUP - 1 )];
+	for ( int i = 0; i < MAX_ASYNC_CLIENTS; i++ ) {
+		serverClient_t &client = clients[i];
+		if ( !counting || client.clientState != SCS_INGAME || i == localClientNum ||
+			 client.channel.GetRemoteAddress().type == NA_BOT ) {
+			client.lateUsercmdsFrom = -1;
+			continue;
+		}
+		if ( frameCmds[i].duplicateCount > 0 ) {
+			client.statsLateUsercmds++;
+			if ( client.lateUsercmdsFrom < 0 ) {
+				client.lateUsercmdsFrom = frame;
+			}
+			continue;
+		}
+		if ( client.lateUsercmdsFrom >= 0 ) {
+			common->Printf( "client %d: frames %d-%d (game time %d-%d) ran on a repeated command\n", i,
+				client.lateUsercmdsFrom, frame - 1, client.lateUsercmdsFrom * common->GetUserCmdMSec(),
+				( frame - 1 ) * common->GetUserCmdMSec() );
+		}
+		client.lateUsercmdsFrom = -1;
+	}
+}
+
+/*
+==================
 idAsyncServer::ClearClient
 ==================
 */
@@ -923,6 +1076,17 @@ void idAsyncServer::ClearClient( int clientNum ) {
 	client.gameFrame = 0;
 	client.gameTime = 0;
 	client.deferredServerInfo = false;
+	client.gameBegun = false;
+	client.commandSlack = COMMAND_SLACK_NONE;
+	client.lastGameInitTime = 0;
+	client.userInfoBudget = CLIENT_USERINFO_BUDGET_BYTES;
+	client.userInfoBudgetTime = 0;
+	client.gameMessageBudget = CLIENT_GAME_MESSAGE_BURST;
+	client.gameMessageBudgetTime = 0;
+	client.gameMessagesDiscarded = 0;
+	client.malformedCount = 0;
+	client.malformedWindowStart = 0;
+	client.pendingUserInfo = 0;
 	client.channel.Shutdown();
 	client.lastConnectTime = 0;
 	client.lastEmptyTime = 0;
@@ -937,6 +1101,8 @@ void idAsyncServer::ClearClient( int clientNum ) {
 	client.statsSnapshotsSent = 0;
 	client.statsSnapshotBytes = 0;
 	client.statsSendsRefusedByRate = 0;
+	client.statsLateUsercmds = 0;
+	client.lateUsercmdsFrom = -1;
 }
 
 /*
@@ -961,7 +1127,23 @@ void idAsyncServer::InitClient( int clientNum, int clientId, int clientRate ) {
 	client.gameFrame = 0;
 	client.gameTime = 0;
 	client.deferredServerInfo = false;
+	client.gameBegun = false;
+	client.commandSlack = COMMAND_SLACK_NONE;
+	client.lastGameInitTime = serverTime - GAME_INIT_RESEND_TIME;
+	client.userInfoBudget = CLIENT_USERINFO_BUDGET_BYTES;
+	client.userInfoBudgetTime = serverTime;
+	client.gameMessageBudget = CLIENT_GAME_MESSAGE_BURST;
+	client.gameMessageBudgetTime = serverTime;
+	client.gameMessagesDiscarded = 0;
+	client.malformedCount = 0;
+	client.malformedWindowStart = serverTime;
+	client.pendingUserInfo = 0;
 	client.channel.ResetRate();
+	// openD3: the rate comes off the wire. A negative one became the channel's rate
+	// as it stood and held that client to about a packet a second.
+	if ( clientRate < 0 ) {
+		clientRate = 0;
+	}
 	client.clientRate = clientRate ? clientRate : idAsyncNetwork::serverMaxClientRate.GetInteger();
 	client.channel.SetMaxOutgoingRate( Min( idAsyncNetwork::serverMaxClientRate.GetInteger(), client.clientRate ) );
 	client.clientPing = 0;
@@ -977,6 +1159,8 @@ void idAsyncServer::InitClient( int clientNum, int clientId, int clientRate ) {
 	client.lastInputTime = serverTime;
 	client.acknowledgeSnapshotSequence = 0;
 	client.numDuplicatedUsercmds = 0;
+	client.statsLateUsercmds = 0;
+	client.lateUsercmdsFrom = -1;
 
 	// clear the user commands
 	for ( i = 0; i < MAX_USERCMD_BACKUP; i++ ) {
@@ -1050,6 +1234,34 @@ void idAsyncServer::LocalClientInput( void ) {
 
 /*
 ==================
+idAsyncServer::NoteMalformedPacket
+
+openD3: a packet carrying a client's tag that cannot be read. Each used to print
+a line and the client was never dropped. Only the client, or someone who guessed
+its 16-bit tag, can send one, so a short run of them drops the client, and a lone
+one does not hand a guesser a way to kick a player.
+==================
+*/
+void idAsyncServer::NoteMalformedPacket( int clientNum ) {
+	serverClient_t &client = clients[ clientNum ];
+	if ( client.clientState <= SCS_ZOMBIE ) {
+		return;
+	}
+	if ( client.malformedCount == 0 ||
+		AsyncServer_Elapsed( serverTime, client.malformedWindowStart ) >= CLIENT_MALFORMED_WINDOW_MSEC ) {
+		client.malformedWindowStart = serverTime;
+		client.malformedCount = 0;
+	}
+	client.malformedCount++;
+	if ( client.malformedCount >= CLIENT_MALFORMED_MAX ) {
+		common->Printf( "client %d sent %d unreadable packets in %d seconds\n", clientNum,
+			client.malformedCount, CLIENT_MALFORMED_WINDOW_MSEC / 1000 );
+		DropClient( clientNum, "#str_07138" );
+	}
+}
+
+/*
+==================
 idAsyncServer::DropClient
 ==================
 */
@@ -1076,6 +1288,10 @@ void idAsyncServer::DropClient( int clientNum, const char *reason ) {
 	// state makes every slot's teardown an exactly-once operation.
 	const serverClientState_t priorState = client.clientState;
 	client.clientState = SCS_ZOMBIE;
+	client.pendingUserInfo = 0;
+	for ( i = 0; i < MAX_ASYNC_CLIENTS; i++ ) {
+		clients[ i ].pendingUserInfo &= ~( 1u << clientNum );
+	}
 
 	if ( priorState >= SCS_PUREWAIT && clientNum != localClientNum ) {
 		msg.Init( msgBuf, sizeof( msgBuf ) );
@@ -1114,6 +1330,25 @@ void idAsyncServer::SendReliableMessage( int clientNum, const idBitMsg &msg ) {
 // jmarshall end
 
 	if ( !clients[ clientNum ].channel.SendReliableMessage( msg ) ) {
+		// openD3: the queue is cleared to make room for the disconnect message, which
+		// restarts its numbering, and a client that had already taken reliable
+		// messages waits for a later number: it never read the message, sat frozen
+		// until the slot was freed and then got a disconnect with no reason. Tell it
+		// outside the channel as well.
+		if ( clients[ clientNum ].clientState > SCS_ZOMBIE ) {
+			const netadr_t to = clients[ clientNum ].channel.GetRemoteAddress();
+			idBitMsg	outMsg;
+			byte		msgBuf[ 64 ];
+
+			PrintOOB( to, SERVER_PRINT_MISC, "#str_07136" );
+			outMsg.Init( msgBuf, sizeof( msgBuf ) );
+			outMsg.WriteShort( CONNECTIONLESS_MESSAGE_ID );
+			outMsg.WriteString( "disconnect" );
+			// the connection's key: a client honours this at once only with it
+			// (idAsyncClient::ProcessDisconnectMessage)
+			outMsg.WriteLong( clients[ clientNum ].channel.GetKey() );
+			serverPort.SendPacket( to, outMsg.GetData(), outMsg.GetSize() );
+		}
 		clients[ clientNum ].channel.ClearReliableMessages();
 		DropClient( clientNum, "#str_07136" );
 	}
@@ -1261,6 +1496,11 @@ void idAsyncServer::SendUserInfoBroadcast( int userInfoNum, const idDict &info, 
 
 	for ( int i = 0; i < MAX_ASYNC_CLIENTS; i++ ) {
 		if ( clients[i].clientState >= SCS_CONNECTED && ( sendToAll || i != userInfoNum || gameModifiedInfo ) ) {
+			// openD3: a client still waiting for this user info gets it whole, as it
+			// is then, and has no copy a delta could apply to
+			if ( clients[i].pendingUserInfo & ( 1u << userInfoNum ) ) {
+				continue;
+			}
 			SendReliableMessage( i, msg );
 		}
 	}
@@ -1314,6 +1554,54 @@ void idAsyncServer::SendUserInfoToClient( int clientNum, int userInfoNum, const 
 	msg.WriteDeltaDict( info, NULL );
 
 	SendReliableMessage( clientNum, msg );
+}
+
+/*
+==================
+idAsyncServer::SendPendingUserInfo
+
+openD3: sends a client the other clients' user info it is still owed, while its
+reliable queue keeps reserveBytes free. The rest waits for a later frame.
+==================
+*/
+void idAsyncServer::SendPendingUserInfo( int clientNum, int reserveBytes ) {
+	serverClient_t &client = clients[ clientNum ];
+	if ( client.clientState < SCS_CONNECTED || clientNum == localClientNum ||
+		client.channel.GetRemoteAddress().type == NA_BOT ) {
+		client.pendingUserInfo = 0;
+		return;
+	}
+
+	for ( int i = 0; i < MAX_ASYNC_CLIENTS && client.pendingUserInfo != 0; i++ ) {
+		const unsigned int bit = 1u << i;
+		if ( ( client.pendingUserInfo & bit ) == 0 ) {
+			continue;
+		}
+		if ( clients[ i ].clientState < SCS_CONNECTED ) {
+			client.pendingUserInfo &= ~bit;
+			continue;
+		}
+
+		idBitMsg	msg;
+		byte		msgBuf[ MAX_MESSAGE_SIZE ];
+		msg.Init( msgBuf, sizeof( msgBuf ) );
+		msg.WriteByte( SERVER_RELIABLE_MESSAGE_CLIENTINFO );
+		msg.WriteByte( i );
+		msg.WriteBits( 0, 1 );
+#if ID_CLIENTINFO_TAGS
+		msg.WriteLong( 0 );
+#endif
+		msg.WriteDeltaDict( sessLocal.mapSpawnData.userInfo[ i ], NULL );
+
+		if ( client.channel.GetReliableSpaceLeft() < msg.GetSize() + 8 + reserveBytes ) {
+			return;
+		}
+		client.pendingUserInfo &= ~bit;
+		SendReliableMessage( clientNum, msg );
+		if ( client.clientState < SCS_CONNECTED ) {
+			return;
+		}
+	}
 }
 
 /*
@@ -1519,6 +1807,7 @@ void idAsyncServer::SendGameInitToClient( int clientNum ) {
 	msg.WriteLong( gameTime );
 	msg.WriteDeltaDict( sessLocal.mapSpawnData.serverInfo, NULL );
 	client.gameInitSequence = client.channel.SendMessage( serverPort, serverTime, msg );
+	client.lastGameInitTime = serverTime;
 }
 
 /*
@@ -1535,7 +1824,10 @@ bool idAsyncServer::SendSnapshotToClient( int clientNum ) {
 
 	serverClient_t &client = clients[clientNum];
 
-	if ( serverTime - client.lastSnapshotTime < idAsyncNetwork::serverSnapshotDelay.GetInteger() ) {
+	// openD3: paced in game frames (AsyncServer_SnapshotFrameInterval). A frame number
+	// from before a restart reads as due.
+	const int framesSinceSnapshot = gameFrame - client.lastSnapshotGameFrame;
+	if ( framesSinceSnapshot >= 0 && framesSinceSnapshot < AsyncServer_SnapshotFrameInterval() ) {
 		return false;
 	}
 
@@ -1578,6 +1870,9 @@ bool idAsyncServer::SendSnapshotToClient( int clientNum ) {
 	msg.WriteLong( gameTime );
 	msg.WriteByte( idMath::ClampChar( client.numDuplicatedUsercmds ) );
 	msg.WriteShort( idMath::ClampShort( client.clientAheadTime ) );
+	// openD3: how early this client's commands arrived (commandSlack), protocol 2.42
+	msg.WriteShort( client.commandSlack );
+	client.commandSlack = COMMAND_SLACK_NONE;
 
 	// write the game snapshot
 	game->ServerWriteSnapshot( clientNum, client.snapshotSequence, msg, clientInPVS, MAX_ASYNC_CLIENTS );
@@ -1674,6 +1969,22 @@ void idAsyncServer::ProcessUnreliableClientMessage( int clientNum, const idBitMs
 	// check if the client is in the right game
 	if ( clientGameInitId != gameInitId ) {
 		if ( acknowledgeSequence > client.gameInitSequence ) {
+			// openD3: a map change puts every client back to SCS_CONNECTED before it
+			// sends the new game-init, so a client the game already holds never
+			// reports another game. One that did was set back to SCS_CONNECTED here,
+			// and its next ordinary packet began it again: ServerClientBegin spawned
+			// a second player over the first, which stayed in the world thinking on
+			// the same commands, once for every repeat.
+			if ( client.clientState == SCS_INGAME || client.gameBegun ) {
+				common->Printf( "client %d reports another game while in this one\n", clientNum );
+				DropClient( clientNum, "#str_07138" );
+				return;
+			}
+			// the acknowledgement is the client's word, so pace the resends
+			if ( serverTime >= client.lastGameInitTime && serverTime - client.lastGameInitTime < GAME_INIT_RESEND_TIME ) {
+				return;
+			}
+
 			// the client is connected but not in the right game
 			client.clientState = SCS_CONNECTED;
 
@@ -1708,23 +2019,46 @@ void idAsyncServer::ProcessUnreliableClientMessage( int clientNum, const idBitMs
 
 	if ( client.clientState == SCS_CONNECTED ) {
 
+		// openD3: the game begins a client once for each connect (see the wrong-game
+		// branch above; a pure message from a client in the game led here as well)
+		if ( client.gameBegun ) {
+			common->Printf( "client %d asks to enter a game it is already in\n", clientNum );
+			DropClient( clientNum, "#str_07138" );
+			return;
+		}
+
 		// the client is in the right game
 		client.clientState = SCS_INGAME;
 		client.deferredServerInfo = false;
 
 		// send the user info of other clients
+		// openD3: all of it went into the reliable queue in this frame. Thirty-one
+		// user infos near the 2 KiB limit are four times the 16 KiB queue, and an
+		// overflow drops the joiner. What the queue can take goes now; the rest
+		// follows as acknowledgements free room (RunFrame), each copy current
+		// when it leaves.
+		client.pendingUserInfo = 0;
 		for ( i = 0; i < MAX_ASYNC_CLIENTS; i++ ) {
 			if ( clients[i].clientState >= SCS_CONNECTED && i != clientNum ) {
-				SendUserInfoToClient( clientNum, i, sessLocal.mapSpawnData.userInfo[i] );
+				client.pendingUserInfo |= 1u << i;
 			}
 		}
+		SendPendingUserInfo( clientNum, JOIN_USERINFO_RESERVE_BYTES );
 
 		// send synchronized cvars to client
 		SendSyncedCvarsToClient( clientNum, sessLocal.mapSpawnData.syncedCVars );
 
 		SendEnterGameToClient( clientNum );
 
+		// openD3: any of the sends above drops the client when its reliable queue
+		// overflows, and the game was then told to begin a player it had just been
+		// told to disconnect; that player stayed until the slot was used again.
+		if ( client.clientState != SCS_INGAME ) {
+			return;
+		}
+
 		// get the client running in the game
+		client.gameBegun = true;
 		game->ServerClientBegin( clientNum );
 
 		// write any reliable messages to initialize the client game state
@@ -1818,6 +2152,21 @@ void idAsyncServer::ProcessUnreliableClientMessage( int clientNum, const idBitMs
 			if ( last ) {
 				client.gameFrame = last->gameFrame;
 				client.gameTime = last->gameTime;
+
+				// openD3: how long before the server needs it the newest command arrived,
+				// in milliseconds, at the moment it arrived; the least since the last
+				// snapshot goes out with the next one. clientAheadTime above is taken when
+				// a snapshot is built, right after a game frame on a dedicated server, so
+				// it only ever reads whole frames, and the client holds two frames of cover
+				// against that (PredictionMargin.h). This is the figure a client needs to
+				// hold less; nothing steers by it yet.
+				const std::int64_t slack = static_cast<std::int64_t>( client.gameTime ) -
+					static_cast<std::int64_t>( gameTime ) - static_cast<std::int64_t>( gameTimeResidual );
+				const int clamped = slack < -COMMAND_SLACK_LIMIT ? -COMMAND_SLACK_LIMIT :
+					( slack > COMMAND_SLACK_LIMIT ? COMMAND_SLACK_LIMIT : static_cast<int>( slack ) );
+				if ( client.commandSlack == COMMAND_SLACK_NONE || clamped < client.commandSlack ) {
+					client.commandSlack = clamped;
+				}
 			}
 
 			if ( idAsyncNetwork::verbose.GetInteger() == 2 ) {
@@ -1826,7 +2175,10 @@ void idAsyncServer::ProcessUnreliableClientMessage( int clientNum, const idBitMs
 			break;
 		}
 		default: {
-			common->Printf( "unknown unreliable message %d from client %d\n", id, clientNum );
+			if ( idAsyncNetwork::verbose.GetBool() ) {
+				common->Printf( "unknown unreliable message %d from client %d\n", id, clientNum );
+			}
+			NoteMalformedPacket( clientNum );
 			break;
 		}
 	}
@@ -1871,13 +2223,25 @@ void idAsyncServer::ProcessReliableClientMessages( int clientNum ) {
 					DropClient( clientNum, "#str_07138" );
 					return;
 				}
+				// openD3: see CLIENT_USERINFO_BUDGET_BYTES
+				{
+					const int elapsed = idMath::ClampInt( 0, 60000, serverTime - client.userInfoBudgetTime );
+					client.userInfoBudgetTime = serverTime;
+					client.userInfoBudget = Min( CLIENT_USERINFO_BUDGET_BYTES,
+						client.userInfoBudget + elapsed * CLIENT_USERINFO_BUDGET_RATE / 1000 );
+					client.userInfoBudget -= msg.GetSize();
+					if ( client.userInfoBudget < 0 ) {
+						common->Printf( "client %d changes its user info too fast\n", clientNum );
+						DropClient( clientNum, "#str_07138" );
+						return;
+					}
+				}
 				SendUserInfoBroadcast( clientNum, info );
 				break;
 			}
 			case CLIENT_RELIABLE_MESSAGE_PRINT: {
-				char string[MAX_STRING_CHARS];
-				msg.ReadString( string, sizeof( string ) );
-				common->Printf( "%s\n", string );
+				// openD3: no client sends this. It printed whatever a client supplied to
+				// the server console and log, about two thousand lines a packet.
 				break;
 			}
 			case CLIENT_RELIABLE_MESSAGE_DISCONNECT: {
@@ -1890,6 +2254,22 @@ void idAsyncServer::ProcessReliableClientMessages( int clientNum ) {
 				break;
 			}
 			default: {
+				// openD3: see CLIENT_GAME_MESSAGE_BURST
+				{
+					const int elapsed = idMath::ClampInt( 0, 60000, serverTime - client.gameMessageBudgetTime );
+					const int earned = elapsed * CLIENT_GAME_MESSAGE_RATE / 1000;
+					if ( earned > 0 ) {
+						client.gameMessageBudgetTime = serverTime;
+						client.gameMessageBudget = Min( CLIENT_GAME_MESSAGE_BURST, client.gameMessageBudget + earned );
+					}
+					if ( client.gameMessageBudget <= 0 ) {
+						if ( ( client.gameMessagesDiscarded++ & 1023 ) == 0 ) {
+							common->Printf( "client %d sends reliable game messages too fast; discarding them\n", clientNum );
+						}
+						break;
+					}
+					client.gameMessageBudget--;
+				}
 				// pass reliable message on to game code
 				game->ServerProcessReliableMessage( clientNum, msg );
 				break;
@@ -2007,7 +2387,7 @@ bool idAsyncServer::AllowConnectionlessResponse( const netadr_t from, bool infoR
 	std::uint32_t oldestAge = 0;
 	for ( int index = 0; index < MAX_OOB_RATE_LIMITS; ++index ) {
 		if ( oobRateLimits[ index ].active &&
-			Sys_CompareNetAdrBase( from, oobRateLimits[ index ].address ) ) {
+			AsyncServer_SameRateSource( from, oobRateLimits[ index ].address ) ) {
 			slot = index;
 			break;
 		}
@@ -2117,38 +2497,76 @@ bool idAsyncServer::RefreshRcon2Verifier( void ) {
 
 /*
 ==================
+idAsyncServer::RconLimitIsPenalised
+==================
+*/
+bool idAsyncServer::RconLimitIsPenalised( const rconRateLimit_t &limit ) const {
+	if ( limit.blockedUntil != 0 && AsyncServer_TimeBefore( serverTime, limit.blockedUntil ) ) {
+		return true;
+	}
+	return limit.failureCount > 0 &&
+		AsyncServer_Elapsed( serverTime, limit.failureWindowStart ) < RCON2_FAILURE_WINDOW_MSEC;
+}
+
+/*
+==================
+idAsyncServer::RconRateSlot
+
+openD3: the source's rate entry, made when allocate is set. An entry holding
+failures or a lockout is never handed to another source. Evicting one between a
+challenge and its proof, by asking for challenges from enough other sources,
+meant failed proofs were never counted. When every entry carries failures, a new
+source is refused (-1) until one of them runs out.
+==================
+*/
+int idAsyncServer::RconRateSlot( const netadr_t from, bool allocate ) {
+	int victim = -1;
+	bool victimFree = false;
+	std::uint32_t victimAge = 0;
+	for ( int index = 0; index < MAX_RCON_RATE_LIMITS; ++index ) {
+		const rconRateLimit_t &limit = rconRateLimits[ index ];
+		if ( limit.active && AsyncServer_SameRateSource( from, limit.address ) ) {
+			return index;
+		}
+		if ( victimFree ) {
+			continue;
+		}
+		if ( !limit.active ) {
+			victim = index;
+			victimFree = true;
+			continue;
+		}
+		if ( RconLimitIsPenalised( limit ) ) {
+			continue;
+		}
+		const std::uint32_t age = AsyncServer_Elapsed( serverTime, limit.lastChallengeTime );
+		if ( victim < 0 || age > victimAge ) {
+			victim = index;
+			victimAge = age;
+		}
+	}
+	if ( !allocate || victim < 0 ) {
+		return -1;
+	}
+	rconRateLimit_t &limit = rconRateLimits[ victim ];
+	memset( &limit, 0, sizeof( limit ) );
+	limit.active = true;
+	limit.address = from;
+	limit.challengeWindowStart = serverTime;
+	limit.lastChallengeTime = serverTime;
+	limit.failureWindowStart = serverTime;
+	return victim;
+}
+
+/*
+==================
 idAsyncServer::AllowRconChallenge
 ==================
 */
 bool idAsyncServer::AllowRconChallenge( const netadr_t from ) {
-	int slot = -1;
-	int oldest = 0;
-	std::uint32_t oldestAge = 0;
-	for ( int index = 0; index < MAX_RCON_RATE_LIMITS; ++index ) {
-		if ( rconRateLimits[ index ].active &&
-			Sys_CompareNetAdrBase( from, rconRateLimits[ index ].address ) ) {
-			slot = index;
-			break;
-		}
-		if ( !rconRateLimits[ index ].active ) {
-			oldest = index;
-			oldestAge = static_cast<std::uint32_t>( -1 );
-		} else {
-			const std::uint32_t age = AsyncServer_Elapsed( serverTime,
-				rconRateLimits[ index ].challengeWindowStart );
-			if ( oldestAge != static_cast<std::uint32_t>( -1 ) && age > oldestAge ) {
-				oldest = index;
-				oldestAge = age;
-			}
-		}
-	}
+	const int slot = RconRateSlot( from, true );
 	if ( slot < 0 ) {
-		slot = oldest;
-		memset( &rconRateLimits[ slot ], 0, sizeof( rconRateLimits[ slot ] ) );
-		rconRateLimits[ slot ].active = true;
-		rconRateLimits[ slot ].address = from;
-		rconRateLimits[ slot ].challengeWindowStart = serverTime;
-		rconRateLimits[ slot ].failureWindowStart = serverTime;
+		return false;
 	}
 
 	rconRateLimit_t &limit = rconRateLimits[ slot ];
@@ -2175,48 +2593,43 @@ bool idAsyncServer::AllowRconChallenge( const netadr_t from ) {
 }
 
 bool idAsyncServer::AllowRconProofAttempt( const netadr_t from ) {
-	for ( int index = 0; index < MAX_RCON_RATE_LIMITS; ++index ) {
-		if ( rconRateLimits[ index ].active &&
-			Sys_CompareNetAdrBase( from, rconRateLimits[ index ].address ) ) {
-			rconRateLimit_t &limit = rconRateLimits[ index ];
-			if ( limit.blockedUntil == 0 ) {
-				return true;
-			}
-			if ( AsyncServer_TimeBefore( serverTime, limit.blockedUntil ) ) {
-				return false;
-			}
-			limit.blockedUntil = 0;
-			return true;
-		}
+	// A proof whose failure could not be counted is not tried.
+	const int slot = RconRateSlot( from, true );
+	if ( slot < 0 ) {
+		return false;
 	}
+	rconRateLimit_t &limit = rconRateLimits[ slot ];
+	if ( limit.blockedUntil == 0 ) {
+		return true;
+	}
+	if ( AsyncServer_TimeBefore( serverTime, limit.blockedUntil ) ) {
+		return false;
+	}
+	limit.blockedUntil = 0;
 	return true;
 }
 
 void idAsyncServer::RecordRconFailure( const netadr_t from ) {
-	// Ensure a rate slot exists without allowing the failure to bypass a full
-	// table. A proof can only reach this point after a challenge used this path.
-	for ( int index = 0; index < MAX_RCON_RATE_LIMITS; ++index ) {
-		rconRateLimit_t &limit = rconRateLimits[ index ];
-		if ( !limit.active || !Sys_CompareNetAdrBase( from, limit.address ) ) {
-			continue;
-		}
-		if ( AsyncServer_Elapsed( serverTime, limit.failureWindowStart ) >= RCON2_FAILURE_WINDOW_MSEC ) {
-			limit.failureWindowStart = serverTime;
-			limit.failureCount = 0;
-		}
-		limit.failureCount++;
-		if ( limit.failureCount >= RCON2_FAILURE_MAX_ATTEMPTS ) {
-			limit.blockedUntil = static_cast<int>( static_cast<std::uint32_t>( serverTime ) +
-				static_cast<std::uint32_t>( RCON2_FAILURE_BLOCK_MSEC ) );
-			for ( int challengeIndex = 0; challengeIndex < MAX_RCON2_CHALLENGES; ++challengeIndex ) {
-				if ( rcon2Challenges[ challengeIndex ].active &&
-					Sys_CompareNetAdrBase( from, rcon2Challenges[ challengeIndex ].address ) ) {
-					idCrypto::SecureZero( &rcon2Challenges[ challengeIndex ],
-						sizeof( rcon2Challenges[ challengeIndex ] ) );
-				}
+	const int slot = RconRateSlot( from, true );
+	if ( slot < 0 ) {
+		return;
+	}
+	rconRateLimit_t &limit = rconRateLimits[ slot ];
+	if ( AsyncServer_Elapsed( serverTime, limit.failureWindowStart ) >= RCON2_FAILURE_WINDOW_MSEC ) {
+		limit.failureWindowStart = serverTime;
+		limit.failureCount = 0;
+	}
+	limit.failureCount++;
+	if ( limit.failureCount >= RCON2_FAILURE_MAX_ATTEMPTS ) {
+		limit.blockedUntil = static_cast<int>( static_cast<std::uint32_t>( serverTime ) +
+			static_cast<std::uint32_t>( RCON2_FAILURE_BLOCK_MSEC ) );
+		for ( int challengeIndex = 0; challengeIndex < MAX_RCON2_CHALLENGES; ++challengeIndex ) {
+			if ( rcon2Challenges[ challengeIndex ].active &&
+				AsyncServer_SameRateSource( from, rcon2Challenges[ challengeIndex ].address ) ) {
+				idCrypto::SecureZero( &rcon2Challenges[ challengeIndex ],
+					sizeof( rcon2Challenges[ challengeIndex ] ) );
 			}
 		}
-		return;
 	}
 }
 
@@ -2489,10 +2902,12 @@ void idAsyncServer::ProcessConnectMessage( const netadr_t from, const idBitMsg &
 		}
 	}
 
+	// openD3: a connect that proves its challenge is not charged to the reply
+	// budget. It came from the address the challenge was sent to, so it cannot be
+	// a reflection, and charging it let a flood of spoofed challenge requests,
+	// or of challenges from the client's own address, turn real players away.
+	// ValidateChallenge charges the failures.
 	if ( ( ichallenge = ValidateChallenge( from, challenge, clientId ) ) == -1 ) {
-		return;
-	}
-	if ( !AllowConnectionlessResponse( from, false ) ) {
 		return;
 	}
 
@@ -2636,8 +3051,17 @@ void idAsyncServer::ProcessConnectMessage( const netadr_t from, const idBitMsg &
 		}
 
 		if ( clientNum < MAX_ASYNC_CLIENTS ) {
+			// openD3: a connect from the address of a client still in its slot (a
+			// reconnect whose disconnect was lost) took the slot over without the
+			// game hearing that the old client left. Its snapshot bases stayed, so
+			// the first snapshot was a delta against states the new client never
+			// had and ended its session as malformed, and the old player was never
+			// removed from the match.
+			if ( clients[ clientNum ].clientState >= SCS_PUREWAIT ) {
+				DropClient( clientNum, "#str_07138" );
+			}
 			// initialize
-			clients[ clientNum ].channel.Init( from, serverId );
+			clients[ clientNum ].channel.Init( from, serverId, challenge );
 			clients[ clientNum ].OS = OS;
 			idStr::Copynz( clients[ clientNum ].guid, guid, sizeof( clients[ clientNum ].guid ) );
 			break;
@@ -2802,6 +3226,12 @@ void idAsyncServer::ProcessReliablePure( int clientNum, const idBitMsg &msg ) {
 		outMsg.Init( msgBuf, sizeof( msgBuf ) );
 		outMsg.WriteByte( SERVER_RELIABLE_MESSAGE_RELOAD );
 		SendReliableMessage( clientNum, outMsg );
+		// openD3: a client the game holds must leave it first; asleep in SCS_CONNECTED
+		// its next ordinary packet began it a second time.
+		if ( clients[ clientNum ].clientState == SCS_INGAME || clients[ clientNum ].gameBegun ) {
+			DropClient( clientNum, "#str_07138" );
+			return;
+		}
 		// go back to SCS_CONNECTED to sleep on the client until it goes away for a reconnect
 		clients[ clientNum ].clientState = SCS_CONNECTED;
 		return;
@@ -2858,6 +3288,7 @@ void idAsyncServer::ExecuteRemoteConsoleCommand( const netadr_t from, const char
 
 	rconAddress = from;
 	noRconOutput = true;
+	rconCommandExecuted = true;
 	common->BeginRedirect( (char *)msgBuf, sizeof( msgBuf ), RConRedirect );
 	cmdSystem->BufferCommandText( CMD_EXEC_NOW, command );
 	common->EndRedirect();
@@ -3087,13 +3518,10 @@ void idAsyncServer::ProcessRemoteConsole2Message( const netadr_t from, const idB
 		RecordRconFailure( from );
 		PrintOOB( from, SERVER_PRINT_MISC, "#str_04847" );
 	} else {
-		for ( int index = 0; index < MAX_RCON_RATE_LIMITS; ++index ) {
-			if ( rconRateLimits[ index ].active &&
-				Sys_CompareNetAdrBase( from, rconRateLimits[ index ].address ) ) {
-				rconRateLimits[ index ].failureCount = 0;
-				rconRateLimits[ index ].failureWindowStart = serverTime;
-				break;
-			}
+		const int slot = RconRateSlot( from, false );
+		if ( slot >= 0 ) {
+			rconRateLimits[ slot ].failureCount = 0;
+			rconRateLimits[ slot ].failureWindowStart = serverTime;
 		}
 		ExecuteRemoteConsoleCommand( from, command, true );
 	}
@@ -3229,17 +3657,22 @@ bool idAsyncServer::ConnectionlessMessage( const netadr_t from, const idBitMsg &
 	}
 
 	// remote console
+	// openD3: the frame ends early only when a command ran. Every rcon packet used to
+	// end it, accepted or not, so a stream of refused ones kept the server from
+	// reaching its game frames.
 	if ( idStr::Icmp( string, "rcon" ) == 0 ) {
+		rconCommandExecuted = false;
 		ProcessRemoteConsoleMessage( from, msg );
-		return true;
+		return rconCommandExecuted;
 	}
 	if ( idStr::Icmp( string, "rcon2Challenge" ) == 0 ) {
 		ProcessRemoteConsole2ChallengeMessage( from, msg );
 		return false;
 	}
 	if ( idStr::Icmp( string, "rcon2" ) == 0 ) {
+		rconCommandExecuted = false;
 		ProcessRemoteConsole2Message( from, msg );
-		return true;
+		return rconCommandExecuted;
 	}
 
 	if ( !active ) {
@@ -3274,12 +3707,14 @@ bool idAsyncServer::ConnectionlessMessage( const netadr_t from, const idBitMsg &
 	
 	// auth server
 	if ( idStr::Icmp( string, "auth" ) == 0 ) {
+		// openD3: developer prints. Anyone can send this packet, and a line a packet
+		// on the console and in the log file is a flood.
 		if ( !Sys_CompareNetAdrBase( from, idAsyncNetwork::GetMasterAddress() ) ) {
-			common->Printf( "auth: bad source %s\n", Sys_NetAdrToString( from ) );
+			common->DPrintf( "auth: bad source %s\n", Sys_NetAdrToString( from ) );
 			return false;
 		}
 		if ( idAsyncNetwork::LANServer.GetBool() ) {
-			common->Printf( "auth message from master. net_LANServer is enabled, ignored.\n" );
+			common->DPrintf( "auth message from master. net_LANServer is enabled, ignored.\n" );
 		}
 		ProcessAuthMessage( msg );
 		return false;
@@ -3326,6 +3761,9 @@ bool idAsyncServer::ProcessMessage( const netadr_t from, idBitMsg &msg ) {
 
 		// make sure it is a valid, in sequence packet
 		if ( !client.channel.Process( from, serverTime, msg, sequence ) ) {
+			if ( client.channel.LastPacketMalformed() ) {
+				NoteMalformedPacket( i );
+			}
 			return false;		// out of order, duplicated, fragment, etc.
 		}
 
@@ -3533,6 +3971,14 @@ void idAsyncServer::RunFrame( bool allowBlocking ) {
 			// Foreground listen-server play polls instead of blocking so the render loop can
 			// present repeated-state frames between authoritative server game ticks.
 			newPacket = serverPort.GetPacketBlocking( from, msgBuf, size, sizeof( msgBuf ), packetTimeout );
+
+			// openD3: read the clock before the packet is handled. A dedicated server
+			// waits in GetPacketBlocking, and the time it handled the packet with was
+			// from before the wait: a ping reply read up to a frame short, which also
+			// lowers what lag compensation allows that client.
+			msec = UpdateTime( 100 );
+			gameTimeResidual += msec;
+
 			if ( newPacket ) {
 				msg.Init( msgBuf, sizeof( msgBuf ) );
 				msg.SetSize( size );
@@ -3541,9 +3987,6 @@ void idAsyncServer::RunFrame( bool allowBlocking ) {
 					return;	// return because rcon was used
 				}
 			}
-
-			msec = UpdateTime( 100 );
-			gameTimeResidual += msec;
 
 		} while( newPacket );
 
@@ -3600,6 +4043,7 @@ void idAsyncServer::RunFrame( bool allowBlocking ) {
 
 		// duplicate usercmds for clients if no new ones are available
 		DuplicateUsercmds( gameFrame, gameTime );
+		CountLateUsercmds( gameFrame );
 
 		// advance game
 		gameReturn_t ret = game->RunFrame( userCmds[gameFrame & ( MAX_USERCMD_BACKUP - 1 ) ] );
@@ -3641,29 +4085,46 @@ void idAsyncServer::RunFrame( bool allowBlocking ) {
 			client.channel.SetMaxOutgoingRate( Min( client.clientRate, idAsyncNetwork::serverMaxClientRate.GetInteger() ) );
 		}
 
+		// send additional message fragments if the last message was too large to send at once
+		if ( client.channel.UnsentFragmentsLeft() ) {
+			AsyncServer_SendFragmentBurst( client.channel, serverPort, serverTime );
+			continue;
+		}
+
+		// openD3: the rest of a join's user info, as the queue frees room
+		if ( client.pendingUserInfo != 0 ) {
+			SendPendingUserInfo( i, PENDING_USERINFO_RESERVE_BYTES );
+			if ( client.clientState <= SCS_ZOMBIE ) {
+				continue;
+			}
+		}
+
 		// if the channel is not yet ready to send new data
 		if ( !client.channel.ReadyToSend( serverTime ) ) {
 			if ( client.clientState == SCS_INGAME &&
-				 serverTime - client.lastSnapshotTime >= idAsyncNetwork::serverSnapshotDelay.GetInteger() ) {
+				 gameFrame - client.lastSnapshotGameFrame >= AsyncServer_SnapshotFrameInterval() ) {
 				// a snapshot was due and the rate limiter took it
 				client.statsSendsRefusedByRate++;
 			}
 			continue;
 		}
 
-		// send additional message fragments if the last message was too large to send at once
-		if ( client.channel.UnsentFragmentsLeft() ) {
-			client.channel.SendNextFragment( serverPort, serverTime );
-			continue;
-		}
-
 		if ( client.clientState == SCS_INGAME ) {
-			if ( !SendSnapshotToClient( i ) ) {
+			// openD3: a ping only went out in a pass with no snapshot due, so with a
+			// snapshot every frame (net_serverSnapshotDelay 16 or less) none did: the
+			// ping stayed at 0 and lag compensation, which is capped by it, never
+			// rewound for that server's clients. An overdue ping takes the pass.
+			if ( realTime - client.lastPingTime >= 2 * PING_RESEND_TIME && client.lastPingTime <= realTime ) {
+				SendPingToClient( i );
+			} else if ( !SendSnapshotToClient( i ) ) {
 				SendPingToClient( i );
 			}
 		} else {
 			SendEmptyToClient( i );
 		}
+
+		// the rest of a fragmented message follows at once while the rate allows
+		AsyncServer_SendFragmentBurst( client.channel, serverPort, serverTime );
 	}
 
 	FlushVoiceMessages();
@@ -3683,17 +4144,19 @@ void idAsyncServer::RunFrame( bool allowBlocking ) {
 					continue;
 				}
 				if ( statsClient.statsSnapshotsSent > 0 || statsClient.statsSendsRefusedByRate > 0 ) {
-					common->Printf( "client %d: %d snapshots/s (asked %d), avg %d bytes, %d refused by rate, cap %d B/s\n",
+					common->Printf( "client %d: %d snapshots/s (asked %d), avg %d bytes, %d refused by rate, cap %d B/s, "
+									"%d late commands\n",
 									i, statsClient.statsSnapshotsSent,
 									1000 / Max( 1, idAsyncNetwork::serverSnapshotDelay.GetInteger() ),
 									statsClient.statsSnapshotsSent > 0 ?
 										statsClient.statsSnapshotBytes / statsClient.statsSnapshotsSent : 0,
 									statsClient.statsSendsRefusedByRate,
-									statsClient.channel.GetMaxOutgoingRate() );
+									statsClient.channel.GetMaxOutgoingRate(), statsClient.statsLateUsercmds );
 				}
 				statsClient.statsSnapshotsSent = 0;
 				statsClient.statsSnapshotBytes = 0;
 				statsClient.statsSendsRefusedByRate = 0;
+				statsClient.statsLateUsercmds = 0;
 			}
 		}
 
@@ -3783,6 +4246,9 @@ void idAsyncServer::MasterHeartbeat( bool force ) {
 	}
 	if ( force ) {
 		nextHeartbeatTime = 0;
+		// openD3: a forced heartbeat comes with a map start or from the console, where
+		// a slow lookup does not show. Try again the masters that did not resolve.
+		idAsyncNetwork::RetryMasterAddresses();
 	}
 	// not yet
 	if ( serverTime < nextHeartbeatTime ) {

@@ -146,6 +146,8 @@ static const float ARB2_INTERACTION_SPECULAR_ENV_SCALE = 1.0f;
 #else
 static const float ARB2_INTERACTION_SPECULAR_ENV_SCALE = 2.0f;
 #endif
+// tr_render.cpp: r_glSerializeDraws, a validation-only barrier after each classic draw
+void RB_SerializeDrawForValidation( void );
 
 // Value cache for ARB program env parameters set by the interaction loop.
 // Light projection planes, light/view origins, and stage matrices are
@@ -775,6 +777,7 @@ bool RB_ARB2_DrawPreparedPackedMD5RStageBatches( const srfTriangles_t *tri ) {
 			r_singleTriangle.GetBool() ? 3 : primBatchIndexCount,
 			GL_INDEX_TYPE,
 			drawIndexBuffer->indices.Ptr() + primBatch.drawGeoSpec.indexStart );
+		RB_SerializeDrawForValidation();
 
 		transformBase += primBatchTransformCount;
 	}
@@ -820,6 +823,7 @@ bool RB_ARB2_DrawPreparedPackedMD5RDirectBatches( const srfTriangles_t *tri ) {
 			r_singleTriangle.GetBool() ? 3 : primBatchIndexCount,
 			GL_INDEX_TYPE,
 			drawIndexBuffer->indices.Ptr() + primBatch.drawGeoSpec.indexStart );
+		RB_SerializeDrawForValidation();
 
 		transformBase += primBatchTransformCount;
 	}
@@ -904,6 +908,7 @@ static bool RB_ARB2_DrawPackedMD5RInteractionBatches( const drawInteraction_t *d
 					r_singleTriangle.GetBool() ? 3 : batchIndexCount,
 					GL_INDEX_TYPE,
 					batchIndices );
+				RB_SerializeDrawForValidation();
 			}
 
 			batchIndices += batchIndexCount;
@@ -985,6 +990,7 @@ static bool RB_ARB2_DrawPackedMD5RInteractionBatches( const drawInteraction_t *d
 				r_singleTriangle.GetBool() ? 3 : batchIndexCount,
 				GL_INDEX_TYPE,
 				batchIndexes );
+			RB_SerializeDrawForValidation();
 		}
 
 		destVertexBase += primBatch.drawGeoSpec.vertexCount;
@@ -1522,6 +1528,7 @@ static bool RB_ARB2_DrawPackedMD5RShadowBatches( const drawSurf_t *surf, int num
 				r_singleTriangle.GetBool() ? 3 : shadowIndexCount,
 				GL_INDEX_TYPE,
 				indexSource );
+			RB_SerializeDrawForValidation();
 			drewAnything = true;
 		}
 
@@ -1576,6 +1583,7 @@ void RB_ARB2_MD5R_DrawShadowElements( const drawSurf_t *surf, int numIndexes ) {
 			r_singleTriangle.GetBool() ? 3 : numIndexes,
 			GL_INDEX_TYPE,
 			(int *)vertexCache.Position( tri->indexCache ) );
+		RB_SerializeDrawForValidation();
 		backEnd.pc.c_vboIndexes += numIndexes;
 	} else {
 		if ( r_useIndexBuffers.GetBool() ) {
@@ -1585,6 +1593,7 @@ void RB_ARB2_MD5R_DrawShadowElements( const drawSurf_t *surf, int numIndexes ) {
 			r_singleTriangle.GetBool() ? 3 : numIndexes,
 			GL_INDEX_TYPE,
 			tri->indexes );
+		RB_SerializeDrawForValidation();
 	}
 
 	if ( vertexProgramWasEnabled ) {
@@ -7939,6 +7948,7 @@ static bool RB_ShadowMapDrawCasterChain( const drawSurf_t *surf, const int casca
 
 		if ( surf->space != backEnd.currentSpace ) {
 			backEnd.currentSpace = surf->space;
+			RB_SetSurfaceWinding( backEnd.currentSpace );
 			glLoadMatrixf( surf->space->modelMatrix );
 			RB_ShadowMapSetCasterModelRows( surf );
 			RB_ShadowMapSetCasterDepthRow( surf, cascadeIndex );
@@ -7990,6 +8000,7 @@ static void RB_ShadowMapDrawTranslucentCasterChain( const drawSurf_t *surf, cons
 
 		if ( surf->space != backEnd.currentSpace ) {
 			backEnd.currentSpace = surf->space;
+			RB_SetSurfaceWinding( backEnd.currentSpace );
 			glLoadMatrixf( surf->space->modelMatrix );
 			RB_TranslucentShadowMapSetCasterDepthRow( surf, cascadeIndex );
 		}
@@ -8382,6 +8393,7 @@ static bool RB_PointShadowMapDrawCasterChain( const drawSurf_t *surf, const floa
 			float row2[4];
 
 			backEnd.currentSpace = surf->space;
+			RB_SetSurfaceWinding( backEnd.currentSpace );
 			myGlMultMatrix( surf->space->modelMatrix, lightModelViewMatrix, modelViewMatrix );
 			glLoadMatrixf( modelViewMatrix );
 
@@ -8441,6 +8453,7 @@ static void RB_PointShadowMapDrawTranslucentCasterChain( const drawSurf_t *surf,
 			float row2[4];
 
 			backEnd.currentSpace = surf->space;
+			RB_SetSurfaceWinding( backEnd.currentSpace );
 			myGlMultMatrix( surf->space->modelMatrix, lightModelViewMatrix, modelViewMatrix );
 			glLoadMatrixf( modelViewMatrix );
 
@@ -8711,6 +8724,7 @@ static bool RB_RenderShadowMap( const drawSurf_t *primaryCasters, const drawSurf
 		glMatrixMode( GL_MODELVIEW );
 
 		backEnd.currentSpace = NULL;
+		RB_SetSurfaceWinding( backEnd.currentSpace );
 		if ( drawStaticChains ) {
 			allCastersRendered &= RB_ShadowMapDrawCasterChain( primaryCasters, cascadeIndex, useHashedAlpha );
 			allCastersRendered &= RB_ShadowMapDrawCasterChain( secondaryCasters, cascadeIndex, useHashedAlpha );
@@ -8763,6 +8777,7 @@ static bool RB_RenderShadowMap( const drawSurf_t *primaryCasters, const drawSurf
 	}
 
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	backEnd.currentScissor.Clear();
 	backEnd.glState.currenttmu = -1;
 	GL_ClearStateDelta();
@@ -8938,6 +8953,7 @@ static bool RB_RenderPointShadowMap( const drawSurf_t *primaryCasters, const dra
 		}
 
 		backEnd.currentSpace = NULL;
+		RB_SetSurfaceWinding( backEnd.currentSpace );
 		if ( drawStaticChains ) {
 			allCastersRendered &= RB_PointShadowMapDrawCasterChain( primaryCasters, lightModelViewMatrix, cubeFace );
 			allCastersRendered &= RB_PointShadowMapDrawCasterChain( secondaryCasters, lightModelViewMatrix, cubeFace );
@@ -8987,6 +9003,7 @@ static bool RB_RenderPointShadowMap( const drawSurf_t *primaryCasters, const dra
 	}
 
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	backEnd.currentScissor.Clear();
 	backEnd.glState.currenttmu = -1;
 	GL_ClearStateDelta();
@@ -9120,6 +9137,7 @@ bool RB_ModernShadowMapRender( const viewDef_t *view, modernShadowLightDescripto
 	backEnd.vLight = const_cast<viewLight_t *>( light );
 	backEnd.renderTexture = NULL;
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	glEnableClientState( GL_VERTEX_ARRAY );
 	glEnable( GL_SCISSOR_TEST );
 	glClearDepth( 1.0 );
@@ -9222,6 +9240,7 @@ bool RB_ModernShadowMapRender( const viewDef_t *view, modernShadowLightDescripto
 	g_shadowMapActiveSlotOriginY = savedOriginY;
 	g_projectedShadowMapState = savedProjection;
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	backEnd.currentScissor.Clear();
 	backEnd.glState.faceCulling = -1;
 	backEnd.glState.currenttmu = -1;
@@ -9313,6 +9332,7 @@ static bool RB_RenderTranslucentShadowMap( const drawSurf_t *primaryCasters, con
 		glMatrixMode( GL_MODELVIEW );
 
 		backEnd.currentSpace = NULL;
+		RB_SetSurfaceWinding( backEnd.currentSpace );
 		RB_ShadowMapDrawTranslucentCasterChain( primaryCasters, cascadeIndex );
 		RB_ShadowMapDrawTranslucentCasterChain( secondaryCasters, cascadeIndex );
 	}
@@ -9360,6 +9380,7 @@ static bool RB_RenderTranslucentShadowMap( const drawSurf_t *primaryCasters, con
 	}
 
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	backEnd.currentScissor.Clear();
 	backEnd.glState.currenttmu = -1;
 	GL_ClearStateDelta();
@@ -9448,6 +9469,7 @@ static bool RB_RenderPointTranslucentShadowMap( const drawSurf_t *primaryCasters
 		glClear( GL_COLOR_BUFFER_BIT );
 
 		backEnd.currentSpace = NULL;
+		RB_SetSurfaceWinding( backEnd.currentSpace );
 		RB_PointShadowMapDrawTranslucentCasterChain( primaryCasters, lightModelViewMatrix );
 		RB_PointShadowMapDrawTranslucentCasterChain( secondaryCasters, lightModelViewMatrix );
 	}
@@ -9493,6 +9515,7 @@ static bool RB_RenderPointTranslucentShadowMap( const drawSurf_t *primaryCasters
 	}
 
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	backEnd.currentScissor.Clear();
 	backEnd.glState.currenttmu = -1;
 	GL_ClearStateDelta();
@@ -11089,6 +11112,7 @@ static void RB_ARB2_CreateCustomGLSLDrawInteractionsForSurface( const drawSurf_t
 
 	if ( surf->space != backEnd.currentSpace ) {
 		backEnd.currentSpace = surf->space;
+		RB_SetSurfaceWinding( backEnd.currentSpace );
 		glLoadMatrixf( surf->space->modelViewMatrix );
 	}
 
@@ -13522,6 +13546,7 @@ static void RB_ARB2_RestoreInteractionState( const bool recordBypassBreadcrumb )
 
 	glStencilFunc( GL_ALWAYS, 128, 255 );
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	GL_ClearStateDelta();
 	if ( recordBypassBreadcrumb && !g_arb2InteractionBypassStateBreadcrumb ) {
 		g_arb2InteractionBypassStateBreadcrumb = true;
@@ -14152,6 +14177,7 @@ static void RB_SharedWorldInteractionGLAbortMapTransaction(
 			prepared.mapSavedClearColor[3] );
 	}
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	backEnd.currentScissor.Clear();
 	backEnd.glState.faceCulling = -1;
 	if ( prepared.mapGLStateCaptured && prepared.mapCullWasEnabled
@@ -16386,6 +16412,7 @@ static void RB_SharedWorldInteractionGLDrawPrimitive(
 	const classicInteractionDomainPrimitive_t &primitive =
 		*preparedPrimitive.primitive;
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	glLoadMatrixf( primitive.modelViewMatrix );
 	if ( view.useScissor ) {
 		backEnd.currentScissor.x1 = primitive.scissorX1;
@@ -16448,6 +16475,7 @@ static void RB_SharedWorldInteractionGLDrawPrimitive(
 	}
 	glDrawElements( GL_TRIANGLES, preparedPrimitive.indexCount,
 		GL_INDEX_TYPE, preparedPrimitive.indexPointer );
+	RB_SerializeDrawForValidation();
 	if ( primitive.polygonOffsetEnabled ) {
 		glDisable( GL_POLYGON_OFFSET_FILL );
 	}
@@ -16810,6 +16838,7 @@ static void RB_SharedWorldInteractionGLDrawMappedPrimitive(
 	}
 	glDrawElements( GL_TRIANGLES, preparedPrimitive.indexCount,
 		GL_INDEX_TYPE, preparedPrimitive.indexPointer );
+	RB_SerializeDrawForValidation();
 	if ( primitive.polygonOffsetEnabled ) {
 		glDisable( GL_POLYGON_OFFSET_FILL );
 	}
@@ -16897,6 +16926,7 @@ static void RB_SharedWorldInteractionGLSubmitShadowElements(
 	}
 	glDrawElements( GL_TRIANGLES, preparedCaster.indexCount, GL_INDEX_TYPE,
 		preparedCaster.indexPointer );
+	RB_SerializeDrawForValidation();
 }
 
 static void RB_SharedWorldInteractionGLDrawShadowCaster(
@@ -16907,6 +16937,7 @@ static void RB_SharedWorldInteractionGLDrawShadowCaster(
 	const classicInteractionDomainShadowCaster_t &caster =
 		*preparedCaster.caster;
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 	glLoadMatrixf( caster.modelViewMatrix );
 	if ( view.useScissor ) {
 		backEnd.currentScissor.x1 = caster.scissorX1;
@@ -17031,6 +17062,7 @@ static void RB_SharedWorldInteractionGLRestoreState( void ) {
 	GL_Cull( CT_FRONT_SIDED );
 	backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
 	backEnd.currentSpace = NULL;
+	RB_SetSurfaceWinding( backEnd.currentSpace );
 }
 
 static bool RB_ARB2_DrawSharedInteractionView( const viewDef_t *viewDef,

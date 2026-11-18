@@ -11,7 +11,9 @@ General Public License version 3, and its dependencies keep their own licences.
 | Retail Doom 3 content | Not included or relicensed; users supply their own copy |
 
 Because both sides are GPLv3, openD3 has no licence boundary between engine and
-game code. This is different from its sibling projects.
+game code. This is different from its sibling projects, and it is why openD3 is
+the only member of the family that is open source end to end (see
+[About the name](README.md#about-the-name)).
 
 The engine is derived from [openQ4](https://github.com/themuffinator/openQ4),
 whose engine history is merged into this repository's history, and it carries

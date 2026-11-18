@@ -3,7 +3,7 @@
 This file describes project goals, rules and workflow expectations for anyone working on openD3.
 
 **Project Metadata**
-- Name: openD3 (always written this way: lower-case "open", upper-case "D3")
+- Name: openD3 (always written this way: lower-case "open", upper-case "D3"). The name is settled; README's "About the name" gives the reasons. Don't propose renaming the project
 - Author: themuffinator
 - Company: DarkMatter Productions
 - Version: 0.0.1, no release yet

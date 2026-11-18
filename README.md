@@ -30,6 +30,12 @@ openD3 replaces Doom 3's engine and game binaries with its own, built from id So
 > [!IMPORTANT]
 > openD3 is in **early development** and has no release. It has just moved onto the current openQ4 engine, and so far only the first campaign map and a dedicated-server start have been run on it. Read [Features](#features) before expecting to play through the game.
 
+### About the name
+
+openD3 is named for its family: [openQ4](https://github.com/themuffinator/openQ4), [openPREY](https://github.com/themuffinator/openPREY) and openD3 share one engine, and the name says which one it is built on. In openQ4 and openPREY the engine is GPL but the game code comes from SDKs under their own licences. Doom 3 is the one title in the family whose game code id Software released under the GPL, so openD3 is the only member that is open source end to end ([LICENSING.md](LICENSING.md)).
+
+"Open" names the family; it doesn't claim to be the only open Doom 3. Other open-source Doom 3 ports, among them [dhewm3](https://github.com/dhewm/dhewm3) and RBDOOM-3-BFG, came first; openD3's difference is the openQ4 engine underneath. "D3" abbreviates Doom 3 the way "Q4" abbreviates Quake 4, and keeps the trademark out of the project's name. It has nothing to do with the D3.js library or with Diablo III.
+
 ## Quick start
 
 There is no release yet, so you build openD3 yourself:

@@ -59,7 +59,7 @@ centred on that axis, and only while the screen has an expansion on that axis
 
 | Property | Values | Effect |
 | --- | --- | --- |
-| `screenalignx`, `screenaligny` | `left`/`middle`/`right`, `top`/`middle`/`bottom` | Moves the window (and its children) by the expansion toward that screen edge. Inherited from openQ4 |
+| `screenalignx`, `screenaligny` | `left`/`middle`/`right`, `top`/`middle`/`bottom` | Moves the window (and its children) by the expansion toward that screen edge. Inherited from openQ4. The window's `rotate` and `shear` pivot moves with it: Doom 3's HUD readouts shear about their parent's top-left corner, and a pivot left behind turned a tall view's downward move into a sideways one that slid the numbers out of their frames |
 | `screenstretchx`, `screenstretchy` | `none`, `fill`, `left`/`top`, `right`/`bottom` | Carries the window's edges out with the expansion: both (`fill`), or only the leading or trailing one. Its children keep their authored places, where they are drawn (`Redraw`) and where they take the pointer (`CalcRects`). A negative extent (a mirrored material) still covers `x..x+|w|`. A window collapsed to zero on the axis (a closed dialog) stays collapsed |
 | `canvasclip` | `none`, `x`, `y`, `both` | Clips the window and its children to the authored canvas on that axis, also on a `noclip` window. A panel parked just beyond the canvas edge then stays hidden in the expansion. On the desktop it stops the desktop's clip widening |
 | `screenrepeatx`, `screenrepeaty` | period in units | Draws the window's own background (fill and material, not its text or children) again every period along that axis wherever the expansion shows (never inside the canvas, which the GUI already draws), in the colours it had when first drawn, so a pattern authored for the canvas continues to the screen edges and a hover flash on the original does not echo in the copies |
@@ -106,15 +106,15 @@ showed as two arrows that never lined up.
 
 | File | GUIs | Layout |
 | --- | --- | --- |
-| `hud.layout` | `guis/hud.gui` | Health, armour, stamina, air and the pickup and download notices at the bottom-left; ammunition, the weapon strip and the soul cube at the bottom-right; objective updates from the right, inventory items and tips from the left |
-| `mphud.layout` | `guis/mphud.gui`, `chat.gui`, `mpmsgmode.gui`, `spectate.gui` | The same corners for the multiplayer HUD, the clock and scores at the top-right, chat and votes on the left |
+| `hud.layout` | `guis/hud.gui` | Health, armour, stamina, air and the pickup and download notices at the bottom-left; ammunition, the weapon strip and the soul cube at the bottom-right; objective updates from the right, inventory items, tips and the message line ("Game Saved") from the left |
+| `mphud.layout` | `guis/mphud.gui`, `chat.gui`, `mpmsgmode.gui`, `spectate.gui`, `mpmain.gui` | The same corners for the multiplayer HUD, the clock and scores at the top-right, chat and votes on the left; the in-game menu's panels stay centred and its line about Escape goes to the bottom-left corner |
 | `mainmenu.layout` | `guis/mainmenu.gui` (the expansion's extra dialogs are named too, unverified) | The background grid continues to the edges with its brighter fifth lines in step (vertical lines repeat every 600 units, horizontal ones span the width and repeat every 450); frame and bars to the edges; Options, New Game and multiplayer lists docked to their sides; credits and multiplayer frames across the width; dialogs dim the whole screen |
 | `pda.layout` | `guis/pda.gui` | 4:3 over the softened view |
 | `loading.layout` | `guis/map/*.gui` | The level picture fills (cropped), the bars span the width, the title and meter keep to the left; the first level's screen, a word and a meter on black, stays centred |
-| `screens.layout` | `msg.gui`, `netmenu.gui`, `restart.gui`, `gameover.gui`, `credits.gui`, `intro.gui` | Full-screen layers and dims fill; the boxes, choices and films stay centred |
+| `screens.layout` | `msg.gui`, `netmenu.gui`, `restart.gui`, `gameover.gui`, `credits.gui`, `intro.gui` | Full-screen layers and dims fill (a message box's dim is its desktop's own fill, so the desktop stretches); the boxes, choices and films stay centred |
 
-Not patched, because they need nothing: `scoreboard.gui`, `mpmain.gui` (floating
-panels over the game), `cursor.gui` (the crosshair), `takenotes*.gui`, and the
+Not patched, because they need nothing: `scoreboard.gui` (a floating panel over
+the game), `cursor.gui` (the crosshair), `takenotes*.gui`, and the
 in-world GUIs, which are never aspect-corrected. Cinematics keep their own
 framing.
 

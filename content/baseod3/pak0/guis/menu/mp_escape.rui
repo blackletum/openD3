@@ -10121,11 +10121,10 @@
         "type": "group",
         "properties": {
          "position": {"type": "keyword", "value": "absolute"},
+         "left": {"type": "length", "value": 0, "unit": "dp"},
          "top": {"type": "length", "value": 0, "unit": "dp"},
          "width": {"type": "length", "value": 960.0, "unit": "dp"},
-         "height": {"type": "length", "value": 0, "unit": "dp"},
-         "left": {"type": "length", "value": 50, "unit": "%"},
-         "margin-left": {"type": "length", "value": -480.0, "unit": "dp"}
+         "height": {"type": "length", "value": 0, "unit": "dp"}
         },
         "children": [
          {

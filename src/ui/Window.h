@@ -550,6 +550,10 @@ protected:
 	// How far the stretch moved the client origin, which children undo.
 	float stretchShiftX = 0.0f;
 	float stretchShiftY = 0.0f;
+	// How far screen alignment moved the window, which its rotate and shear
+	// pivot follows (SetupTransforms).
+	float alignShiftX = 0.0f;
+	float alignShiftY = 0.0f;
 	// openD3: "hudanchorx" and "hudanchory" name the screen anchor a HUD
 	// window's group scales about (idLegacyHudGroup) where its alignment does
 	// not say: a window Remastered places on an edge through oq4_hudEdge* while

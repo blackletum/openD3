@@ -952,6 +952,7 @@ void idWindow::CommonInit() {
 	screenStretchX = SCREEN_STRETCH_NONE;
 	screenStretchY = SCREEN_STRETCH_NONE;
 	stretchShiftX = stretchShiftY = 0.0f;
+	alignShiftX = alignShiftY = 0.0f;
 	canvasClip = 0;
 	screenRepeatX = screenRepeatY = 0.0f;
 	repeatColorsTaken = false;
@@ -2781,7 +2782,11 @@ void idWindow::SetupTransforms(float x, float y) {
 	static idVec3 org;
 	
 	trans.Identity();
-	org.Set( origin.x + x, origin.y + y, 0 );
+	// The pivot moves with the window's screen alignment. Doom 3's HUD readouts
+	// shear about their parent's top-left corner, so a pivot left behind turned
+	// a tall view's downward move into a sideways one (0.33 of 329 units at
+	// 9:16) and slid the numbers out of their frames.
+	org.Set( origin.x + x + alignShiftX, origin.y + y + alignShiftY, 0 );
 
 	if ( rotate ) {
 		static idRotation rot;
@@ -3081,6 +3086,7 @@ idWindow::CalcClientRect
 void idWindow::CalcClientRect(float xofs, float yofs) {
 	drawRect = rect;
 	stretchShiftX = stretchShiftY = 0.0f;
+	alignShiftX = alignShiftY = 0.0f;
 
 	if ( flags & WIN_INVERTRECT ) {
 		drawRect.x = rect.x() - rect.w();
@@ -3116,18 +3122,20 @@ void idWindow::CalcClientRect(float xofs, float yofs) {
 
 		if ( ( legacyEdges || xExpand > 0.0f ) && applyScreenAlignX ) {
 			if ( screenAlignX == SCREEN_ALIGN_X_LEFT ) {
-				drawRect.x -= edges[0];
+				alignShiftX = -edges[0];
 			} else if ( screenAlignX == SCREEN_ALIGN_X_RIGHT ) {
-				drawRect.x += edges[2];
+				alignShiftX = edges[2];
 			}
+			drawRect.x += alignShiftX;
 		}
 
 		if ( ( legacyEdges || yExpand > 0.0f ) && applyScreenAlignY ) {
 			if ( screenAlignY == SCREEN_ALIGN_Y_TOP ) {
-				drawRect.y -= edges[1];
+				alignShiftY = -edges[1];
 			} else if ( screenAlignY == SCREEN_ALIGN_Y_BOTTOM ) {
-				drawRect.y += edges[3];
+				alignShiftY = edges[3];
 			}
+			drawRect.y += alignShiftY;
 		}
 
 		if ( ( legacyEdges || xExpand > 0.0f ) && applyScreenAlignX ) {
@@ -7783,6 +7791,7 @@ void idWindow::SetDefaults ( void ) {
 	screenStretchX = SCREEN_STRETCH_NONE;
 	screenStretchY = SCREEN_STRETCH_NONE;
 	stretchShiftX = stretchShiftY = 0.0f;
+	alignShiftX = alignShiftY = 0.0f;
 	canvasClip = 0;
 	screenRepeatX = screenRepeatY = 0.0f;
 	repeatColorsTaken = false;

@@ -67,3 +67,12 @@ gui "guis/spectate.gui" {
 		screenalignx left
 	}
 }
+
+gui "guis/mpmain.gui" {
+	// The in-game menu's panels float over the game, centred; its line about
+	// Escape sits in the bottom-left corner.
+	window CloseMenu {
+		screenalignx left
+		screenaligny bottom
+	}
+}

@@ -33,6 +33,10 @@ gui "guis/hud.gui" {
 	window InvItem {
 		screenalignx left
 	}
+	// The message line ("Game Saved") starts at the left edge.
+	window message1, message1a {
+		screenalignx left
+	}
 	window TipPopBox {
 		screenalignx left
 		screenaligny top

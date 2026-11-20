@@ -60,8 +60,9 @@ moves there. The top bar and flare take the top band; the nav band, the
 OPTIONS tab, the sub-lists, the strips, the footer links, the hint line and
 every page plate take the bottom band; the logo and the dialogs take the
 middle. The multiplayer pages hang from the top, the credits' bars run on
-to both edges, and the in-game menu's hint line stands on the bottom while
-its strip stays on the top. The SYSTEM page opened from that menu is raised
+to both edges, and the in-game menu's hint line stands on the bottom and,
+on a wide view, at the left edge (as the stock line does) while its strip
+stays on the top. The SYSTEM page opened from that menu is raised
 to the top by `page.lift`, which the session sets to the view's height
 beyond its canvas. The stock menu itself still centres on a tall view,
 because its panels park above and below the canvas.

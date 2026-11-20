@@ -4,15 +4,16 @@
 // and docs/dev/widescreen-layout.md for the rules. Names only: no retail
 // script text.
 
-// Message boxes dim the whole screen; the box stays centred.
+// Message boxes dim the whole screen; the box stays centred. The dim is the
+// desktop's own fill, so the desktop stretches too.
 gui "guis/msg.gui" {
-	window MsgBox, WaitBox, CDKeyMain {
+	window Desktop, MsgBox, WaitBox, CDKeyMain {
 		screenstretchx fill
 		screenstretchy fill
 	}
 }
 gui "guis/netmenu.gui" {
-	window MsgBox {
+	window Desktop, MsgBox {
 		screenstretchx fill
 		screenstretchy fill
 	}

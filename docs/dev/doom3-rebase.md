@@ -148,7 +148,15 @@ release of Doom 3 (1.3.1 packs):
   softened view, also on Vulkan at 1920x1080. The loading screens
   (`alphalabs1`, `generic`), the death screen, the multiplayer HUD, the
   scoreboard and the game-over screen were shown with `testGUI` at 21:9 and,
-  for the loading screen and multiplayer HUD, at 4:5. The main menu's grid
+  for the loading screen and multiplayer HUD, at 4:5. On 20 November 2026, on
+  Vulkan at 1680x720, 1280x720, 960x1280 and 720x1280: the HUD's health,
+  armour and ammunition counts on `game/alphalabs1` and the multiplayer HUD's
+  on `game/mp/d3dm1` sit in their frames at the two tall shapes (they slid
+  out sideways before the shear pivot followed screen alignment), the
+  message line ("Game Saved") starts at the left edge, and the in-game
+  multiplayer menu's line about Escape, stock and retained, sits in the
+  bottom-left corner. On OpenGL at the same four shapes the stock message
+  box's dim covers the whole screen. The main menu's grid
   continues across the canvas edge at 16:9 with every fifth line brighter, in
   step on both sides, and above and below it at 4:5. With the profile in
   `.home` (a borderless 2560x1440 window, 150% display scaling) on OpenGL and

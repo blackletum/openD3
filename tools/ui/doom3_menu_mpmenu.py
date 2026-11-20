@@ -479,9 +479,10 @@ def multiplayer_menu_document() -> dict:
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)},
                    [*strip(), *tabs, *panels])
     # Rule 7: the strip and its panels hang from the top edge; the hint line
-    # keeps its 55 u above the bottom edge on a tall view.
+    # keeps its 55 u above the bottom edge on a tall view and its 12 u from the
+    # left edge on a wide one, where the stock line docks too (mphud.layout).
     low = group("stage-low", {**pinned("bottom"), **NO_POINTER}, [
-        group("canvas-low", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)}, [hint])])
+        group("canvas-low", {**absolute(top=0, left=0, width=CANVAS_W, height=0)}, [hint])])
     stage = group("stage", {**FULL, "display": keyword("none")}, [low, canvas])
     doc.bind("stage.display", "stage", "display", {"op": "select", "args": [{"state": "mp.shown"}, "block", "none"]})
     # The session raises `open` as the card covers the game's menu and

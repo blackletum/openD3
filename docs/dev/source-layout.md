@@ -15,8 +15,9 @@ inherited from openQ4 and has not been run for openD3.
 | `src/external/` | Vendored third-party code, kept in its upstream layout |
 | `subprojects/` | Meson wraps, with openD3 patches under `subprojects/packagefiles/<project>/` |
 | `content/baseod3/pak0/` | Authored runtime content, packed into `baseod3/pak0.pk4`: GLSL and ARB programs, post-process materials, the five TrueType faces rebuilt from Doom 3's bitmap fonts, default configs and engine string tables |
+| `content/baseod3/pak2/` | The loadscreen pack, packed into the client-only `baseod3/pak2.pk4`: openD3's recaptures of Doom 3's level loading pictures with their wide and tall tiles ([levelshot capture](levelshot-capture.md)) |
 | `assets/` | Packaging and branding inputs: icons, splash, desktop entries, documentation images and the packaged HTML readmes (`assets/docs/`, `assets/release/`) |
-| `tools/` | Build, packaging, debugging, test, validation and asset scripts; `tools/assets/fonts/` rebuilds the TrueType faces from an installed Doom 3 |
+| `tools/` | Build, packaging, debugging, test, validation and asset scripts; `tools/assets/fonts/` rebuilds the TrueType faces from an installed Doom 3, and `tools/assets/levelshots/` recovers the retail loading-picture cameras and captures the loadscreen pack |
 | `docs/dev/`, `docs/user/` | Developer and player documentation; curated release notes live in `docs/dev/releases/`, and the [UI visual design specification](ui-visual-design.md) is drawn in `docs/dev/ui/atlas/` |
 | `LICENSES/` | Licence terms and third-party notices; mirrors the `licenses/` folder that packages install |
 | `mobile/android/` | The Android launcher application, inherited and not built for openD3 |

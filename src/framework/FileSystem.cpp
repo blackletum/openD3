@@ -9462,8 +9462,9 @@ idFileSystemLocal::FindMapScreenshot
 The levelshot the menus show for a map. A mapDef's "loadimage" comes first, as on
 the map's loading screen: the Awakening's CTF maps have no levelshot of their own
 name and reuse retail's through it. Otherwise it is
-gfx/guis/loadscreens/<map>.tga (Doom 3's guis/assets/splash/<map>.tga under
-OPEND3), one extracted from an addon, or the generic one.
+gfx/guis/loadscreens/<map>.tga (under OPEND3, openD3's guis/assets/levelshots/<map>
+when installed, else Doom 3's guis/assets/splash/<map>.tga), one extracted from an
+addon, or the generic one.
 ===============
 */
 void idFileSystemLocal::FindMapScreenshot( const char *path, char *buf, int len ) {
@@ -9490,6 +9491,18 @@ void idFileSystemLocal::FindMapScreenshot( const char *path, char *buf, int len 
 	mapname.StripFileExtension();
 	
 #if defined( OPEND3 )
+	// openD3's own levelshot of the map comes first: guis/assets/levelshots/<map>,
+	// a recapture of the retail picture with the _left/_right/_top/_bottom tiles
+	// that widen the loading screen. It is named without its extension, which the
+	// image loader and the loading screen's composer resolve.
+	static const char *const openD3LevelshotExtensions[] = { "jpg", "tga" };
+	for ( int i = 0; i < static_cast<int>( sizeof( openD3LevelshotExtensions ) / sizeof( openD3LevelshotExtensions[0] ) ); ++i ) {
+		idStr::snPrintf( buf, len, "guis/assets/levelshots/%s.%s", mapname.c_str(), openD3LevelshotExtensions[i] );
+		if ( ReadFile( buf, NULL, NULL ) != -1 ) {
+			idStr::snPrintf( buf, len, "guis/assets/levelshots/%s", mapname.c_str() );
+			return;
+		}
+	}
 	// Doom 3 keeps its levelshots under guis/assets/splash/. The image loader
 	// maps Quake 4's name to it, but the file is looked for here by name.
 	idStr::snPrintf( buf, len, "guis/assets/splash/%s.tga", mapname.c_str() );

@@ -18,6 +18,15 @@
         "glprogs/smaa_weights.vs",
         "materials/postprocess_opend3.mtr"
       ]
+    },
+    {
+      "name": "pak2.pk4",
+      "source": "content/baseod3/pak2",
+      "contents": "loadscreens",
+      "contents_string": "#str_231703",
+      "client_only": true,
+      "bulk": true,
+      "required_files": []
     }
   ]
 }

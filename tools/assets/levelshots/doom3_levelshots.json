@@ -1,0 +1,360 @@
+{
+ "comment": "Recovered retail cameras of Doom 3's level loading pictures (guis/assets/splash/<map>) and the game time each set was captured at. capture_levelshots.py reads this file; docs/dev/levelshot-capture.md describes the method. cam is x y z pitch yaw roll; fov is horizontal at 4:3; time is the view time in ms after map load; match is the solve's feature inliers and median reprojection error in pixels. unshipped holds cameras that were found but not good enough to ship, as starting points.",
+ "sets": {
+  "admin": {
+   "map": "game/admin",
+   "cam": [
+    -59.346,
+    -639.142,
+    121.764,
+    7.36,
+    89.882,
+    0.026
+   ],
+   "fov": 90.0,
+   "time": 21104,
+   "match": {
+    "inliers": 723,
+    "error_px": 0.61
+   }
+  },
+  "alphalabs1": {
+   "map": "game/alphalabs1",
+   "cam": [
+    -535.18,
+    3477.85,
+    76.059,
+    9.926,
+    147.209,
+    -0.541
+   ],
+   "fov": 90.0,
+   "time": 25152,
+   "match": {
+    "inliers": 628,
+    "error_px": 1.44
+   }
+  },
+  "alphalabs2": {
+   "map": "game/alphalabs2",
+   "cam": [
+    -2022.057,
+    1811.545,
+    -434.596,
+    1.783,
+    304.685,
+    -0.001
+   ],
+   "fov": 90.0,
+   "time": 28112,
+   "match": {
+    "inliers": 1002,
+    "error_px": 0.37
+   }
+  },
+  "alphalabs3": {
+   "map": "game/alphalabs3",
+   "cam": [
+    1417.016,
+    -1497.209,
+    -266.891,
+    -1.62,
+    120.785,
+    0.317
+   ],
+   "fov": 90.0,
+   "time": 39424,
+   "match": {
+    "inliers": 620,
+    "error_px": 1.36
+   }
+  },
+  "cpuboss": {
+   "map": "game/cpuboss",
+   "cam": [
+    -20.257,
+    -2115.864,
+    423.232,
+    4.216,
+    90.419,
+    -0.123
+   ],
+   "fov": 90.0,
+   "time": 26368,
+   "match": {
+    "inliers": 166,
+    "error_px": 0.79
+   }
+  },
+  "d3dm2": {
+   "map": "game/mp/d3dm2",
+   "cam": [
+    226.032,
+    -287.881,
+    260.236,
+    -0.004,
+    132.569,
+    0.01
+   ],
+   "fov": 90.0,
+   "time": 14576,
+   "match": {
+    "inliers": 1241,
+    "error_px": 0.31
+   }
+  },
+  "d3dm3": {
+   "map": "game/mp/d3dm3",
+   "cam": [
+    -254.402,
+    179.271,
+    438.109,
+    25.794,
+    24.784,
+    -0.045
+   ],
+   "fov": 90.0,
+   "time": 15536,
+   "match": {
+    "inliers": 1702,
+    "error_px": 0.3
+   }
+  },
+  "d3dm4": {
+   "map": "game/mp/d3dm4",
+   "cam": [
+    -363.279,
+    -399.078,
+    112.388,
+    -0.0,
+    127.735,
+    -0.037
+   ],
+   "fov": 90.0,
+   "time": 29488,
+   "match": {
+    "inliers": 1523,
+    "error_px": 0.28
+   }
+  },
+  "d3dm5": {
+   "map": "game/mp/d3dm5",
+   "cam": [
+    -1228.387,
+    -159.602,
+    73.13,
+    -0.071,
+    219.766,
+    0.121
+   ],
+   "fov": 90.0,
+   "time": 29520,
+   "match": {
+    "inliers": 929,
+    "error_px": 0.35
+   }
+  },
+  "delta1": {
+   "map": "game/delta1",
+   "cam": [
+    -874.45,
+    -2739.698,
+    65.356,
+    5.767,
+    4.929,
+    0.191
+   ],
+   "fov": 90.0,
+   "time": 30704,
+   "match": {
+    "inliers": 170,
+    "error_px": 1.09
+   }
+  },
+  "delta2a": {
+   "map": "game/delta2a",
+   "cam": [
+    -112.76,
+    -987.58,
+    -123.782,
+    3.802,
+    96.96,
+    0.151
+   ],
+   "fov": 90.0,
+   "time": 20224,
+   "match": {
+    "inliers": 413,
+    "error_px": 1.32
+   }
+  },
+  "delta2b": {
+   "map": "game/delta2b",
+   "cam": [
+    -46.46,
+    1400.033,
+    73.738,
+    0.316,
+    305.582,
+    -0.7
+   ],
+   "fov": 90.0,
+   "time": 17696,
+   "match": {
+    "inliers": 131,
+    "error_px": 1.77
+   }
+  },
+  "delta3": {
+   "map": "game/delta3",
+   "cam": [
+    4992.705,
+    1420.012,
+    -195.799,
+    10.277,
+    92.292,
+    0.12
+   ],
+   "fov": 90.0,
+   "time": 23696,
+   "match": {
+    "inliers": 513,
+    "error_px": 1.33
+   }
+  },
+  "delta5": {
+   "map": "game/delta5",
+   "cam": [
+    1074.28,
+    -797.338,
+    -61.616,
+    7.149,
+    242.8,
+    0.005
+   ],
+   "fov": 90.0,
+   "time": 19360,
+   "match": {
+    "inliers": 360,
+    "error_px": 1.36
+   }
+  },
+  "hellhole": {
+   "map": "game/hellhole",
+   "cam": [
+    57.149,
+    261.551,
+    1746.088,
+    10.015,
+    268.878,
+    0.0
+   ],
+   "fov": 90.0,
+   "time": 15888,
+   "match": {
+    "inliers": 305,
+    "error_px": 1.37
+   }
+  },
+  "mars_city2": {
+   "map": "game/mars_city2",
+   "cam": [
+    -1784.273,
+    -1353.858,
+    224.776,
+    -1.909,
+    88.0,
+    0.027
+   ],
+   "fov": 90.0,
+   "time": 23904,
+   "match": {
+    "inliers": 467,
+    "error_px": 0.83
+   }
+  },
+  "site3": {
+   "map": "game/site3",
+   "cam": [
+    1319.2,
+    -1453.803,
+    -702.334,
+    -0.062,
+    70.442,
+    1.635
+   ],
+   "fov": 90.0,
+   "time": 13664,
+   "match": {
+    "inliers": 856,
+    "error_px": 1.68
+   }
+  }
+ },
+ "unshipped": {
+  "alphalabs4": {
+   "cam": [
+    -621.942,
+    -1423.285,
+    -217.458,
+    -2.671,
+    262.245,
+    -0.944
+   ],
+   "fov": 90.0,
+   "match": {
+    "inliers": 137,
+    "error_px": 0.98
+   },
+   "note": "only roughly right"
+  },
+  "delta4": {
+   "cam": [
+    1793.135,
+    1389.032,
+    -612.76,
+    3.599,
+    311.006,
+    0.398
+   ],
+   "fov": 90.0,
+   "match": {
+    "inliers": 217,
+    "error_px": 1.71
+   },
+   "note": "the retail foreground console is not in the shipped level"
+  },
+  "mc_underground": {
+   "cam": [
+    219.765,
+    -571.97,
+    61.89,
+    2.227,
+    72.345,
+    0.546
+   ],
+   "fov": 90.0,
+   "match": {
+    "inliers": 91,
+    "error_px": 1.57
+   },
+   "note": "only roughly right"
+  },
+  "commoutside": {
+   "cam": [
+    -7735.3,
+    281.07,
+    313.5,
+    19.92,
+    213.19,
+    -0.74
+   ],
+   "fov": 90.0,
+   "match": {
+    "inliers": 560,
+    "error_px": 3.38
+   },
+   "note": "the solve does not settle in the outdoor haze"
+  }
+ }
+}

@@ -7383,6 +7383,43 @@ void idSessionLocal::PublishRetainedLoadingServer( const idDict &serverInfo ) {
 	ClearRetainedLoadingRoster();
 }
 
+#if defined( OPEND3 )
+/*
+===============
+Session_ShowOpenD3Levelshot
+
+A Doom 3 level's own loading screen (guis/map/<map>.gui) draws the retail picture
+through its BackgroundImage window and the material gui/loading/<map>. When
+openD3's levelshot of the map is installed (guis/assets/levelshots/<map>, which
+FindMapScreenshot prefers), the window shows that instead: the 4:3 picture, or in a
+wide or tall window the picture the session composed from it and its tiles. A
+level screen that a mod reworked to draw another picture keeps its own. The GUI is
+shared between loads, so a window that already shows an openD3 picture is
+pointed at this load's.
+===============
+*/
+static void Session_ShowOpenD3Levelshot( idUserInterface *gui, const idStr &mapName, const idStr &background ) {
+	if ( gui == NULL || mapName.Length() == 0 ) {
+		return;
+	}
+	const idStr levelshot = va( "guis/assets/levelshots/%s", mapName.c_str() );
+	const bool composed = background.Icmpn( SESSION_LOADING_BACKGROUND_IMAGE, idStr::Length( SESSION_LOADING_BACKGROUND_IMAGE ) ) == 0;
+	if ( composed ? sessionLoadingBackground.sourcePath.Icmp( levelshot ) != 0 : background.Icmp( levelshot ) != 0 ) {
+		return;
+	}
+	idStr shown;
+	if ( !gui->GetPresentationValue( "BackgroundImage::background", shown ) ) {
+		return;
+	}
+	const bool retailPicture = shown.Icmp( va( "gui/loading/%s", mapName.c_str() ) ) == 0;
+	const bool openD3Picture = shown.Icmp( levelshot ) == 0 ||
+		shown.Icmpn( SESSION_LOADING_BACKGROUND_IMAGE, idStr::Length( SESSION_LOADING_BACKGROUND_IMAGE ) ) == 0;
+	if ( retailPicture || openD3Picture ) {
+		gui->SetPresentationValue( "BackgroundImage::background", background.c_str(), true );
+	}
+}
+#endif
+
 /*
 ===============
 idSessionLocal::LoadLoadingGui
@@ -7457,10 +7494,12 @@ void idSessionLocal::LoadLoadingGui( const char *mapName ) {
 	// give the gamecode a chance to override
 	//game->GetMapLoadingGUI( guiMap );
 
+	bool loadingFromMapGui = false;
 	if ( loadGuiOverride[0] && uiManager->CheckGui( loadGuiOverride ) ) {
 		guiLoading = uiManager->FindGui( loadGuiOverride, true, false, true );
 	} else if ( uiManager->CheckGui( guiMap ) ) {
 		guiLoading = uiManager->FindGui( guiMap, true, false, true );
+		loadingFromMapGui = true;
 	} else if ( isMultiplayerLoad && uiManager->CheckGui( "guis/loading/mplevel.gui" ) ) {
 		guiLoading = uiManager->FindGui( "guis/loading/mplevel.gui", true, false, true );
 	} else if ( loadingObjectives[0] && uiManager->CheckGui( "guis/loading/splevel.gui" ) ) {
@@ -7476,8 +7515,11 @@ void idSessionLocal::LoadLoadingGui( const char *mapName ) {
 	// its picture and says nothing more: openD3's loading card extras (its
 	// phases, tips, arsenal and server roster) do not apply.
 	const bool retainedLoading = false;
-	(void)legacyLoading;
+	if ( loadingFromMapGui ) {
+		Session_ShowOpenD3Levelshot( legacyLoading, stripped, loadingBackground );
+	}
 #else
+	(void)loadingFromMapGui;
 	const bool retainedLoading = guiLoading != legacyLoading;
 #endif
 

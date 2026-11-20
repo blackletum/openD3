@@ -18097,6 +18097,54 @@ static bool RB_ARBProgramNeedsHeatHazeDepthReject( const progDef_t &prog ) {
 	return prog.target == GL_FRAGMENT_PROGRAM_ARB && idStr::Icmpn( prog.name, "heatHaze", 8 ) == 0;
 }
 
+/*
+==================
+RB_ARBRewriteHeatHazeProjectionScale
+
+Doom 3's heat-haze vertex programs (heatHaze, heatHazeWithMask,
+heatHazeWithMaskAndVertex) scale the refraction by the projection's first row
+dotted with ( 1, 0, z, 1 ):
+
+	DP4 R1, R0, state.matrix.projection.row[0];
+
+With a symmetric projection that is the x scale alone. An off-axis projection
+(a levelshot tile, a VR eye) has a z term in that row, the product runs far
+negative, the program clamps it only from above, and glass smears the scene
+behind it. The line becomes the x scale, which is what a symmetric projection
+computes, so ordinary views draw exactly as before.
+==================
+*/
+static bool RB_ARBRewriteHeatHazeProjectionScale( const char *text, idStr &out ) {
+	static const char *const needle = "state.matrix.projection.row[0]";
+	out = text;
+	const int at = out.Find( needle );
+	if ( at < 0 ) {
+		return false;
+	}
+	int lineStart = at;
+	while ( lineStart > 0 && out[ lineStart - 1 ] != '\n' ) {
+		lineStart--;
+	}
+	const int lineEnd = out.Find( ';', at );
+	if ( lineEnd < 0 ) {
+		return false;
+	}
+	idStr compact;
+	for ( int i = lineStart; i <= lineEnd; i++ ) {
+		if ( out[ i ] != ' ' && out[ i ] != '\t' && out[ i ] != '\r' ) {
+			compact += out[ i ];
+		}
+	}
+	if ( compact.Icmp( "DP4R1,R0,state.matrix.projection.row[0];" ) != 0 ) {
+		return false;
+	}
+	idStr rewritten = out.Left( lineStart );
+	rewritten += "MUL\t\tR1, R0.x, state.matrix.projection.row[0].x;";
+	rewritten += out.c_str() + lineEnd + 1;
+	out = rewritten;
+	return true;
+}
+
 static const char *RB_ARBHeatHazeDepthRejectResultName( oq4arbhaze::rewriteResult_t result ) {
 	switch ( result ) {
 	case oq4arbhaze::REWRITE_DONE:
@@ -18463,6 +18511,13 @@ void R_LoadARBProgram( int progIndex ) {
 		} else {
 			common->Printf( ": heat-haze depth test not applied (%s)", RB_ARBHeatHazeDepthRejectResultName( hazeResult ) );
 		}
+	}
+
+	// The heat-haze vertex programs' refraction scale, for off-axis views.
+	idStr hazeScaleProgram;
+	if ( prog.target == GL_VERTEX_PROGRAM_ARB && idStr::Icmpn( prog.name, "heatHaze", 8 ) == 0 &&
+		RB_ARBRewriteHeatHazeProjectionScale( programText, hazeScaleProgram ) ) {
+		programText = hazeScaleProgram.c_str();
 	}
 
 	glBindProgramARB( prog.target, prog.ident );

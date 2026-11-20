@@ -3,9 +3,12 @@
 // the rules. Names only: no retail script text.
 //
 // Each level's loading screen shares one layout: the level's picture fills the
-// screen (cropped, never stretched; the bars cover what a crop removes), the
-// black bars and their trim run edge to edge, the title, description and
-// loading meter keep to the left.
+// screen (cropped, never stretched; the bars cover what a crop removes). Where
+// openD3's levelshot of the level is installed (guis/assets/levelshots/, the
+// loadscreen pack), the session gives the picture window the levelshot composed
+// to the window's shape with its side or top and bottom tiles, so nothing is
+// cropped (Session_ShowOpenD3Levelshot). The black bars and their trim run edge
+// to edge, the title, description and loading meter keep to the left.
 
 gui "guis/map/*.gui" {
 	window BackgroundImage {

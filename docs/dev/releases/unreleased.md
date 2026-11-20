@@ -26,6 +26,11 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
   to the edges, panels stay centred. The PDA keeps its 4:3 screen over a
   softened view of the world. No retail GUI script is shipped: small layout
   patches name the windows ([layout](../widescreen-layout.md)).
+- **Level loading pictures for any screen shape.** Seventeen of Doom 3's level
+  pictures are recaptured from the retail camera on the shipped maps, at
+  1024 with shadow maps, with side, top and bottom tiles, so a wide or tall
+  loading screen shows more of the level instead of a crop. They ship in the
+  client-only `pak2.pk4` ([levelshot capture](../levelshot-capture.md)).
 - **Dedicated server.** `openD3-ded_x64` spawns `game/mp/d3dm1`.
 - **Your own shadow, and shadow maps that match.** In first person your body,
   head and weapon cast a shadow, in single player (`g_showPlayerShadow`, now on
@@ -113,6 +118,14 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
   so OpenGL culled every in-world screen (the Vulkan passes use the same
   test). A surface GUI now turns
   only when the surface carrying it is itself mirrored.
+- Add `baseod3/pak2.pk4`, the loadscreen pack: recaptures of seventeen level
+  pictures with their wide and tall tiles, found first by
+  `FindMapScreenshot` and shown by each level's own loading screen, and the
+  tools that recover the retail cameras and capture them
+  (`tools/assets/levelshots/`).
+- Refract correctly through glass in off-axis views: Doom 3's heat-haze
+  vertex programs assumed a symmetric projection and smeared levelshot tiles
+  (and VR eyes); the OpenGL backend corrects the line as it loads them.
 - Merge openQ4 through `966d8ae6f`: cascaded outdoor shadow maps on Quality
   and Ultra, steadier shadows from distant lights, layered OpenGL point-shadow
   cubes, BC6H textures and more texture-pack formats, each pak mounted once

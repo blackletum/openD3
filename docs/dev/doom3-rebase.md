@@ -306,12 +306,12 @@ release of Doom 3 (1.3.1 packs):
   as Doom 3 does; Create Server on `game/mp/d3dm1` now shows Tomiko
   Reactor's own picture. The Game Browser, a saved game without its own
   shot and the stock pages were not looked at.
-- openD3 levelshots (2026-11-20, OpenGL, `ui_retained 0`). Seventeen level
+- openD3 levelshots (2026-11-20, OpenGL, `ui_retained 0`). Twenty-five level
   pictures are recaptured at the recovered retail camera with shadow maps and
   their wide and tall tiles, in the client-only `baseod3/pak2.pk4`
   ([levelshot capture](levelshot-capture.md)). With it staged,
   `FindMapScreenshot` returns `guis/assets/levelshots/<map>`, and the level
-  loading screens of `game/alphalabs2` and `game/delta3`, held at
+  loading screens of `game/alphalabs2`, `game/delta3` and `game/cpu`, held at
   press-to-continue, show the new picture at 1024x768 and the picture composed
   from the tiles at 1680x720 and 720x1280, with the bars, title and
   description in place. The other loading screens, the menus' level pictures

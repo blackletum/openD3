@@ -1,7 +1,7 @@
 # Copyright (C) 2026 DarkMatter Productions. GPL-3.0-or-later.
 """Recover the retail camera of Doom 3's loading-screen pictures.
 
-python recover_levelshot_cameras.py [shot ...] [--workers N] [--fresh] [--floor] [--dense] [--force]
+python recover_levelshot_cameras.py [shot ...] [--workers N] [--fresh] [--floor] [--cube] [--dense] [--force]
 Writes <work>/results/<shot>.json and <shot>_cmp.png (retail | render). A shot with a
 found result is re-solved from it unless --fresh. See docs/dev/levelshot-capture.md.
 """
@@ -40,6 +40,11 @@ FLOOR = False
 FORCE = False
 LEVEL = False
 REGION = None
+CUBE = False
+WIDE_POLISH = False
+# cube faces as (pitch, yaw); pitch -90 looks up
+FACES = ((0, 0), (0, 90), (0, 180), (0, 270), (-90, 0), (90, 0))
+FACE = 256
 import queue
 homes: queue.Queue = queue.Queue()
 CW, CH = 160, 120
@@ -151,6 +156,63 @@ class Recover:
         log(self.shot, "coarse best:", [(n, tuple(round(v) for v in c)) for n, c in scored[:5]])
         return [c for _, c in scored[:top]]
 
+    def coarse_cube(self, top=40):
+        """Every direction from every candidate position: six square 90 degree faces each,
+        rendered with depth. Each face is scored by the retail camera pose it supports: matches
+        to the retail picture become world points through the face's depth, and PnP finds how
+        many agree on one camera. A repeated texture rarely does."""
+        pos = candidates(self.shot)
+        cams = [(x, y, z, p, yw, 0.0) for (x, y, z) in pos for (p, yw) in FACES]
+        log(self.shot, f"cube sweep: {len(pos)} positions, {len(cams)} faces")
+
+        def score(args):
+            face, rgb, d = args
+            if d is None or rgb.mean() < 1.0:
+                return 0, None
+            return self.pose_from_matches(face, rgb, d, FACE)
+
+        scored = []
+        for i in range(0, len(cams), 240):
+            batch = cams[i:i + 240]
+            shots = self.render(batch, FACE, FACE, depth=True)
+            for (k, cam) in POOL.map(score, [(f, rgb, d) for f, (rgb, d) in zip(batch, shots)]):
+                if cam is not None:
+                    scored.append((k, cam))
+        scored.sort(key=lambda t: -t[0])
+        log(self.shot, "cube poses:", [(k, tuple(round(v) for v in c)) for k, c in scored[:6]])
+        return scored[:top]
+
+    def pose_from_matches(self, face, rgb, d, size):
+        """The retail camera from one square face's matches and depth (PnP), wherever the face stands."""
+        pa, pb = geom.match(self.retail_feat, geom.rootsift(rgb))
+        n, mask = geom.fundamental_inliers(pa, pb)
+        if n < 10:
+            return 0, None
+        pr, pp = pa[mask].astype(np.float64), pb[mask].astype(np.float64)
+        ui = np.clip(np.round(pp).astype(int), 1, size - 2)
+        dz = d[ui[:, 1], ui[:, 0]]
+        win = np.stack([d[ui[:, 1] + dy, ui[:, 0] + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1)])
+        ok = (dz > 40) & (win.min(0) > 0) & (win.max(0) / np.maximum(win.min(0), 1e-3) < 1.04)
+        if ok.sum() < 8:
+            return 0, None
+        f = size / 2
+        world = geom.unproject(face, pp[ok], dz[ok].astype(np.float64), fx=f, fy=f, cx=size / 2, cy=size / 2)
+        try:
+            okp, rvec, tvec, inl = cv2.solvePnPRansac(world, pr[ok], geom.K(), None, iterationsCount=2000,
+                                                       reprojectionError=4.0, confidence=0.999,
+                                                       flags=cv2.SOLVEPNP_SQPNP)
+        except cv2.error:
+            return 0, None
+        if not okp or inl is None or len(inl) < 8:
+            return 0, None
+        inl = inl.ravel()
+        rvec, tvec = cv2.solvePnPRefineLM(world[inl], pr[ok][inl], geom.K(), None, rvec, tvec)
+        R, _ = cv2.Rodrigues(rvec)
+        cam = geom.cv_to_cam(R, tvec.ravel())
+        if not np.all(np.isfinite(cam)) or abs(cam[5]) > 60:
+            return 0, None
+        return len(inl), cam
+
     def evaluate(self, cam, fov=90.0):
         (rgb, d), = self.render([cam], W, H, depth=True, fov=fov)
         feat = geom.rootsift(rgb)
@@ -234,6 +296,11 @@ class Recover:
         origin = list(p)
         limit = [4.0, 4.0, 4.0, 0.4, 0.4, 0.0 if LEVEL else 0.4, 0.0]  # fov stays at Doom 3's 90
         steps = [1.5, 1.5, 1.5, 0.15, 0.15, 0.15, 0.3]
+        if WIDE_POLISH:
+            # a wider search where the solve cannot settle (pre-release geometry near the camera)
+            limit = [100.0, 100.0, 100.0, 10.0, 10.0, 0.0 if LEVEL else 5.0, 0.0]
+            steps = [24.0, 24.0, 24.0, 2.0, 2.0, 1.0, 0.3]
+            rounds = 80
         floor = [0.2, 0.2, 0.2, 0.02, 0.02, 0.02, 0.05]
 
         def evalp(ps):
@@ -268,6 +335,8 @@ class Recover:
             log(self.shot, "seeded from", prior["cam"])
             top = [tuple(prior["cam"])]
             self.seed_fov = prior.get("fov", 90.0)
+        elif CUBE:
+            top = [c for _, c in self.coarse_cube()]
         else:
             top = self.coarse()
         scored = []
@@ -374,6 +443,8 @@ def main():
     ap.add_argument("--floor", action="store_true")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--wide", action="store_true")
+    ap.add_argument("--wide-polish", action="store_true", help="polish over +-100 units and +-10 degrees")
+    ap.add_argument("--cube", action="store_true", help="sweep six cube faces per position and solve from each face")
     ap.add_argument("--level", action="store_true", help="hold roll at 0 in the final polish")
     ap.add_argument("--region", help="x0,x1,y0,y1,z0,z1,step: a grid of positions instead of the level's")
     ap.add_argument("--pitches", help="comma-separated sweep pitches")
@@ -385,7 +456,9 @@ def main():
     global FORCE, LEVEL
     FORCE = a.force
     LEVEL = a.level
-    global REGION
+    global REGION, CUBE, WIDE_POLISH
+    CUBE = a.cube
+    WIDE_POLISH = a.wide_polish
     if a.region:
         REGION = tuple(float(v) for v in a.region.split(","))
     if a.pitches:

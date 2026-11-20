@@ -22,20 +22,21 @@ level, whose loading screen has no picture, keep their stock screens.
 `tools/assets/levelshots/doom3_levelshots.json` records every set's camera, field of
 view, capture time and match quality.
 
-Seventeen of the thirty level pictures have a set: `admin`, `alphalabs1`, `alphalabs2`,
-`alphalabs3`, `cpuboss`, `d3dm2` to `d3dm5`, `delta1`, `delta2a`, `delta2b`, `delta3`,
-`delta5`, `hellhole`, `mars_city2` and `site3`. Their cameras were solved to a median
+Twenty-five of the thirty level pictures have a set: `admin`, `alphalabs1` to
+`alphalabs3`, `comm1`, `commoutside`, `cpu`, `cpuboss`, `d3dm1` to `d3dm5`, `delta1`,
+`delta2a`, `delta2b`, `delta3`, `delta4`, `delta5`, `enpro`, `hellhole`, `mars_city2`,
+`recycling1`, `recycling2` and `site3`. Their cameras were solved to a median
 reprojection error of 0.3 to 1.8 pixels at 640x480 and checked by eye against the
-retail picture. The other thirteen keep the retail picture, cropped to the window as
-before:
+retail picture. The other five keep the retail picture, cropped to the window as
+before; `unshipped` in the cameras file holds the best pose found for each:
 
-- no camera found: `caverns1`, `caverns2`, `cpu`, `d3dm1`, `monorail`, `recycling1`,
-  `recycling2`, `enpro`, `comm1` (a tilted shot; the search found only wrong places);
-  `d3dm1` looks straight up or down the reactor shaft, which the general sweeps do not
-  cover, and two column sweeps around the reactor models found nothing;
-- found but not shipped, as only roughly right: `alphalabs4`, `delta4` (the retail
-  picture has a console in the foreground that the shipped level does not),
-  `mc_underground` and `commoutside` (the solve does not settle in the outdoor haze).
+- `alphalabs4`: the right room, but the solve does not settle on the shot;
+- `mc_underground`: the retail walkway lighting is not in the shipped level, and the
+  solve settles elsewhere;
+- `monorail`: the walkway and beam nearest the camera differ from the shipped level;
+- `caverns1`: the right area, but the cave haze leaves too few features to settle;
+- `caverns2`: not found; the search lands on another wall with the same inscription
+  texture.
 
 ## How the engine uses them
 
@@ -79,6 +80,13 @@ command) and needs `OPEND3_DOOM3_BASE` set to the Doom 3 `base` directory:
    areas. Each position is rendered at several headings and pitches into small probes.
    Every probe is matched against the retail picture with RootSIFT after CLAHE, scored
    by fundamental-matrix inliers.
+   With `--cube` (which found the last eight sets, including the shots looking steeply
+   up or down and the tilted `comm1`), each position is rendered as the six square
+   faces of a cube, with depth, so every direction is covered. Each face is scored by
+   the pose it supports: its matches become world points through its depth, and PnP
+   counts how many agree on one retail camera. A repeated floor or ceiling texture
+   matches many points but rarely a single pose, which made raw match counts useless
+   here. `--region` sweeps a grid around an estimate instead of the level's positions.
 2. **Solve.** The best candidates are rendered at 640x480 with depth. Matched points
    become world points through the probe depth; PnP (SQPnP in RANSAC) gives a new
    camera, which is rendered and matched again until it settles. Matches whose depth is
@@ -132,6 +140,18 @@ fix; the Vulkan renderer's heat haze was not checked.
 
 The retail pictures were taken in pre-release builds. Where the shipped level differs,
 the shipped level wins: `cpuboss`'s floor is lighter, `delta1` lacks a dark column on
-the right, `delta2a`'s ceiling lights are dimmer, and `hellhole`'s overhead lamp is off
-at every time the sweep tried. Retail pictures have a black band along the bottom,
-which the loading screen's bottom bar covers; the sets show the level there.
+the right, `delta2a`'s ceiling lights are dimmer, `hellhole`'s overhead lamp is off at
+every time the sweep tried, `delta4` has no console in the foreground, `commoutside`
+has no large pipe across the floor, `comm1`'s wall lamps are white rather than red,
+and `recycling2` shows a red alarm glow at every time tried. `recycling1` and `enpro`
+settle a little from the retail camera (a door frame nearer the camera, the beam's
+angle), where the geometry around them differs. Retail pictures have a black band
+along the bottom, which the loading screen's bottom bar covers; the sets show the
+level there.
+
+`d3dm1`'s picture is taken while the reactor fires. Its script (`laser_loop` in
+`maps/game/mp/d3dm1.script`) starts 5 seconds after load and repeats about every 30.5
+seconds; `tored()` fades the room to red over 1.5 seconds about 16 seconds in. The set
+is captured at 17.6 seconds, early in that fade, where the picture's average colour
+matches the retail one; the fully red room is far more saturated than the retail
+picture.

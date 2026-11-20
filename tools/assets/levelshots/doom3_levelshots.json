@@ -69,6 +69,57 @@
     "error_px": 1.36
    }
   },
+  "comm1": {
+   "map": "game/comm1",
+   "cam": [
+    -37.862,
+    2624.129,
+    1086.449,
+    -47.615,
+    34.497,
+    3.43
+   ],
+   "fov": 90.0,
+   "time": 23264,
+   "match": {
+    "inliers": 312,
+    "error_px": 1.44
+   }
+  },
+  "commoutside": {
+   "map": "game/commoutside",
+   "cam": [
+    -7740.296,
+    276.113,
+    357.148,
+    24.074,
+    212.502,
+    -1.82
+   ],
+   "fov": 90.0,
+   "time": 40128,
+   "match": {
+    "inliers": 528,
+    "error_px": 1.69
+   }
+  },
+  "cpu": {
+   "map": "game/cpu",
+   "cam": [
+    52.295,
+    165.53,
+    68.081,
+    4.904,
+    245.692,
+    -0.234
+   ],
+   "fov": 90.0,
+   "time": 23600,
+   "match": {
+    "inliers": 1183,
+    "error_px": 0.63
+   }
+  },
   "cpuboss": {
    "map": "game/cpuboss",
    "cam": [
@@ -84,6 +135,23 @@
    "match": {
     "inliers": 166,
     "error_px": 0.79
+   }
+  },
+  "d3dm1": {
+   "map": "game/mp/d3dm1",
+   "cam": [
+    -404.334,
+    -341.529,
+    599.576,
+    57.106,
+    41.416,
+    0.308
+   ],
+   "fov": 90.0,
+   "time": 17616,
+   "match": {
+    "inliers": 531,
+    "error_px": 0.49
    }
   },
   "d3dm2": {
@@ -222,6 +290,23 @@
     "error_px": 1.33
    }
   },
+  "delta4": {
+   "map": "game/delta4",
+   "cam": [
+    1795.272,
+    1394.619,
+    -610.086,
+    4.023,
+    310.41,
+    0.395
+   ],
+   "fov": 90.0,
+   "time": 19216,
+   "match": {
+    "inliers": 226,
+    "error_px": 1.62
+   }
+  },
   "delta5": {
    "map": "game/delta5",
    "cam": [
@@ -237,6 +322,23 @@
    "match": {
     "inliers": 360,
     "error_px": 1.36
+   }
+  },
+  "enpro": {
+   "map": "game/enpro",
+   "cam": [
+    116.078,
+    -1649.323,
+    -3776.123,
+    -60.388,
+    165.547,
+    -6.448
+   ],
+   "fov": 90.0,
+   "time": 20944,
+   "match": {
+    "inliers": 258,
+    "error_px": 1.08
    }
   },
   "hellhole": {
@@ -273,6 +375,40 @@
     "error_px": 0.83
    }
   },
+  "recycling1": {
+   "map": "game/recycling1",
+   "cam": [
+    -1260.532,
+    3430.979,
+    279.361,
+    1.955,
+    0.647,
+    -0.316
+   ],
+   "fov": 90.0,
+   "time": 13968,
+   "match": {
+    "inliers": 278,
+    "error_px": 0.85
+   }
+  },
+  "recycling2": {
+   "map": "game/recycling2",
+   "cam": [
+    588.252,
+    1059.149,
+    122.333,
+    -2.626,
+    25.674,
+    -0.804
+   ],
+   "fov": 90.0,
+   "time": 29120,
+   "match": {
+    "inliers": 347,
+    "error_px": 1.63
+   }
+  },
   "site3": {
    "map": "game/site3",
    "cam": [
@@ -294,67 +430,83 @@
  "unshipped": {
   "alphalabs4": {
    "cam": [
-    -621.942,
-    -1423.285,
-    -217.458,
-    -2.671,
-    262.245,
-    -0.944
+    -758.979,
+    -1327.984,
+    -179.238,
+    0.709,
+    276.375,
+    0.651
    ],
    "fov": 90.0,
    "match": {
-    "inliers": 137,
-    "error_px": 0.98
+    "inliers": 177,
+    "error_px": 1.27
    },
-   "note": "only roughly right"
-  },
-  "delta4": {
-   "cam": [
-    1793.135,
-    1389.032,
-    -612.76,
-    3.599,
-    311.006,
-    0.398
-   ],
-   "fov": 90.0,
-   "match": {
-    "inliers": 217,
-    "error_px": 1.71
-   },
-   "note": "the retail foreground console is not in the shipped level"
+   "note": "the solve does not settle; the room is right but the shot is not"
   },
   "mc_underground": {
    "cam": [
-    219.765,
-    -571.97,
-    61.89,
-    2.227,
-    72.345,
-    0.546
+    138.48,
+    -624.176,
+    86.837,
+    6.24,
+    60.48,
+    -1.025
    ],
    "fov": 90.0,
    "match": {
-    "inliers": 91,
-    "error_px": 1.57
+    "inliers": 183,
+    "error_px": 1.27
    },
-   "note": "only roughly right"
+   "note": "the retail walkway lighting is not in the shipped level; the solve settles elsewhere"
   },
-  "commoutside": {
+  "monorail": {
    "cam": [
-    -7735.3,
-    281.07,
-    313.5,
-    19.92,
-    213.19,
-    -0.74
+    4935.411,
+    3200.157,
+    633.593,
+    23.253,
+    13.195,
+    -8.354
    ],
    "fov": 90.0,
    "match": {
-    "inliers": 560,
-    "error_px": 3.38
+    "inliers": 548,
+    "error_px": 1.51
    },
-   "note": "the solve does not settle in the outdoor haze"
+   "note": "the walkway and beam nearest the camera differ from the shipped level"
+  },
+  "caverns1": {
+   "cam": [
+    1068.953,
+    688.569,
+    199.972,
+    -6.964,
+    225.11,
+    -0.096
+   ],
+   "fov": 90.0,
+   "match": {
+    "inliers": 48,
+    "error_px": 0.71
+   },
+   "note": "the cave haze leaves too few features; right area, camera not settled"
+  },
+  "caverns2": {
+   "cam": [
+    2236.198,
+    567.77,
+    -1348.498,
+    -2.414,
+    205.589,
+    -0.36
+   ],
+   "fov": 90.0,
+   "match": {
+    "inliers": 51,
+    "error_px": 1.14
+   },
+   "note": "not found: the solve lands on another wall with the same inscription texture"
   }
  }
 }

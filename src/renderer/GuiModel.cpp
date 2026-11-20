@@ -813,7 +813,7 @@ EmitToCurrentView
 void idGuiModel::EmitToCurrentView( float modelMatrix[16], bool depthHack, bool hostReflected ) {
 	float	modelViewMatrix[16];
 
-	myGlMultMatrix( modelMatrix, tr.viewDef->worldSpace.modelViewMatrix, 
+	myGlMultMatrix( modelMatrix, tr.viewDef->worldSpace.modelViewMatrix,
 			modelViewMatrix );
 
 	for ( int i = 0 ; i < surfaces.Num() ; i++ ) {

@@ -113,6 +113,11 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
   so OpenGL culled every in-world screen (the Vulkan passes use the same
   test). A surface GUI now turns
   only when the surface carrying it is itself mirrored.
+- Merge openQ4 through `966d8ae6f`: cascaded outdoor shadow maps on Quality
+  and Ultra, steadier shadows from distant lights, layered OpenGL point-shadow
+  cubes, BC6H textures and more texture-pack formats, each pak mounted once
+  when two search roots hold it, and cheaper particles, decals and reverb. Quake 4's in-place switch to The Awakening and its
+  Russian gameplay tables stay out.
 - Skip upstream's startup system check, which offers the detected performance
   preset, until openD3 ships a screen for it.
 - Default `g_showPlayerShadow` to 1 in both game modules.

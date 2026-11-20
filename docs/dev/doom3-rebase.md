@@ -28,14 +28,20 @@ The branch history, oldest first:
 1. **Merge openQ4** through `55bbe166a`, taking the upstream tree unchanged.
    openQ4's history is now part of openD3's, so later syncs are ordinary
    merges of `openq4-upstream/main`. The latest sync merged upstream through
-   `65305957d` (2026-11-18): PNG textures and screenshots, BC7 decoding and
-   texture-pack bump rebuilds, render demos in checked blocks with keyframes,
-   network protocol 2.42 and its netcode fixes, the in-game updater, PCSS-lite
-   soft shadows on the modern OpenGL path, self-shadowing characters under
-   shadow maps, light-interaction and collision bookkeeping cuts, VR body and
-   controller work, and retained interface warming. The one before it, through `f3b2f9583` (2026-11-14),
-   brought the later shadow-mapping fixes (FPS-03, REN-01), and the one
-   before that, through `7c74cd712` (2026-11-11), the earlier ones.
+   `966d8ae6f` (2026-11-20): cascaded outdoor shadow maps on Quality and
+   Ultra, a per-receiver normal offset for distant lights' shadows, layered
+   OpenGL point-shadow cubes, BC6H (HDR) textures and more texture-pack
+   formats, a pak found in two search roots mounted once, particle, decal
+   and reverb savings (FPS-08), and upstream's own fix for
+   surface GUI winding. The one before it, through `65305957d` (2026-11-18),
+   brought PNG textures and screenshots, BC7 decoding and texture-pack bump
+   rebuilds, render demos in checked blocks with keyframes, network protocol
+   2.42 and its netcode fixes, the in-game updater, PCSS-lite soft shadows on
+   the modern OpenGL path, self-shadowing characters under shadow maps,
+   light-interaction and collision bookkeeping cuts, VR body and controller
+   work, and retained interface warming. Before those, the syncs through
+   `f3b2f9583` (2026-11-14) and `7c74cd712` (2026-11-11) brought the
+   shadow-mapping fixes (FPS-03, REN-01).
 2. **Remove the Quake 4 game library and content.** `src/game` and
    `src/mpgame` (Quake 4 SDK), the SDK licence and the Quake 4 runtime content
    leave the tree. The engine-side content moves to `content/baseod3`.
@@ -202,6 +208,18 @@ release of Doom 3 (1.3.1 packs):
   room's consoles after a save and load draw as before the sync, the text
   reads the right way round, and the OpenGL log has the same warnings as the
   build before the sync.
+- After the `966d8ae6f` sync (2026-11-20), on the staged build: configure,
+  compile and stage of every target, and `vk_shader_header_pin` passes on the
+  regenerated headers. `game/mars_city1` loads on OpenGL and Vulkan (1,969
+  entities), saves and loads, and draws the Traffic Monitoring Station and
+  the control room's consoles. Its OpenGL log has the same warnings as the
+  pre-sync build run the same way, and no log has an error. `game/alphalabs1`
+  draws with its HUD on Vulkan, and with `r_useShadowMap 1` and
+  `r_shadowMapPointLights 1` on OpenGL and Vulkan with no shadow warning. A
+  `game/mp/d3dm1` listen server spawns 887 entities and shows the warmup HUD,
+  and the retained title draws as before. Not run: the new outdoor cascades
+  (no outdoor map was captured), BC6H textures, texture packs and a remote
+  client.
 - Stock specular follows Doom 3 on every path. `r_correctspecular` and
   `r_normalizebumpmap` default to 0 (they came from Prey at 1), and the OpenGL
   ARB path passes the specular constant unscaled, as id's `draw_arb2.cpp`
@@ -527,9 +545,26 @@ sync also dropped upstream's new tests for the Quake 4 game library (the
 enhanced-physics, live-event, HUD-catalog and clip fast-path checks). The
 in-game updater arrived with upstream's release-signing key, which signs
 openQ4's releases: openD3 empties it (`src/updater/UpdateSigningKey.h`), so an
-update check can only open the release page. The script also rewrites openD3's own
-prose in `docs/` and `assets/` and a few tools that the merge did not touch,
-and the legacy `openq4-ui` format names in `src/ui/retained`: restore those.
+update check can only open the release page.
+
+On the `966d8ae6f` sync the Quake 4 feature was switching between Quake 4
+and The Awakening in place (`ca16875ce`): its engine side remounts the game
+directories under the running engine and calls `FS_AwakeningActive` and the
+Quake 4 game API. Every file it touched was rebuilt as openD3's side plus
+upstream's other changes: a three-way merge of upstream's file against the
+commit's own before and after drops the commit, and a second three-way merge
+of that, rebranded, against openD3's file brings in the rest. The Russian
+gameplay tables it added for Quake 4 (`d724454c6`) stay out, and openD3 keeps
+its Russian engine strings, which upstream moved into those tables. Upstream's
+surface-GUI winding fix (`966d8ae6f`) matches openD3's `62c9773c6`; the
+merge takes upstream's wording. Both sides had touched the Vulkan shader
+sources, so the SPIR-V headers were regenerated with the commands
+`vk_shader_header_pin.py` prints.
+
+The script also rewrites openD3's own prose in `docs/` and `assets/` and a
+few tools that the merge did not touch, and the legacy `openq4-ui` format
+names in `src/ui/retained`: restore those, and comments about upstream's own
+packages.
 
 When testing from the command line, remember that every `+set` is applied at
 startup wherever it stands on the line. A setting meant to change later in the

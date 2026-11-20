@@ -74,6 +74,8 @@ If you have questions concerning this license or the applicable additional terms
 #include <SDL3/SDL_cpuinfo.h>
 // The refresh of the display the game window is on, 0 when unknown (sdl3_backend.cpp).
 float Sys_SDL_GetWindowRefreshHz( void );
+// Reads the operating system's window messages into SDL's queue during a load (sdl3_backend.cpp).
+void Sys_SDL_KeepWindowResponsive( void );
 #endif
 
 #define	MAX_PRINT_MSG_SIZE	4096
@@ -4210,7 +4212,9 @@ static bool Common_ValidatePerformancePresetIntent( const openD3PerformancePrese
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapSize", preset.shadowMapSize, 2048 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapPointSize", preset.shadowMapPointSize, 512 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapFilterMode", preset.shadowMapFilterMode, 2 );
-		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapCSM", preset.shadowMapCSM, 0 );
+		// Sunlight and distant sources are cascaded; spotlights keep one map.
+		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapCSM", preset.shadowMapCSM, 1 );
+		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapProjectedCSM", preset.shadowMapProjectedCSM, 0 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "image_usePrecompressedTextures", preset.usePrecompressedTextures, 1 );
 		passed &= Common_PerformancePresetCheckIntAtLeast( preset, "r_rendererUploadMegs", preset.uploadMegs, 32 );
 		passed &= Common_PerformancePresetCheckRestoredAudio( preset );
@@ -4227,7 +4231,8 @@ static bool Common_ValidatePerformancePresetIntent( const openD3PerformancePrese
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapFilterTaps", preset.shadowMapFilterTaps, 13 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapFilterMode", preset.shadowMapFilterMode, 2 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapAtlasSize", preset.shadowMapAtlasSize, 8192 );
-		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapCSM", preset.shadowMapCSM, 0 );
+		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapCSM", preset.shadowMapCSM, 1 );
+		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapProjectedCSM", preset.shadowMapProjectedCSM, 0 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_ssaoSamples", preset.ssaoSamples, 32 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "image_usePrecompressedTextures", preset.usePrecompressedTextures, 1 );
 		passed &= Common_PerformancePresetCheckIntAtLeast( preset, "r_rendererUploadMegs", preset.uploadMegs, 32 );
@@ -4247,6 +4252,7 @@ static bool Common_ValidatePerformancePresetIntent( const openD3PerformancePrese
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapPointFilterMode", preset.shadowMapPointFilterMode, 1 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapAtlasSize", preset.shadowMapAtlasSize, 16384 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapCSM", preset.shadowMapCSM, 1 );
+		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapProjectedCSM", preset.shadowMapProjectedCSM, 1 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_ssaoSamples", preset.ssaoSamples, 32 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_bloomMipCount", preset.bloomMipCount, 5 );
 		passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_motionBlurSamples", preset.motionBlurSamples, 16 );
@@ -4363,6 +4369,7 @@ static bool Common_ValidatePerformancePresetDefinition( const openD3PerformanceP
 		 preset.shadowMapPointFilterMode < 0 || preset.shadowMapPointFilterMode > 1 ||
 		 preset.shadowMapAtlasSize < 2048 || preset.shadowMapAtlasSize > 16384 ||
 		 preset.shadowMapCSM < 0 || preset.shadowMapCSM > 1 ||
+		 preset.shadowMapProjectedCSM < 0 || preset.shadowMapProjectedCSM > 1 ||
 		 preset.ssaoSamples < 4 || preset.ssaoSamples > 32 ||
 		 preset.bloomMipCount < 1 || preset.bloomMipCount > 5 ||
 		 preset.motionBlurSamples < 1 || preset.motionBlurSamples > 16 ||
@@ -4505,7 +4512,7 @@ static bool Common_ValidatePerformancePresetApplied( const openD3PerformancePres
 	passed &= Common_CheckPerformancePresetInt( preset.name, "image_picmip", 0 );
 	passed &= Common_CheckPerformancePresetInt( preset.name, "r_shadowMapCSM", preset.shadowMapCSM );
 	passed &= Common_CheckPerformancePresetInt( preset.name, "r_shadowMapCascadeCount", 4 );
-	passed &= Common_CheckPerformancePresetInt( preset.name, "r_shadowMapProjectedCSM", 1 );
+	passed &= Common_CheckPerformancePresetInt( preset.name, "r_shadowMapProjectedCSM", preset.shadowMapProjectedCSM );
 	passed &= Common_CheckPerformancePresetInt( preset.name, "r_shadowMapCascadeStabilize", 1 );
 	passed &= Common_CheckPerformancePresetInt( preset.name, "r_motionBlurObjectVectors", 1 );
 	passed &= Common_CheckPerformancePresetInt( preset.name, "r_shadowMapHashedAlpha", 1 );
@@ -6892,6 +6899,12 @@ bool openD3_UpdateInitialization( void ) {
 		if ( gap > 50 && cvarSystem->GetCVarBool( "ui_retainedTrace" ) ) {
 			common->Printf( "INITIALIZATION_HOOK_GAP msec=%.1f\n", gap );
 		}
+#if defined( USE_SDL3 )
+		// An engine reload shows its new window long before the frame loop
+		// pumps again; a window that reads no messages for five seconds is
+		// ghosted as Not Responding (white, in fullscreen).
+		Sys_SDL_KeepWindowResponsive();
+#endif
 	}
 	if ( initializationDrawing || initializationMessage.IsEmpty() ||
 		!initializationPacing.Due( InitializationMilliseconds(), openD3_GetRequestedPresentationCap() ) ||

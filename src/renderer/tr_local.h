@@ -362,18 +362,18 @@ typedef struct viewEntity_s {
 	const float *		shaderRegisterMemoRegs[4];
 	int					numShaderRegisterMemos;
 
-	// A GUI drawn on a surface. Its model matrix maps the GUI's y-down
-	// 640x480 plane through the surface's texture axes, a reflection for the
-	// usual mapping, and the GUI's quads are wound to suit it; the space winds
-	// by the host surface's own reflection alone.
+	// openD3: a GUI drawn on a surface. Its model matrix maps the GUI's
+	// y-down 640x480 plane through the surface's texture axes, a reflection
+	// for the usual mapping, and the GUI's quads are wound to suit it; the
+	// space winds by the host surface's own reflection alone.
 	bool				surfaceGuiSpace;
 	bool				surfaceGuiHostReflected;
 } viewEntity_t;
 
-// Whether a space winds the other way round on screen: a model matrix of
-// negative determinant (a mirrored model), or a surface GUI on a mirrored
-// host. The legacy OpenGL and Vulkan per-surface passes turn the front face
-// for it (RB_SetSurfaceWinding, vkSurfaceWinding_t).
+// openD3: whether a surface space winds the other way round on screen: a
+// model matrix of negative determinant (a mirrored model), or a surface GUI
+// on a mirrored host. The legacy GL and Vulkan per-surface passes turn the
+// front face for it.
 ID_INLINE bool R_ModelMatrixReflects( const float *m ) {
 	const float determinant = m[0] * ( m[5] * m[10] - m[6] * m[9] )
 		- m[1] * ( m[4] * m[10] - m[6] * m[8] )
@@ -1655,6 +1655,7 @@ extern idCVar r_shadowMapCacheMovingLights;	// 1 = moving lights go through the 
 extern idCVar r_shadowMapStencilFallbackViews;	// views without a failure before a light leaves the stencil fallback
 extern idCVar r_shadowMapPointCacheMegs;	// memory bound on those slots, MiB
 extern idCVar r_shadowMapPointCompose;	// 1 = compose live casters over a cached static cube
+extern idCVar r_shadowMapPointLayered;	// 1 = draw a point shadow cube as one layered target (OpenGL)
 extern idCVar r_shadowMapStaticCutouts;	// 1 = cutout casters with unchanging coverage are cached as static
 extern idCVar r_shadowMapCacheCSM;		// 1 = allow CSM/static cache reuse
 extern idCVar r_shadowMapTranslucentFilterRadius;	// translucent moment filter radius, -1 = inherit opaque radius
@@ -1728,6 +1729,7 @@ extern idCVar r_lightGridDepthBiasFactor;	// polygon offset factor for light-gri
 extern idCVar r_lightGridDepthBiasUnits;	// polygon offset units for light-grid overlay
 extern idCVar r_lightGridDepthTolerance;	// depth texture tolerance for light-grid receiver clipping
 extern idCVar r_lightGridPortalBlend;	// world-unit blend radius for light-grid sampling across visible portal boundaries
+extern idCVar r_useBPTC;	// 0 reports no BPTC (BC7/BC6H), to test their decode paths
 extern idCVar r_lightGridSoftwareDecode;	// decode DXT light-grid pack atlases on the CPU, as renderers without S3TC must
 extern idCVar r_lightGridPreload;		// preload all light-grid atlases during map load instead of streaming visible areas
 extern idCVar r_lightGridResidencyFrames;	// keep light-grid atlases resident after visible/neighbor use; 0 disables runtime purging
@@ -1869,6 +1871,8 @@ typedef enum {
 } shadowMapDebugMode_t;
 extern idCVar r_shadowMapDebugMode;		// projected shadow-map visualization mode
 extern idCVar r_shadowMapCascadeStabilize;	// snap projected-light cascade bounds to texels
+extern idCVar r_shadowMapCascadeFarMap;		// last cascade holds the whole light past the fitted reach
+extern idCVar r_shadowMapCascadeFarCache;	// GL: cache that cascade's still scenery between frames
 extern idCVar r_shadowMapPointFarScale;	// range padding multiplier used by point-light shadow maps
 extern idCVar r_shadowMapPolygonFactor;	// slope-scale bias used when rendering simple shadow maps
 extern idCVar r_shadowMapPolygonOffset;	// constant bias used when rendering simple shadow maps

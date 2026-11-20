@@ -9462,7 +9462,8 @@ idFileSystemLocal::FindMapScreenshot
 The levelshot the menus show for a map. A mapDef's "loadimage" comes first, as on
 the map's loading screen: the Awakening's CTF maps have no levelshot of their own
 name and reuse retail's through it. Otherwise it is
-gfx/guis/loadscreens/<map>.tga, one extracted from an addon, or the generic one.
+gfx/guis/loadscreens/<map>.tga (Doom 3's guis/assets/splash/<map>.tga under
+OPEND3), one extracted from an addon, or the generic one.
 ===============
 */
 void idFileSystemLocal::FindMapScreenshot( const char *path, char *buf, int len ) {
@@ -9488,7 +9489,13 @@ void idFileSystemLocal::FindMapScreenshot( const char *path, char *buf, int len 
 	mapname.StripPath();
 	mapname.StripFileExtension();
 	
+#if defined( OPEND3 )
+	// Doom 3 keeps its levelshots under guis/assets/splash/. The image loader
+	// maps Quake 4's name to it, but the file is looked for here by name.
+	idStr::snPrintf( buf, len, "guis/assets/splash/%s.tga", mapname.c_str() );
+#else
 	idStr::snPrintf( buf, len, "gfx/guis/loadscreens/%s.tga", mapname.c_str() );
+#endif
 	if ( ReadFile( buf, NULL, NULL ) == -1 ) {
 		// try to extract from an addon
 		file = OpenFileReadFlags( buf, FSFLAG_SEARCH_ADDONS );

@@ -272,6 +272,22 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
 
 A mod whose main menu lacks one of those stock buttons keeps its own menu.
 
+The pages load before they are chosen. The title and Load Game and the
+credits load with the stock menus, and the pause's Save Game, Load Game
+and death screen with each level. The others are parsed on the job
+workers while the home that leads to them shows, and loaded and their
+vectors compiled once that home has rested half a second, one page a
+frame (openQ4's `PrefetchRetainedNextPages` and `WarmRetainedPages` in
+`src/framework/Session_menu.cpp`, with Doom 3's page graph under
+`OPEND3`): the title leads to CONTROLS, GAME OPTIONS, SYSTEM (parsed
+only: it is a new instance each time), the Game Browser and Create
+Server, and the pause to the three options pages. Until 20 November
+those tables were Quake 4's (its Single Player, SETTINGS and Multiplayer
+hubs), and each of these pages was parsed, built and compiled in the
+frame that opened it. The title also queues the multiplayer maps'
+levelshots for its idle frames, so Create Server's picture never loads
+late.
+
 ## Motion and state
 
 Sections 7 and 8 of the specification, as the documents play them. The
@@ -295,9 +311,14 @@ controllers), except where a line says otherwise.
   the list's edge to canvas x 310, LOAD GAME 282 to 465, MULTIPLAYER from
   437), the OPTIONS tab lengthens by 50 u under them and the second band
   gives up its leading 50 u, in 200 ms, accel(0.4, 0.6); back in 300
-  (`bandAside`, `bandRest`). The stock starts the three 20 ms apart; here
-  they move together. A nav button that opens a page drops any open list
-  in one frame and snaps the band to rest first (`bandSnap`), because the
+  (`bandGoAside`, `bandGoRest`). The three start 20 ms apart, as the stock
+  starts them: MULTIPLAYER, LOAD GAME, then NEW GAME going aside, and
+  NEW GAME 40 ms in, then LOAD GAME and MULTIPLAYER, coming back. A
+  timeline cannot wait, so each later button starts from the completion
+  of a short timeline on the hidden `band-clock` node; every move of the
+  band plays that clock again, and the newest play owns the property, so
+  a chain a later move supersedes never takes its next step. A nav button that opens a page drops any open list
+  in one frame and snaps the band to rest first (`bandGoSnap`), because the
   page draws that button again at its rest place.
 - **A sub-list closes as one object.** Its items go at once and its tab
   folds back into the button over 300 ms, accel(0.4, 0.6) (`sub_list` in
@@ -543,7 +564,13 @@ Points that are easy to get wrong:
   (`src/ui/SettingsService.cpp`) with `page_state` in
   `tools/ui/doom3_menu_system.py`. The merge of 14 November added
   `settings.msaa.clamped` and `settings.msaa.status`, and the page was
-  refused from then until 15 November.
+  refused from then until 15 November; the merge of 18 November added
+  the setting `r_shadowMapCharacterSelfShadow`, and it was refused again
+  until 20 November. Since then `check_schema` in that module reads the
+  schema from the engine's source (the settings catalog, the service's
+  and the renderer list's literal keys, the display and device slot
+  counts) and the generator stops, naming the keys, when the page would
+  be refused; `--check` fails the same way.
 - `wait N` counts frames, and a client whose window is not being paced
   runs them several times faster: a script then acts and captures before
   the menu has faded in, which is the likely cause of the black captures
@@ -839,9 +866,9 @@ every platform but Windows.
 - **Death screen.** Load leaves for the title's Load Game page, as openQ4
   routed it, where the stock screen opens a load panel of its own in hell's
   colours (section 9.8); Back from that page is the title, not the death
-  screen. The choices play no sound under the pointer (the stock pings),
-  and nothing has the focus when the screen opens, so a keyboard or a
-  controller must move once before Accept does anything.
+  screen. The choices play no sound under the pointer (the stock pings).
+  Restart takes the focus once the choices take input, so Accept restarts
+  at once; it shows no focus while the pointer is in use.
 - **Loading screens.** The first level's stock screen fades its word in
   over 200 ms with no cover; the document fades in over 400 ms as on the
   other screens. The word's first typed frame, a lone L, is skipped: it has
@@ -890,16 +917,17 @@ every platform but Windows.
   still draws on the centred canvas.
 - **Choreography.** The band stands aside for OPTIONS' list only: while a
   page is open the stock also keeps the three buttons narrowed at the
-  trailing side (section 9.3), and here they stand at rest, dim. The
-  three buttons move together, not 20 ms apart. A page's plate grows and
+  trailing side (section 9.3), and here they stand at rest, dim. A page's plate grows and
   shrinks about its own centre, not out of the nav band, and one options
   page does not morph into another. A page is answered 250 ms into its
   closing, not at the stock's 400. A hint leaves in one frame, without
   the stock's 50 ms wipe out. A list's close cannot be seen to its end by
   another list opening in its place: that one drops it at once.
 - **The grid's pointer response** runs while the home takes the input. It
-  stops under a retained page, but it still answers under one of the
-  home's dialogs, where the stock's dim would catch the pointer.
+  stops under a retained page, and under the home's dialogs and panels
+  (exit, quit game, DEFAULTS, Mods, Multiplayer Settings), whose state the
+  session reads (`RETAINED_HOME_MODALS`). That the grid rests there was
+  not seen: the line's 15 % light did not show in the stills either way.
 - **The logo's interference layer** (section 8.5) is not drawn; the shimmer is.
 - **Scan lines** are still the stock bitmap, not procedural.
 - **Sounds for focus changes** follow openQ4's sound router, which openD3 has

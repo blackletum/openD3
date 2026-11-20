@@ -35,37 +35,45 @@
  "events": {
   "saveGameGo": [
    {"op": "call", "event": "optionsHide"},
-   {"op": "playTimeline", "timeline": "bandSnap"},
+   {"op": "call", "event": "bandGoSnap"},
    {"op": "action", "action": "saveGame"}
   ],
   "loadGameGo": [
    {"op": "call", "event": "optionsHide"},
-   {"op": "playTimeline", "timeline": "bandSnap"},
+   {"op": "call", "event": "bandGoSnap"},
    {"op": "action", "action": "loadGame"}
   ],
+  "bandGoAside": [{"op": "playTimeline", "timeline": "bandAside"}, {"op": "playTimeline", "timeline": "bandAsideClock1"}],
+  "bandAsideStep1": [{"op": "playTimeline", "timeline": "bandAsideSecond"}, {"op": "playTimeline", "timeline": "bandAsideClock2"}],
+  "bandAsideStep2": [{"op": "playTimeline", "timeline": "bandAsideFirst"}],
+  "bandGoRest": [{"op": "playTimeline", "timeline": "bandRest"}, {"op": "playTimeline", "timeline": "bandRestClock1"}],
+  "bandRestStep1": [{"op": "playTimeline", "timeline": "bandRestFirst"}, {"op": "playTimeline", "timeline": "bandRestClock2"}],
+  "bandRestStep2": [{"op": "playTimeline", "timeline": "bandRestSecond"}, {"op": "playTimeline", "timeline": "bandRestClock3"}],
+  "bandRestStep3": [{"op": "playTimeline", "timeline": "bandRestThird"}],
+  "bandGoSnap": [{"op": "playTimeline", "timeline": "bandSnap"}],
   "navRest": [
    {"op": "playTimeline", "timeline": "nav_firstLit"},
    {"op": "playTimeline", "timeline": "nav_secondLit"},
    {"op": "playTimeline", "timeline": "nav_thirdLit"},
-   {"op": "playTimeline", "timeline": "bandRest"}
+   {"op": "call", "event": "bandGoRest"}
   ],
   "navOptions": [
    {"op": "playTimeline", "timeline": "nav_firstDim"},
    {"op": "playTimeline", "timeline": "nav_secondDim"},
    {"op": "playTimeline", "timeline": "nav_thirdDim"},
-   {"op": "playTimeline", "timeline": "bandAside"}
+   {"op": "call", "event": "bandGoAside"}
   ],
   "navFirstOpen": [
    {"op": "playTimeline", "timeline": "nav_firstOpen"},
    {"op": "playTimeline", "timeline": "nav_secondDim"},
    {"op": "playTimeline", "timeline": "nav_thirdDim"},
-   {"op": "playTimeline", "timeline": "bandRest"}
+   {"op": "call", "event": "bandGoRest"}
   ],
   "navThirdOpen": [
    {"op": "playTimeline", "timeline": "nav_firstDim"},
    {"op": "playTimeline", "timeline": "nav_secondDim"},
    {"op": "playTimeline", "timeline": "nav_thirdOpen"},
-   {"op": "playTimeline", "timeline": "bandRest"}
+   {"op": "call", "event": "bandGoRest"}
   ],
   "navPage": [
    {"op": "playTimeline", "timeline": "nav_firstDim"},
@@ -1224,38 +1232,6 @@
    "durationMs": 200,
    "tracks": [
     {
-     "node": "nav_first",
-     "property": "left",
-     "keys": [
-      {"atMs": 0, "value": {"type": "length", "value": 196.5, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
-      {"atMs": 200, "value": {"type": "length", "value": 196.5, "unit": "dp"}}
-     ]
-    },
-    {
-     "node": "nav_first",
-     "property": "right",
-     "keys": [
-      {"atMs": 0, "value": {"type": "length", "value": 15.0, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
-      {"atMs": 200, "value": {"type": "length", "value": 15.0, "unit": "dp"}}
-     ]
-    },
-    {
-     "node": "nav_second",
-     "property": "left",
-     "keys": [
-      {"atMs": 0, "value": {"type": "length", "value": 423.0, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
-      {"atMs": 200, "value": {"type": "length", "value": 423.0, "unit": "dp"}}
-     ]
-    },
-    {
-     "node": "nav_second",
-     "property": "width",
-     "keys": [
-      {"atMs": 0, "value": {"type": "length", "value": 274.5, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
-      {"atMs": 200, "value": {"type": "length", "value": 274.5, "unit": "dp"}}
-     ]
-    },
-    {
      "node": "nav_third",
      "property": "left",
      "keys": [
@@ -1279,7 +1255,94 @@
    ]
   },
   {
+   "id": "bandAsideSecond",
+   "durationMs": 200,
+   "tracks": [
+    {
+     "node": "nav_second",
+     "property": "left",
+     "keys": [
+      {"atMs": 0, "value": {"type": "length", "value": 423.0, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
+      {"atMs": 200, "value": {"type": "length", "value": 423.0, "unit": "dp"}}
+     ]
+    },
+    {
+     "node": "nav_second",
+     "property": "width",
+     "keys": [
+      {"atMs": 0, "value": {"type": "length", "value": 274.5, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
+      {"atMs": 200, "value": {"type": "length", "value": 274.5, "unit": "dp"}}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bandAsideFirst",
+   "durationMs": 200,
+   "tracks": [
+    {
+     "node": "nav_first",
+     "property": "left",
+     "keys": [
+      {"atMs": 0, "value": {"type": "length", "value": 196.5, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
+      {"atMs": 200, "value": {"type": "length", "value": 196.5, "unit": "dp"}}
+     ]
+    },
+    {
+     "node": "nav_first",
+     "property": "right",
+     "keys": [
+      {"atMs": 0, "value": {"type": "length", "value": 15.0, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
+      {"atMs": 200, "value": {"type": "length", "value": 15.0, "unit": "dp"}}
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bandAsideClock1",
+   "durationMs": 20,
+   "tracks": [
+    {
+     "node": "band-clock",
+     "property": "opacity",
+     "keys": [{"atMs": 0, "value": {"type": "number", "value": 0}}, {"atMs": 20, "value": {"type": "number", "value": 0}}]
+    }
+   ],
+   "complete": "bandAsideStep1"
+  },
+  {
+   "id": "bandAsideClock2",
+   "durationMs": 20,
+   "tracks": [
+    {
+     "node": "band-clock",
+     "property": "opacity",
+     "keys": [{"atMs": 0, "value": {"type": "number", "value": 0}}, {"atMs": 20, "value": {"type": "number", "value": 0}}]
+    }
+   ],
+   "complete": "bandAsideStep2"
+  },
+  {
    "id": "bandRest",
+   "durationMs": 300,
+   "tracks": [
+    {
+     "node": "nav_options",
+     "property": "width",
+     "keys": [
+      {"atMs": 0, "value": {"type": "length", "value": 294.0, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
+      {"atMs": 300, "value": {"type": "length", "value": 294.0, "unit": "dp"}}
+     ]
+    },
+    {
+     "node": "frame-band-plug",
+     "property": "opacity",
+     "keys": [{"atMs": 0, "value": {"type": "number", "value": 1}}, {"atMs": 300, "value": {"type": "number", "value": 1}}]
+    }
+   ]
+  },
+  {
+   "id": "bandRestFirst",
    "durationMs": 300,
    "tracks": [
     {
@@ -1297,7 +1360,13 @@
       {"atMs": 0, "value": {"type": "length", "value": 118.5, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
       {"atMs": 300, "value": {"type": "length", "value": 118.5, "unit": "dp"}}
      ]
-    },
+    }
+   ]
+  },
+  {
+   "id": "bandRestSecond",
+   "durationMs": 300,
+   "tracks": [
     {
      "node": "nav_second",
      "property": "left",
@@ -1313,7 +1382,13 @@
       {"atMs": 0, "value": {"type": "length", "value": 336.0, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
       {"atMs": 300, "value": {"type": "length", "value": 336.0, "unit": "dp"}}
      ]
-    },
+    }
+   ]
+  },
+  {
+   "id": "bandRestThird",
+   "durationMs": 300,
+   "tracks": [
     {
      "node": "nav_third",
      "property": "left",
@@ -1321,21 +1396,44 @@
       {"atMs": 0, "value": {"type": "length", "value": 133.5, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
       {"atMs": 300, "value": {"type": "length", "value": 133.5, "unit": "dp"}}
      ]
-    },
-    {
-     "node": "nav_options",
-     "property": "width",
-     "keys": [
-      {"atMs": 0, "value": {"type": "length", "value": 294.0, "unit": "dp"}, "easing": [0.4, 0.0, 0.4, 1.0]},
-      {"atMs": 300, "value": {"type": "length", "value": 294.0, "unit": "dp"}}
-     ]
-    },
-    {
-     "node": "frame-band-plug",
-     "property": "opacity",
-     "keys": [{"atMs": 0, "value": {"type": "number", "value": 1}}, {"atMs": 300, "value": {"type": "number", "value": 1}}]
     }
    ]
+  },
+  {
+   "id": "bandRestClock1",
+   "durationMs": 40,
+   "tracks": [
+    {
+     "node": "band-clock",
+     "property": "opacity",
+     "keys": [{"atMs": 0, "value": {"type": "number", "value": 0}}, {"atMs": 40, "value": {"type": "number", "value": 0}}]
+    }
+   ],
+   "complete": "bandRestStep1"
+  },
+  {
+   "id": "bandRestClock2",
+   "durationMs": 20,
+   "tracks": [
+    {
+     "node": "band-clock",
+     "property": "opacity",
+     "keys": [{"atMs": 0, "value": {"type": "number", "value": 0}}, {"atMs": 20, "value": {"type": "number", "value": 0}}]
+    }
+   ],
+   "complete": "bandRestStep2"
+  },
+  {
+   "id": "bandRestClock3",
+   "durationMs": 20,
+   "tracks": [
+    {
+     "node": "band-clock",
+     "property": "opacity",
+     "keys": [{"atMs": 0, "value": {"type": "number", "value": 0}}, {"atMs": 20, "value": {"type": "number", "value": 0}}]
+    }
+   ],
+   "complete": "bandRestStep3"
   },
   {
    "id": "bandSnap",
@@ -1393,6 +1491,11 @@
      "node": "frame-band-plug",
      "property": "opacity",
      "keys": [{"atMs": 0, "value": {"type": "number", "value": 1}}, {"atMs": 1, "value": {"type": "number", "value": 1}}]
+    },
+    {
+     "node": "band-clock",
+     "property": "opacity",
+     "keys": [{"atMs": 0, "value": {"type": "number", "value": 0}}, {"atMs": 1, "value": {"type": "number", "value": 0}}]
     }
    ]
   },
@@ -7651,6 +7754,20 @@
           ]
          }
         ]
+       },
+       {
+        "id": "band-clock",
+        "type": "group",
+        "properties": {
+         "position": {"type": "keyword", "value": "absolute"},
+         "left": {"type": "length", "value": 0, "unit": "dp"},
+         "top": {"type": "length", "value": 0, "unit": "dp"},
+         "width": {"type": "length", "value": 0, "unit": "dp"},
+         "height": {"type": "length", "value": 0, "unit": "dp"},
+         "pointer-events": {"type": "keyword", "value": "none"},
+         "display": {"type": "keyword", "value": "none"},
+         "opacity": {"type": "number", "value": 0}
+        }
        }
       ]
      }

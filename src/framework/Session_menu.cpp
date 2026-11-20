@@ -7394,8 +7394,17 @@ static void Session_DrawRetainedScene( idUserInterface *menu, int presentationTi
 // catchers are the stock menu's own windows: the home's pointer is shown to
 // the stock menu, as a move and never a press. The stock buttons under it
 // light too, unseen (their furniture is not drawn), which is the state a
-// hand-off to a stock page should find them in.
+// hand-off to a stock page should find them in. Under one of the home's
+// dialogs or panels the grid rests, as the stock's dim would hold it.
+static const char *const RETAINED_HOME_MODALS[] = {
+	"exitModal.visible", "defaultsModal.visible", "quitGameModal.visible", "modsModal.visible", "mpSettingsModal.visible"
+};
 static void Session_RouteRetainedScenePointer( idUserInterface *menu, idUserInterface *home ) {
+	for ( int i = 0; i < static_cast<int>( sizeof( RETAINED_HOME_MODALS ) / sizeof( RETAINED_HOME_MODALS[0] ) ); ++i ) {
+		if ( home->GetStateBool( RETAINED_HOME_MODALS[i] ) ) {
+			return;
+		}
+	}
 	static float shownX = -1.0f, shownY = -1.0f;
 	const float x = home->CursorX(), y = home->CursorY();
 	if ( x == shownX && y == shownY ) {
@@ -11704,6 +11713,14 @@ page takes goes with the next level's unload (UI_RetainedPrefetchClear).
 */
 void idSessionLocal::PrefetchRetainedNextPages() {
 #ifndef ID_DEDICATED
+#if defined( OPEND3 )
+	// Doom 3's homes open their pages directly: OPTIONS' three pages from
+	// the title and the pause, and the two multiplayer pages from the title.
+	static const char *const leads[][6] = {
+		{ RETAINED_TITLE_GUI, RETAINED_CONTROLS_GUI, RETAINED_GAME_GUI, RETAINED_SYSTEM_GUI, RETAINED_JOIN_GAME_GUI, RETAINED_CREATE_SERVER_GUI },
+		{ RETAINED_PAUSE_GUI, RETAINED_CONTROLS_GUI, RETAINED_GAME_GUI, RETAINED_SYSTEM_GUI, NULL, NULL }
+	};
+#else
 	static const char *const leads[][5] = {
 		{ RETAINED_TITLE_GUI, RETAINED_SINGLEPLAYER_GUI, RETAINED_SETTINGSPAGE_GUI, NULL, NULL },
 		{ RETAINED_PAUSE_GUI, RETAINED_SETTINGSPAGE_GUI, NULL, NULL, NULL },
@@ -11712,6 +11729,8 @@ void idSessionLocal::PrefetchRetainedNextPages() {
 		{ RETAINED_CAMPAIGNS_GUI, RETAINED_SKILL_GUI, RETAINED_CHAPTERS_GUI, NULL, NULL },
 		{ RETAINED_SETTINGSPAGE_GUI, RETAINED_CONTROLS_GUI, RETAINED_GAME_GUI, RETAINED_SYSTEM_GUI, RETAINED_AUDIO_GUI }
 	};
+#endif
+	const int leadPages = static_cast<int>( sizeof( leads[0] ) / sizeof( leads[0][0] ) ) - 1;
 	// The page on screen: a retained home stands over the legacy menu.
 	static const idUserInterface *seen = NULL;
 	const idUserInterface *shown = guiRetainedHome != NULL && guiActive == guiMainMenu ? guiRetainedHome : guiActive;
@@ -11726,16 +11745,22 @@ void idSessionLocal::PrefetchRetainedNextPages() {
 		if ( idStr::Icmp( shown->Name(), leads[ i ][ 0 ] ) != 0 ) {
 			continue;
 		}
-		const char *pages[4] = { NULL, NULL, NULL, NULL };
-		for ( int next = 0; next < 4; ++next ) {
+		const char *pages[ sizeof( leads[0] ) / sizeof( leads[0][0] ) - 1 ] = {};
+		for ( int next = 0; next < leadPages; ++next ) {
 			const char *page = leads[ i ][ next + 1 ];
 			if ( page == NULL || retainedStock.FindIndex( page ) >= 0 || uiManager->FindGui( page, false, false, false ) != NULL ||
 					( page == RETAINED_SYSTEM_GUI && !RetainedSystemAvailable() ) ) {
 				continue;
 			}
+#if defined( OPEND3 )
+			if ( ( page == RETAINED_JOIN_GAME_GUI && !Session_RetainedJoinGameEnabled() ) ||
+					( page == RETAINED_CREATE_SERVER_GUI && !Session_RetainedCreateServerEnabled() ) ) {
+				continue;
+			}
+#endif
 			pages[ next ] = page;
 		}
-		UI_RetainedPrefetchDocuments( pages, 4 );
+		UI_RetainedPrefetchDocuments( pages, leadPages );
 		return;
 	}
 #endif
@@ -11762,6 +11787,14 @@ unique instance each open and is left alone.
 static const int RETAINED_WARM_DELAY_MSEC = 500;
 void idSessionLocal::WarmRetainedPages() {
 #ifndef ID_DEDICATED
+#if defined( OPEND3 )
+	// Doom 3's homes, as PrefetchRetainedNextPages lists them, with the Load
+	// and Save Game pages and the credits, which load with the home.
+	static const char *const leads[][7] = {
+		{ RETAINED_TITLE_GUI, RETAINED_LOADGAME_GUI, RETAINED_CONTROLS_GUI, RETAINED_GAME_GUI, RETAINED_JOIN_GAME_GUI, RETAINED_CREATE_SERVER_GUI, RETAINED_CREDITS_GUI },
+		{ RETAINED_PAUSE_GUI, RETAINED_SAVEGAME_GUI, RETAINED_LOADGAME_GUI, RETAINED_CONTROLS_GUI, RETAINED_GAME_GUI, NULL, NULL }
+	};
+#else
 	static const char *const leads[][5] = {
 		{ RETAINED_TITLE_GUI, RETAINED_SINGLEPLAYER_GUI, RETAINED_SETTINGSPAGE_GUI, RETAINED_MPPAGE_GUI, RETAINED_LOADGAME_GUI },
 		{ RETAINED_PAUSE_GUI, RETAINED_SETTINGSPAGE_GUI, RETAINED_LOADGAME_GUI, NULL, NULL },
@@ -11771,6 +11804,8 @@ void idSessionLocal::WarmRetainedPages() {
 		{ RETAINED_SETTINGSPAGE_GUI, RETAINED_CONTROLS_GUI, RETAINED_GAME_GUI, RETAINED_AUDIO_GUI, NULL },
 		{ RETAINED_MPPAGE_GUI, RETAINED_CREATE_SERVER_GUI, RETAINED_JOIN_GAME_GUI, RETAINED_DEMOS_GUI, NULL }
 	};
+#endif
+	const int leadWidth = static_cast<int>( sizeof( leads[0] ) / sizeof( leads[0][0] ) );
 	if ( !Session_RetainedScreensEnabled() || guiActive == NULL || guiTest != NULL || insideExecuteMapChange ) {
 		return;
 	}
@@ -11795,11 +11830,17 @@ void idSessionLocal::WarmRetainedPages() {
 		if ( idStr::Icmp( shown->Name(), leads[ i ][ 0 ] ) != 0 ) {
 			continue;
 		}
-		for ( int next = 1; next < 5; ++next ) {
+		for ( int next = 1; next < leadWidth; ++next ) {
 			const char *page = leads[ i ][ next ];
 			if ( page == NULL || retainedStock.FindIndex( page ) >= 0 ) {
 				continue;
 			}
+#if defined( OPEND3 )
+			if ( ( page == RETAINED_JOIN_GAME_GUI && !Session_RetainedJoinGameEnabled() ) ||
+					( page == RETAINED_CREATE_SERVER_GUI && !Session_RetainedCreateServerEnabled() ) ) {
+				continue;
+			}
+#endif
 			idUserInterface *gui = UI_RetainedLoaded( page );
 			if ( gui == NULL ) {
 				// Its parse is done: build its view now, rather than in the
@@ -11848,6 +11889,24 @@ void idSessionLocal::PreloadRetainedScreens() {
 	if ( guiRetainedCredits == NULL && guiRetainedTitle != NULL ) {
 		guiRetainedCredits = FindRetainedGui( RETAINED_CREDITS_GUI, true, false );
 	}
+#if defined( OPEND3 )
+	// Doom 3's title opens Create Server itself, and that page loads ahead
+	// while the title rests (WarmRetainedPages). Its maps' levelshots queue
+	// here, for the title's idle frames to read (PrecacheRetainedLevelshots).
+	if ( guiRetainedTitle != NULL && retainedLevelshots.Num() == 0 && Session_RetainedCreateServerEnabled() ) {
+		retainedLevelshotsFrom = 0;
+		for ( int i = 0; i < fileSystem->GetNumMaps(); ++i ) {
+			const idDict *dict = fileSystem->GetMapDecl( i );
+			if ( MapSupportsAnyMPGameType( dict ) ) {
+				retainedLevelshot_t shot;
+				shot.name = dict->GetString( "path" );
+				shot.map = true;
+				shot.material = false;
+				retainedLevelshots.Append( shot );
+			}
+		}
+	}
+#endif
 	// The Demos page, which only the title reaches.
 	if ( guiRetainedDemos == NULL && guiRetainedTitle != NULL ) {
 		guiRetainedDemos = FindRetainedGui( RETAINED_DEMOS_GUI, true, false );

@@ -76,13 +76,18 @@ def choice(doc: Document, ident: str, top: float, start: int, stages: tuple, sub
 def death_document() -> dict:
     """The death screen's choices over the stock scene: Restart, Load and
     Main Menu, typed in at 1.7, 1.9 and 2.2 s after the screen opens, as the
-    stock types them, and taking input once the last has finished."""
+    stock types them, and taking input once the last has finished, with
+    Restart focused."""
     doc = Document("opend3.restartmenu")
     doc.state["death.ready"] = {"type": "boolean", "initial": False}
     tracks: list = []
     choices = [choice(doc, *entry, tracks) for entry in CHOICES]
     doc.timeline("deathOpen", OPEN_MS, tracks, complete="deathOpened")
-    doc.events["deathOpened"] = [{"op": "setState", "values": {"death.ready": True}}]
+    # Restart takes the focus once the choices take input, so a keyboard or
+    # a controller can accept it at once. A focused button shows no focus
+    # while the pointer is in use, so nothing lights for the mouse.
+    doc.events["deathOpened"] = [{"op": "setState", "values": {"death.ready": True}},
+                                 {"op": "focus", "control": CHOICES[0][0]}]
     doc.events["onActivate"] = [{"op": "setState", "values": {"death.ready": False}}, {"op": "playTimeline", "timeline": "deathOpen"}]
     canvas = group("canvas", {**absolute(top=0, width=CANVAS_W, height=0), "left": length(50, "%"), "margin-left": length(-CANVAS_W / 2)}, choices)
     stage = group("stage", {**absolute(left=0), "width": length(100, "%"), "height": length(CANVAS_H), "top": length(50, "%"),

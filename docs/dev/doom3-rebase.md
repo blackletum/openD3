@@ -294,7 +294,18 @@ release of Doom 3 (1.3.1 packs):
   edges; and the start-up screen, shown through `testGUI` at four shapes
   and traced through a real start-up.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
-  what was not seen.
+  what was not seen. From the merge of 18 November until 20 November the
+  settings service refused the retained SYSTEM page (upstream's catalog
+  gained `r_shadowMapCharacterSelfShadow`) and the stock page stood in;
+  the generator now checks the page against the engine's schema.
+- Level pictures (2026-11-20, `ui_retained 1`). `FindMapScreenshot` looked
+  for Quake 4's `gfx/guis/loadscreens/<map>.tga`, found nothing in Doom 3's
+  packs and fell back to the generic picture, so the stock and retained
+  Create Server and the Game Browser showed the start-up planet for every
+  map. Under `OPEND3` it looks for Doom 3's `guis/assets/splash/<map>.tga`,
+  as Doom 3 does; Create Server on `game/mp/d3dm1` now shows Tomiko
+  Reactor's own picture. The Game Browser, a saved game without its own
+  shot and the stock pages were not looked at.
 - Saving and loading in the same build (2026-11-14, OpenGL, console
   `saveGame` and `loadGame`, an isolated `fs_savepath`). On `game/alphalabs1`
   (`devmap`), with `god`, `noclip` and `give all` set, the player moved with

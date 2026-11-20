@@ -13,7 +13,7 @@
   "deathMenu": {"operation": "session.menu", "arguments": {"command": "deathMenu"}}
  },
  "events": {
-  "deathOpened": [{"op": "setState", "values": {"death.ready": true}}],
+  "deathOpened": [{"op": "setState", "values": {"death.ready": true}}, {"op": "focus", "control": "death_restart"}],
   "onActivate": [{"op": "setState", "values": {"death.ready": false}}, {"op": "playTimeline", "timeline": "deathOpen"}]
  },
  "bindings": [

@@ -18,6 +18,9 @@ build_doom3_menus.py writes the document.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import system_display_catalog
 from doom3_menu_kit import (
     FACE_BANK, FULL, NO_POINTER, U, Document, box, colour, dialog, group, keyword, label, length, number, path, rgb, solid,
@@ -35,7 +38,8 @@ CATALOG = {
         "r_skipBump", "r_skipSky", "r_skipSpecular", "r_ssao", "r_useLightGrid", "ui_aspectCorrection", "image_downSize",
         "image_downSizeBump", "image_downSizeSpecular", "image_ignoreHighQuality", "image_writeGeneratedImages", "r_motionBlur",
         "r_shadowMapCSM", "r_shadowMapProjectedCSM", "r_shadowMapCascadeStabilize", "r_motionBlurObjectVectors",
-        "r_shadowMapHashedAlpha", "r_shadowMapTranslucentReceivers", "r_useShadowMap", "s_useEAXReverb")},
+        "r_shadowMapHashedAlpha", "r_shadowMapTranslucentReceivers", "r_useShadowMap", "s_useEAXReverb",
+        "r_shadowMapCharacterSelfShadow")},
     **{key: ("boolean", True) for key in ("r_shadowMapPointLights", "r_hdrSceneTarget")},
     **{key: ("number", 0) for key in (
         "r_brightness", "r_customHeight", "r_customWidth", "r_displayRefresh", "r_forceAmbient", "r_mode", "r_multiSamples",
@@ -95,9 +99,63 @@ EDITABLE = both(st("settings.open"), op("==", st("settings.phase"), 1), no(st("s
                 no(st("page.discardVisible")))
 
 
+# Where the service's schema is written. The service refuses a page that does
+# not declare every state of it, and the session then keeps the stock page with
+# one log line, so a schema that grew upstream went unnoticed twice (the
+# 14 November merge's settings.msaa.*, the 18 November merge's
+# r_shadowMapCharacterSelfShadow). check_schema reads it at generation time.
+ROOT = Path(__file__).resolve().parents[2]
+SCHEMA_SOURCES = {
+    "catalog": ROOT / "src/ui/application/SystemSettingsHost.cpp",
+    "service": ROOT / "src/ui/SettingsService.cpp",
+    "render": ROOT / "src/ui/RenderingSettings.cpp",
+    "display": ROOT / "src/ui/application/SystemDisplay.h",
+    "devices": ROOT / "src/renderer/RendererDeviceCatalog.h",
+}
+SCHEMA_TYPES = {"0": "number", "1": "boolean", "2": "string", "Number": "number", "Boolean": "boolean", "String": "string"}
+
+
+def engine_schema() -> dict:
+    """The settings.* keys and types UI_SettingsStateSchema builds, read from
+    the engine's source: its literal keys, the catalog's draft and baseline
+    pairs, and the display and renderer device slots."""
+    text = {name: path.read_text(encoding="utf-8", errors="replace") for name, path in SCHEMA_SOURCES.items()}
+    catalog = text["catalog"]
+    catalog = catalog[catalog.index("& SystemSettingsHost::Catalog() {"):]
+    catalog = catalog[:catalog.index("\n}\n")]
+    schema = {}
+    for kind, key in re.findall(r"\b(String|Boolean|Number)\(\"([A-Za-z_0-9]+)\"", catalog):
+        schema[f"settings.draft.{key}"] = schema[f"settings.baseline.{key}"] = SCHEMA_TYPES[kind]
+    for source in ("service", "render"):
+        for key, kind in re.findall(r'\{"(settings\.[A-Za-z_0-9.]+)",([012])\}', text[source]):
+            schema[key] = SCHEMA_TYPES[kind]
+    slots = dict(re.findall(r"(SystemDisplay\w+Slots) = (\d+)", text["display"]))
+    for index in range(int(slots["SystemDisplayDeviceSlots"])):
+        schema[f"settings.display.{index}.label"] = "string"
+    for name, constant in (("mode", "SystemDisplayModeSlots"), ("refresh", "SystemDisplayRefreshSlots")):
+        for index in range(int(slots[constant])):
+            schema[f"settings.display.{name}.{index}.label"] = "string"
+    devices = int(re.search(r"RENDER_DEVICE_LIMIT = (\d+)", text["devices"]).group(1))
+    for index in range(devices):
+        schema[f"settings.render.{index}.label"], schema[f"settings.render.{index}.usable"] = "string", "boolean"
+    return schema
+
+
+def check_schema(state: dict) -> None:
+    """Fail when the page's settings.* state is not the service's schema."""
+    engine = engine_schema()
+    missing = sorted(key for key in engine if key not in state)
+    mistyped = sorted(key for key, kind in engine.items() if key in state and state[key]["type"] != kind)
+    if missing or mistyped:
+        raise ValueError("the SYSTEM page would be refused: the settings service's schema has "
+                         f"{missing[:8]} undeclared and {mistyped[:8]} of another type; update CATALOG or page_state "
+                         "in tools/ui/doom3_menu_system.py")
+
+
 def page_state() -> dict:
     """Every state the page declares: the service's whole settings.* schema
-    (UI_SettingsStateSchema) and the page's own."""
+    (UI_SettingsStateSchema, checked against the engine's source by
+    check_schema) and the page's own."""
     state = {}
     for key, (kind, initial) in CATALOG.items():
         state[f"settings.draft.{key}"] = {"type": kind, "initial": initial}
@@ -125,6 +183,7 @@ def page_state() -> dict:
     for key, kind in render.items():
         initial = {"string": "", "boolean": False, "number": -1 if key == "selected" else 0}[kind]
         state[f"settings.render.{key}"] = {"type": kind, "initial": initial}
+    check_schema(state)
     return state
 
 

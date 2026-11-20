@@ -349,7 +349,7 @@ def home_document(pause: bool) -> dict:
         """A nav button that opens a page: any open list goes first, in one
         frame, and the band stands at rest for the page's own copy of the
         button (section 8.4)."""
-        return [*[{"op": "call", "event": f"{name}Hide"} for name in lists], {"op": "playTimeline", "timeline": "bandSnap"},
+        return [*[{"op": "call", "event": f"{name}Hide"} for name in lists], {"op": "call", "event": "bandGoSnap"},
                 {"op": "action", "action": action}]
 
     # Nav band (section 6.3). NEW GAME lengthens to the leading edge and
@@ -373,8 +373,10 @@ def home_document(pause: bool) -> dict:
     # lit. While OPTIONS' list is open the three stand aside, narrowed, dim
     # and unoutlined, the OPTIONS tab lengthens under them and the second
     # band gives up its leading 50 u (AnimMainToOptions: 200 ms, accel(0.4,
-    # 0.6); back in 300). A button grown into its own list is open and the
-    # others dim; while a page is open all three are dim.
+    # 0.6), MULTIPLAYER first and the others 20 ms apart; back in 300 ms,
+    # AnimOptionsToMain: NEW GAME 40 ms in, then LOAD GAME and MULTIPLAYER
+    # 20 ms apart). A button grown into its own list is open and the others
+    # dim; while a page is open all three are dim.
     buttons = ("nav_first", "nav_second", "nav_third")
     for button in buttons:
         nav_modes(doc, button)
@@ -387,18 +389,49 @@ def home_document(pause: bool) -> dict:
         return [*[track(node, prop, [(0, length(U * value), SLIDE), (ms, length(U * value))]) for (node, prop), value in places.items()],
                 track("frame-band-plug", "opacity", [(0, number(plug)), (ms, number(plug))])]
 
-    doc.timeline("bandAside", 200, band_to(aside, 0, 200))
-    doc.timeline("bandRest", 300, band_to(rest, 1, 300))
-    doc.timeline("bandSnap", 1, band_to(rest, 1, 1))
+    def places_of(places: dict, *nodes: str) -> dict:
+        return {key: value for key, value in places.items() if key[0] in nodes}
+
+    def move(ident: str, places: dict, plug: float | None, ms: int) -> str:
+        tracks = band_to(places, plug, ms) if plug is not None else band_to(places, 0, ms)[:-1]
+        return doc.timeline(ident, ms, tracks)
+
+    # A timeline cannot wait, so each later button starts from the completion
+    # of a short clock on one hidden node. Every move of the band plays that
+    # clock again, and the newest play owns the property: a chain that a
+    # later move supersedes never completes its next step.
+    def chain(name: str, steps: list) -> None:
+        """steps: [(delay from the previous step, timeline)]; the first at 0."""
+        for index, (delay, timeline) in enumerate(steps):
+            event = f"bandGo{name}" if index == 0 else f"band{name}Step{index}"
+            following = steps[index + 1] if index + 1 < len(steps) else None
+            program = [{"op": "playTimeline", "timeline": timeline}] if timeline else []
+            if following:
+                clock = doc.timeline(f"band{name}Clock{index + 1}", following[0],
+                                     [track("band-clock", "opacity", [(0, number(0)), (following[0], number(0))])],
+                                     complete=f"band{name}Step{index + 1}")
+                program.append({"op": "playTimeline", "timeline": clock})
+            doc.events[event] = program
+
+    chain("Aside", [(0, move("bandAside", {**places_of(aside, "nav_third", "nav_options")}, 0, 200)),
+                    (20, move("bandAsideSecond", places_of(aside, "nav_second"), None, 200)),
+                    (20, move("bandAsideFirst", places_of(aside, "nav_first"), None, 200))])
+    chain("Rest", [(0, move("bandRest", places_of(rest, "nav_options"), 1, 300)),
+                   (40, move("bandRestFirst", places_of(rest, "nav_first"), None, 300)),
+                   (20, move("bandRestSecond", places_of(rest, "nav_second"), None, 300)),
+                   (20, move("bandRestThird", places_of(rest, "nav_third"), None, 300))])
+    # A snap ends any chain in flight with the clock's own 1 ms play.
+    doc.timeline("bandSnap", 1, band_to(rest, 1, 1) + [track("band-clock", "opacity", [(0, number(0)), (1, number(0))])])
+    doc.events["bandGoSnap"] = [{"op": "playTimeline", "timeline": "bandSnap"}]
 
     def standing(band: str | None, **modes: str) -> list:
         steps = [{"op": "playTimeline", "timeline": f"{button}{modes.get(button.split('_')[1], 'Dim')}"} for button in buttons]
-        return steps + ([{"op": "playTimeline", "timeline": band}] if band else [])
+        return steps + ([{"op": "call", "event": band}] if band else [])
 
-    doc.events["navRest"] = standing("bandRest", first="Lit", second="Lit", third="Lit")
-    doc.events["navOptions"] = standing("bandAside")
-    doc.events["navFirstOpen"] = standing("bandRest", first="Open")
-    doc.events["navThirdOpen"] = standing("bandRest", third="Open")
+    doc.events["navRest"] = standing("bandGoRest", first="Lit", second="Lit", third="Lit")
+    doc.events["navOptions"] = standing("bandGoAside")
+    doc.events["navFirstOpen"] = standing("bandGoRest", first="Open")
+    doc.events["navThirdOpen"] = standing("bandGoRest", third="Open")
     doc.events["navPage"] = standing(None)
 
     # Footer links (section 9.2), anchored to the bottom-trailing corner.
@@ -475,7 +508,10 @@ def home_document(pause: bool) -> dict:
     # footer links and the hint line stand on the bottom edge; the logo
     # stays with the planet, centred.
     frame_top, frame_bottom = frame(doc)
-    stage = group("stage", pinned("bottom"), [frame_bottom, canvas, lead_side, trail_side, hint])
+    # The band chain's clock: a property no one sees (`chain` above).
+    band_clock = group("band-clock", {**absolute(left=0, top=0, width=0, height=0), **NO_POINTER, "display": keyword("none"),
+                                      "opacity": number(0)}, [])
+    stage = group("stage", pinned("bottom"), [frame_bottom, canvas, lead_side, trail_side, hint, band_clock])
     furniture = group("furniture", {**FULL, "opacity": number(0)}, [
         group("stage-top", {**pinned("top"), **NO_POINTER}, [frame_top]), group("stage-middle", {**pinned("middle"), **NO_POINTER}, [logo]),
         stage])

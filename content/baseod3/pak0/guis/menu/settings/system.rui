@@ -73,6 +73,8 @@
   "settings.baseline.r_useShadowMap": {"type": "boolean", "initial": false},
   "settings.draft.s_useEAXReverb": {"type": "boolean", "initial": false},
   "settings.baseline.s_useEAXReverb": {"type": "boolean", "initial": false},
+  "settings.draft.r_shadowMapCharacterSelfShadow": {"type": "boolean", "initial": false},
+  "settings.baseline.r_shadowMapCharacterSelfShadow": {"type": "boolean", "initial": false},
   "settings.draft.r_shadowMapPointLights": {"type": "boolean", "initial": true},
   "settings.baseline.r_shadowMapPointLights": {"type": "boolean", "initial": true},
   "settings.draft.r_hdrSceneTarget": {"type": "boolean", "initial": true},

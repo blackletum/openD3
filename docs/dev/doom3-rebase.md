@@ -294,7 +294,7 @@ release of Doom 3 (1.3.1 packs):
   edges; and the start-up screen, shown through `testGUI` at seven shapes
   from 32:9 to 9:16 and traced through a real start-up, and the same
   screen standing in for the fallback loading screen on
-  `testmaps/test_box`.
+  `testmaps/test_box`, with the planet's fires drawn on the turning globe.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
   what was not seen. From the merge of 18 November until 20 November the
   settings service refused the retained SYSTEM page (upstream's catalog

@@ -1,0 +1,9 @@
+// Copyright (C) 2026 DarkMatter Productions. GPL-3.0-or-later.
+// openD3's start-up screen: the main menu's planet as its fires alone
+// (materials/startup_opend3.mtr). The dust shell is left out.
+
+skin opend3/startup/planetfire
+{
+	models/wipes/hst_mars	opend3/startup/planetfire
+	models/wipes/dust		textures/common/nodraw
+}

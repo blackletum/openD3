@@ -1,0 +1,92 @@
+// Copyright (C) 2026 DarkMatter Productions. GPL-3.0-or-later.
+// openD3's start-up screen (guis/loading/initialization.rui, written by
+// tools/ui/doom3_menu_init.py): the fires of Mars's night side.
+//
+// The start-up screen draws the main menu's planet, models/wipes/planet2.lwo,
+// twice: once lit as the menu has it, and once under the skin of the same
+// name as the material below (skins/startup_opend3.skin), whose surface is
+// this material and nothing else. The second drawing turns with the first, so
+// the fires belong to the ground, and the document lets it through only where
+// the planet is in shade, more the deeper the shade.
+//
+// Every stage blends, so the surface writes no depth. The first two stages
+// write a mask into the drawing's alpha alone: Doom 3's lava fissures at a
+// planet's scale (so the fires gather in burning regions with dark between)
+// times the planet's own albedo turned over (so they gather in its dark
+// lowlands rather than on its bright plains). The fires are then added in
+// proportion to that mask, so it gates them without dimming them: Doom 3's
+// own embers at two scales (the larger twice, so their hearts run to white)
+// and its lava fissures at two scales (the finer twice over). The last stage clears the alpha, so
+// the drawing keeps no coverage and the screen adds it to the planet as light.
+
+table opend3StartupFlicker { { 0.82, 0.96, 0.88, 1.0, 0.84, 0.93, 0.78, 0.98, 0.9, 1.0, 0.86, 0.95 } }
+
+opend3/startup/planetfire
+{
+	noShadows
+	nonsolid
+	translucent
+	{
+		blend		gl_one, gl_zero
+		maskColor
+		map			scale( makeAlpha( textures/hell/lava1fx ), 1, 1, 1, 4.5 )
+		scale		1.7, 1.2
+		translate	0.21, 0.13
+	}
+	{
+		blend		gl_zero, gl_src_alpha
+		maskColor
+		map			scale( makeAlpha( invertColor( makeIntensity( models/wipes/hst_mars ) ) ), 1, 1, 1, 3 )
+	}
+	{
+		blend		gl_dst_alpha, gl_one
+		maskAlpha
+		map			textures/decals/ember2_add3
+		scale		8, 4
+		rgb			opend3StartupFlicker[ time * 1.4 + 0.25 ]
+	}
+	{
+		blend		gl_dst_alpha, gl_one
+		maskAlpha
+		map			textures/decals/ember2_add3
+		scale		8, 4
+		rgb			opend3StartupFlicker[ time * 1.1 + 0.6 ]
+	}
+	{
+		blend		gl_dst_alpha, gl_one
+		maskAlpha
+		map			textures/decals/ember2_add3
+		scale		16, 8
+		translate	0.3, 0.6
+		rgb			opend3StartupFlicker[ time * 0.8 + 0.1 ]
+	}
+	{
+		blend		gl_dst_alpha, gl_one
+		maskAlpha
+		map			textures/hell/lava1fx
+		scale		10, 5
+		translate	time * 0.0015, 0
+		rgb			opend3StartupFlicker[ time * 0.7 ]
+	}
+	{
+		blend		gl_dst_alpha, gl_one
+		maskAlpha
+		map			textures/hell/lava1fx
+		scale		16, 8
+		translate	0.5, 0.2
+		rgb			opend3StartupFlicker[ time * 0.55 + 0.35 ]
+	}
+	{
+		blend		gl_dst_alpha, gl_one
+		maskAlpha
+		map			textures/hell/lava1fx
+		scale		10, 5
+		translate	time * 0.0015, 0
+		rgb			0.7 * opend3StartupFlicker[ time * 0.9 + 0.5 ]
+	}
+	{
+		blend		gl_zero, gl_zero
+		maskColor
+		map			_black
+	}
+}

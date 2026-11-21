@@ -2608,14 +2608,16 @@ squeeze the sheet 2:1 horizontally. The sheet has no baked shadow.
    opaque.
 4. The cursor keeps its two shapes and its blink.
 5. The start-up status line stays one centred line of small cells in `load.status` under the
-   opening. The picture itself is rebuilt from its elements: stars, Mars as a lit 3D model with the
-   fires of its night side (Doom 3's own lava fissures and embers seen through a mask along the
-   ring), the teal clouds, the fine honeycomb on the picture's own cells with every edge drawn once,
+   opening. The picture itself is rebuilt from its elements: stars, Mars as the main menu draws it
+   (its model, its light turned to the leading side, its lit-crescent highlight) with the fires of
+   its night side on the ground itself (Doom 3's own lava fissures and embers on the turning globe,
+   gathered into burning regions and lowlands, shown only in shade and more the deeper the shade),
+   the teal clouds, the fine honeycomb on the picture's own cells with every edge drawn once,
    the loose plates, the letterbox and its rules. Only the id mark stays a bitmap. Anything that
    lights on the honeycomb (a cell, a cluster) lights the grid's own lines; the loose plates are off
    the grid. Motion is slight and never in step: the planet turns a third of a degree a second, the
    loose plates pulse in groups mixed through one another, each on a period of its own, cells and
-   clusters light and fade, and the fires flicker by layer and by hot spot.
+   clusters light and fade, and the fires flicker and turn with the ground into and out of the light.
 6. **Remastered** keeps the opening at the picture's share of the height (68.75%) on any view,
    centred, with the honeycomb, the clouds, the stars and the stream running on to the view's
    edges up to 32:9. On a view taller than 4:3 the opening grows with the height up to 520 u, so an

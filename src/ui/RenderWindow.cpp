@@ -41,8 +41,10 @@ static idMat3 RenderWindowRotationToAxis( const idWinVec4 &rotation ) {
 // Doom 3's start-up screen turns its planet before the game module is loaded
 // (guis/loading/initialization.rui). A point light and a static model need
 // nothing of the game: these stand in for the game's spawn-argument parsers
-// while there is no game, with the parsers' own defaults. A model that needs
-// the game (a skin, an animation, an entity definition) still waits for it.
+// while there is no game, with the parsers' own defaults. A skin is a decl and
+// is applied here too (the planet's fire is the same sphere under a skin). A
+// model that needs the game (an animation, an entity definition) still waits
+// for it.
 static void RenderWindowBareLight( renderLight_t &light, const idVec3 &origin, const idVec3 &colour ) {
 	memset( &light, 0, sizeof( light ) );
 	light.axis.Identity();
@@ -56,11 +58,12 @@ static void RenderWindowBareLight( renderLight_t &light, const idVec3 &origin, c
 	light.shaderParms[ SHADERPARM_ALPHA ] = 1.0f;
 }
 
-static void RenderWindowBareEntity( renderEntity_t &entity, const char *model, const idVec3 &origin ) {
+static void RenderWindowBareEntity( renderEntity_t &entity, const char *model, const idVec3 &origin, const char *skin ) {
 	memset( &entity, 0, sizeof( entity ) );
 	entity.axis.Identity();
 	entity.origin = origin;
 	entity.hModel = ( model != NULL && model[0] != '\0' ) ? renderModelManager->FindModel( model ) : NULL;
+	entity.customSkin = ( skin != NULL && skin[0] != '\0' ) ? declManager->FindSkin( skin, false ) : NULL;
 	if ( entity.hModel != NULL ) {
 		entity.bounds = entity.hModel->Bounds( &entity );
 	}
@@ -342,7 +345,7 @@ void idRenderWindow::PreRender() {
 	spawnArgs.Set( "origin", modelOrigin.c_str() );
 #if defined( OPEND3 )
 	if ( gameEdit == NULL ) {
-		RenderWindowBareEntity( worldEntity[0], modelName[0].c_str(), modelOrigin.ToVec3() );
+		RenderWindowBareEntity( worldEntity[0], modelName[0].c_str(), modelOrigin.ToVec3(), customSkin[0].c_str() );
 	} else
 #endif
 	gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, &worldEntity[0] );
@@ -369,7 +372,7 @@ void idRenderWindow::PreRender() {
 		spawnArgs.Set( "origin", "0 0 0" );
 #if defined( OPEND3 )
 		if ( gameEdit == NULL ) {
-			RenderWindowBareEntity( worldEntity[i], modelName[i].c_str(), vec3_origin );
+			RenderWindowBareEntity( worldEntity[i], modelName[i].c_str(), vec3_origin, customSkin[i].c_str() );
 		} else
 #endif
 		gameEdit->ParseSpawnArgsToRenderEntity( &spawnArgs, &worldEntity[i] );
@@ -538,7 +541,7 @@ bool idRenderWindow::PrepareModelScene( int time, std::string &error ) {
 	// Without the game a scene of static models still draws (RenderWindowBareEntity).
 	bool needsGame = false;
 	for ( const auto &part : configuredScene.parts ) {
-		needsGame = needsGame || !part.skin.empty() || !part.animation.empty() || !part.animationClass.empty() || !part.joint.empty();
+		needsGame = needsGame || !part.animation.empty() || !part.animationClass.empty() || !part.joint.empty();
 	}
 	if ( ( !gameEdit && needsGame ) || !world || !sceneConfigured || configuredScene.parts.empty() || configuredScene.parts[0].model.empty() ) {
 #else

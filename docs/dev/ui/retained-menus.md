@@ -236,18 +236,28 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
   - the band's dark teal, with soft clouds where the picture is lighter
     and darker gaps between, lighter strips, and a seeded field of warm
     stars (one tile drawn five times, turned another way each time);
-  - Mars as a 3D model, the main menu's own (`models/wipes/planet2.lwo`)
-    in a `model` node under one light from the leading side, so its
-    trailing side is night; it turns a third of a degree a second. A
-    mask keeps it to its disc (the render fills its square box). Over it
-    a pale haze on the lit limb, a teal veil that deepens toward the
-    night side and a thin red rim on the night limb;
-  - the night side's fires as the picture has them: a broken ring of
-    fissures seen from the side, heaviest toward the limb, with a clump
-    at its foot. Doom 3's own `textures/hell/lava1fx` (twice, at two
-    scales) and `textures/decals/ember2_add3` are added in light through
-    one mask of soft strokes along the ring, over a dull red glow, with
-    hot spots that flicker each on its own;
+  - Mars as the main menu has it (`MarsRender` and `MarsHighlight` in
+    `guis/mainmenu.gui`): its model, `models/wipes/planet2.lwo`, in a
+    `model` node under one white light placed as the menu places it,
+    turned a quarter round to come from the leading side as the picture
+    has it, and the menu's lit-crescent highlight
+    (`guis/assets/mainmenu/marshighlight`) added over it at 0.85, turned
+    the same quarter and scaled to the disc. It turns a third of a degree
+    a second. A mask keeps it to its disc (the render fills its square
+    box); a thin red rim lies on the night limb;
+  - the night side's fires, on the ground: a second `model` node draws
+    the same sphere, turning with the first, under the skin
+    `opend3/startup/planetfire` (`skins/startup_opend3.skin`,
+    `materials/startup_opend3.mtr`). The material writes a mask into the
+    render's alpha (Doom 3's lava fissures at a planet's scale times the
+    planet's albedo turned over, so the fires gather in burning regions
+    and in the dark lowlands), adds Doom 3's embers and lava fissures in
+    proportion to it, flickering through a material table, and clears
+    the alpha, so the render composites as added light. The node's mask
+    lets it through only where the ground is in shade, from nothing at a
+    lighting N.L of 0.12 to full at -0.42 (nested regions computed from
+    the light's direction), so the fires never burn on the lit side and
+    turn into and out of the light with the planet;
   - thin light lines that cross everything, the planet too;
   - the fine honeycomb: pointy-topped cells of side 10.4 u, every edge
     drawn once, so neighbours share their lines, hard-edged as the
@@ -270,7 +280,7 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
   - the status line in BigChars small cells, which lights white for a
     moment at each step.
 
-  Three engine additions carry it, all marked openD3. The document may
+  Four engine additions carry it, all marked openD3. The document may
   declare a `clock`, which the engine sets each frame to the seconds the
   screen has been up: a model scene takes its values from state, and
   nothing else in the format moves with time. A scene of static models
@@ -279,7 +289,9 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
   `src/ui/RenderWindow.cpp`, and the host's check in
   `src/ui/RetainedUI.cpp`): the render window used the game's
   spawn-argument parsers for its light and its entity, and start-up shows
-  the screen before there is a game. And the generator now refuses a
+  the screen before there is a game. That bare path applies a part's skin
+  too (a skin is a decl and needs no game), which the fires use. And the
+  generator now refuses a
   timeline whose keys do not increase, because the runtime refuses the
   whole document for one and start-up then falls back to the stock
   picture without a word on screen.
@@ -897,6 +909,15 @@ from the window.
   line, centred, its cells and plates moving between frames, from both a
   window grab and `com_captureLoadingScreen`; `alphalabs1` still gets the
   retained `loading.rui` with its bands, word, bar and briefing.
+- The start-up planet's third version (21 November): the main menu's
+  Mars with its fires on the ground. Through `testGUI` at 960x720 with the
+  clock at 5, 45, 90 and 180 s the fire patterns move with the turning
+  ground, none show on the lit side, and they thicken toward the night
+  limb; also at 1280x720 and 720x1280, and on `testmaps/test_box` as the
+  fallback loading screen (the skin through the game's entity path).
+  Traced through a real start-up at 1280x720: 37 frames, the first 255 ms
+  and the rest a median of 12 ms (at most 33), 556,000 vertices, 238
+  draws, 17 layers.
 
 Not verified: Resurrection of Evil, Vulkan, a controller, touch, reduced
 motion, languages other than English, the multiplayer pause, a mod's menu, and
@@ -977,12 +998,12 @@ every platform but Windows.
   Start-up keeps no raster cache (upstream's choice), so every
   anti-aliased edge is resubmitted each frame; that is why the honeycomb
   and the plates' faint edges are drawn hard and the plates and hot spots
-  pulse in groups. The fires are drawn in the plane of the screen and do
-  not turn with the planet, which over a start-up of a few seconds moves a
-  few u under them; they are an interpretation of the picture's, shaped
-  by a mask, not a trace of it. The planet's day side is the model's
-  texture under a haze, smoother and pinker than the picture's cratered
-  tan. The id mark's block carries the picture's own background at its
+  pulse in groups. The fires are Doom 3's lava and ember textures on the
+  globe, not the picture's ring and clump: where they burn is decided by
+  the masks and the turn, and the textures are magnified, so the fires are
+  softer than the picture's sharp flecks. The shade mask assumes the
+  near-orthographic view and the light's fixed direction. The planet
+  draws twice each frame. The id mark's block carries the picture's own background at its
   edges. The status line shows the engine's message as it comes, and
   `step` stays 0, because the engine matches the message against Quake 4
   string keys. The engine holds the screen still under reduced motion.

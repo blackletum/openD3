@@ -11,18 +11,17 @@ the picture's own measures (fitted against the installed picture):
                  where the picture has them, lighter horizontal strips, and
                  thin light lines that run across everything, the planet too
     stars        a seeded field of warm specks
-    planet       Mars as the main menu's own model (models/wipes/planet2.lwo),
-                 lit from the leading side and turning slowly (the engine
-                 gives the document a clock, in seconds on screen), under a
-                 pale haze on its lit limb, a teal veil and a red rim on its
-                 night limb
-    fire         the night side's fires as the picture has them: a broken
-                 ring of fissures seen from the side, heaviest toward the
-                 limb, with a clump at its foot. Doom 3's own lava fissures
-                 and embers (textures/hell/lava1fx, textures/decals/
-                 ember2_add3) are added in light through a mask of soft
-                 strokes along the ring, over a dull red glow, with hot spots
-                 that flicker each on its own
+    planet       Mars as the main menu has it: its model
+                 (models/wipes/planet2.lwo) under the menu's light turned to
+                 come from the leading side, and the menu's lit-crescent
+                 highlight turned to match, turning slowly (the engine gives
+                 the document a clock, in seconds on screen), with a red
+                 rim on its night limb
+    fire         the night side's fires, on the ground: the planet drawn a
+                 second time under a skin of Doom 3's own lava fissures and
+                 embers, gathered into patches and lowlands over the whole
+                 globe (skins/ and materials/startup_opend3.*), turning with
+                 it and shown only where it is in shade, the more the deeper
     honeycomb    the fine grid: pointy-topped cells of side 10.4 u, every
                  edge drawn once, so neighbouring cells share their lines
     cells        cells and small clusters of that grid that light and fade at
@@ -65,14 +64,13 @@ import math
 import random
 
 from doom3_menu_kit import (
-    FULL, NO_POINTER, SLIDE, U, Document, absolute, colour, font, group, held, keyword, label, length, number, picture,
+    FULL, NO_POINTER, U, Document, absolute, colour, font, group, held, keyword, label, length, number, picture,
     rgb, track, transform, vector,
 )
 
 PLACEHOLDER = "#str_04339"   # OK: the engine supplies the text
 LAUNCH = "guis/assets/splash/launch"
-LAVA = "textures/hell/lava1fx"
-EMBERS = "textures/decals/ember2_add3"
+HIGHLIGHT = "guis/assets/mainmenu/marshighlight"
 
 # The stock picture's measures, in canvas u (640 x 480).
 BAND_TOP, BAND_BOTTOM = 75.0, 405.0          # the letterbox opening
@@ -92,7 +90,6 @@ LINE = "#1B8EA0"
 LIT = "#4FC4E0"
 PLATE = "#2A9CBC"
 STATUS = "#00CFF0"
-EMBER_CORE, EMBER_HOT, EMBER_GLOW = "#FFE7A8", "#FF9A2E", "#D8401C"
 
 # The honeycomb: pointy-topped cells, fitted to the picture. Cell (0, 0)'s
 # centre is at (GRID_X, GRID_Y); odd rows sit half a cell to the trailing side.
@@ -346,13 +343,18 @@ def stars(doc: Document, rng: random.Random) -> list:
 
 
 def planet(doc: Document) -> list:
-    """Mars in three dimensions: the main menu's planet model under one
-    light from the leading side, so its trailing side is night, turning a
-    third of a degree a second; over it the picture's pale haze on the lit
-    limb, a teal veil that deepens toward the night side, and the night
-    limb's thin red rim."""
+    """Mars as the main menu has it (guis/mainmenu.gui, MarsRender and
+    MarsHighlight): its model, models/wipes/planet2.lwo (the bump-mapped
+    surface under a drifting dust shell), under one white light placed as
+    the menu places it, a quarter-turn round so it comes from the leading
+    side as in the start-up picture, and the menu's lit-crescent highlight,
+    guis/assets/mainmenu/marshighlight, added over it at the menu's 0.7,
+    turned the same quarter. The planet turns a third of a degree a second;
+    a thin red rim lies on its night limb, as the picture has it."""
     doc.state["clock"] = {"type": "number", "initial": 0}
     size = 2 * PLANET_R + 20
+    # The menu's light, relative to the planet's centre: 48 toward the
+    # camera, 151 to the side (the menu has it above) and 10 along.
     model = {"id": "init-planet", "type": "model",
              "properties": place(PLANET_X - size / 2, PLANET_Y - size / 2, size, size),
              "scene": {"parts": [{"model": "models/wipes/planet2.lwo"}],
@@ -361,178 +363,114 @@ def planet(doc: Document) -> list:
                        # view it fills the node but for 10 u all round.
                        "origin": [0, 0, -23.9], "rotation": [0, {"op": "+", "args": [40, {"op": "*", "args": [{"state": "clock"}, 0.33]}]}, 0],
                        "camera": [-72.5, 0, 0], "fov": 40,
-                       "lights": [{"origin": [-70, 150, 40], "colour": [1.3, 1.26, 1.2]}]}}
+                       "lights": [{"origin": list(LIGHT), "colour": [1, 1, 1]}]}}
     # The model's render fills its square box: only its disc shows.
     centre = U * size / 2
     model["mask"] = {"paths": [{"id": "disc", "commands": [
         {"id": f"p{i}", "op": "line" if i else "move", "points": [[round(centre + U * (x - PLANET_X), 2), round(centre + U * (y - PLANET_Y), 2)]]}
         for i, (x, y) in enumerate(circle(PLANET_X, PLANET_Y, PLANET_R + 0.8, steps=160))] + [{"id": "close", "op": "close"}],
         "fill": {"type": "solid", "color": colour([1, 1, 1, 1])}}]}
-    disc = circle(PLANET_X, PLANET_Y, PLANET_R + 0.5, steps=160)
+    # The highlight: in its 256-texel picture the disc is centred at
+    # (128, 126.5) with a radius of 123.7, lit along its top. Scaled to the
+    # planet and turned a quarter anticlockwise, its lit edge leads, and its
+    # disc's centre lies 2.3 u to the leading side of the picture's.
+    across = 256 * PLANET_R / 123.7
+    shift = 1.5 * across / 256
+    highlight = picture("init-planet-highlight", HIGHLIGHT, {
+        **place(PLANET_X + shift - across / 2, PLANET_Y - across / 2, across, across), "image-blend": keyword("additive"),
+        "image-color": colour([0.85, 0.85, 0.85, 1]), "transform": {"type": "transform", "unit": "dp", "value": [0, 0, 1, 1, -90]}})
     top, bottom = (PLANET_X, PLANET_Y - PLANET_R), (PLANET_X, PLANET_Y + PLANET_R)
-    # The day side, lifted pale toward its limb as the picture has it.
-    day = poly_path("day", [disc], fill=glow((PLANET_X - 95, PLANET_Y - 25), 245, [
-        (0, rgb("#6E7472", 0.28)), (0.55, rgb("#5E6664", 0.14)), (0.85, rgb("#485250", 0.03)), (1, rgb("#485250", 0))]), blend="additive")
-    veil = poly_path("veil", [disc], fill=ramp((PLANET_X - PLANET_R, 0), (PLANET_X + PLANET_R, 0), [
-        (0, rgb("#5E9AA8", 0.12)), (0.5, rgb("#3A8498", 0.14)), (0.7, rgb("#2A7A92", 0.34)), (1, rgb("#2A7A92", 0.5))]))
-    # The lit limb's haze: a crescent between the disc and the disc moved
-    # 30 u along, so it tapers to nothing at the poles, bright at the limb
-    # and clearing inward.
-    shift = 30.0
-    meet = math.degrees(math.acos(shift / 2 / PLANET_R))
-    lune = circle(PLANET_X, PLANET_Y, PLANET_R, meet, 360 - meet, steps=160) +         circle(PLANET_X + shift, PLANET_Y, PLANET_R, 180 + meet, 180 - meet, steps=160)
-    reach = PLANET_R + 1
-    haze = poly_path("haze", [lune], fill=glow((PLANET_X, PLANET_Y), reach, [
-        (0, rgb("#E4E8E8", 0)), (round((PLANET_R - 34) / reach, 3), rgb("#E4E8E8", 0)), (round((PLANET_R - 12) / reach, 3), rgb("#E4E8E8", 0.22)),
-        (round((PLANET_R - 2) / reach, 3), rgb("#F0F4F4", 0.55)), (1, rgb("#F0F4F4", 0.6))]), blend="additive")
     taper = lambda tint, alpha: ramp(top, bottom, [(0, rgb(tint, 0)), (0.18, rgb(tint, alpha)), (0.62, rgb(tint, alpha)),
                                                    (0.92, rgb(tint, alpha * 0.4)), (1, rgb(tint, 0))])
-    limb = poly_path("limb", [circle(PLANET_X, PLANET_Y, PLANET_R - 0.6, 100, 260)], closed=False,
-                     stroke_paint=taper("#D8F0F8", 0.5), width=1.4, blend="additive")
     rim = poly_path("rim", [circle(PLANET_X, PLANET_Y, PLANET_R - 4, -78, 78)], closed=False,
-                    stroke_paint=taper("#B84A3C", 0.24), width=7, blend="additive")
+                    stroke_paint=taper("#B84A3C", 0.2), width=7, blend="additive")
     rim_edge = poly_path("rim-edge", [circle(PLANET_X, PLANET_Y, PLANET_R - 1.2, -70, 70)], closed=False,
-                         stroke_paint=taper("#E85A3C", 0.3), width=1.4, blend="additive")
-    return [model, piece("init-planet-light", [day, veil, haze, limb, rim, rim_edge], pad=2)]
+                         stroke_paint=taper("#E85A3C", 0.26), width=1.4, blend="additive")
+    return [model, highlight, piece("init-planet-rim", [rim, rim_edge], pad=2)]
 
 
-FIRE_X, FIRE_Y, FIRE_RX, FIRE_RY = 365.0, 236.0, 50.0, 112.0   # the ring of fissures, as the picture has it
+# The planet's light, from its centre, in the menu's place turned a quarter
+# round (see planet()), and as seen from the camera: x to the trailing side,
+# y up, z toward the camera.
+LIGHT = (-48.0, 151.0, 10.0)
+_reach = math.sqrt(sum(v * v for v in LIGHT))
+LIGHT_SCREEN = (-LIGHT[1] / _reach, LIGHT[2] / _reach, -LIGHT[0] / _reach)
+# Where the fires show: from nothing where the ground's lighting N.L is
+# FIRE_FROM to full where it is FIRE_FULL, smoothly.
+FIRE_FROM, FIRE_FULL = 0.12, -0.42
 
 
-def fire(doc: Document, rng: random.Random) -> list:
-    """The night side's fires, as the picture has them: a broken ring of
-    burning fissures seen from the side, its trailing arc near the limb, a
-    clump at its foot and a scatter about it, dark between. Doom 3's own lava
-    fissures and embers are added in light through a mask of soft strokes
-    along the ring, over a dull red glow; hot spots on the ring flicker each
-    on its own."""
-    nodes = []
-    disc = circle(PLANET_X, PLANET_Y, PLANET_R - 3)
-    # The glow, inside the disc.
-    nodes.append(piece("init-fire-glow", [poly_path("glow", [disc], fill=glow((FIRE_X + 8, FIRE_Y + 10), 135, [
-        (0, rgb(EMBER_GLOW, 0.22)), (0.5, rgb(EMBER_GLOW, 0.15)), (0.8, rgb(EMBER_GLOW, 0.05)), (1, rgb(EMBER_GLOW, 0))]), blend="additive")],
-        pad=0, opacity=number(1)))
-    doc.timeline("init-fire-glow.breathe", 6000, [track("init-fire-glow", "opacity", [
-        (0, number(1)), (1700, number(0.8)), (2900, number(0.96)), (4300, number(0.74)), (6000, number(1))])], iterations=0)
+def lit(sx: float, sy: float) -> float:
+    """N.L at a point of the disc, (sx, sy) in planet radii from its centre,
+    x to the trailing side and y up (the view is nearly orthographic)."""
+    lx, ly, lz = LIGHT_SCREEN
+    return lx * sx + ly * sy + lz * math.sqrt(max(0.0, 1 - sx * sx - sy * sy))
 
-    def on_ring(angle: float, wander: float = 0.0) -> tuple:
-        """A point on the ring, angle in degrees from its trailing side,
-        anticlockwise on screen, kept inside the limb."""
-        x = FIRE_X + (FIRE_RX + wander) * math.cos(math.radians(angle))
-        y = FIRE_Y - (FIRE_RY + wander * 1.6) * math.sin(math.radians(angle))
-        dx, dy = x - PLANET_X, y - PLANET_Y
-        reach = math.hypot(dx, dy)
-        if reach > PLANET_R - 9:
-            x, y = PLANET_X + dx * (PLANET_R - 9) / reach, PLANET_Y + dy * (PLANET_R - 9) / reach
-        return x, y
 
-    # The ring's runs: (from, to) in degrees, how hard each burns and how
-    # wide. The trailing arc burns brightest; the leading one is a broken C.
-    runs = [(-66, -40, 1.0, 1.3), (-34, -6, 0.95, 1.1), (0, 30, 1.0, 1.4), (36, 62, 0.9, 1.1), (70, 98, 0.7, 0.8), (118, 134, 0.45, 0.5),
-            (146, 160, 0.55, 0.6), (176, 196, 0.6, 0.7), (204, 222, 0.7, 0.6), (236, 254, 0.5, 0.5), (266, 294, 0.85, 1.0)]
-    # The clump at the foot of the ring and the scatter: (x, y, size, weight).
-    blobs = [(352, 342, 18, 1.0), (330, 352, 12, 0.85), (376, 328, 13, 0.95), (318, 300, 8, 0.55), (394, 296, 10, 0.8), (344, 150, 8, 0.55),
-             (322, 208, 7, 0.5), (404, 186, 9, 0.8), (362, 382, 8, 0.65), (300, 252, 5, 0.45), (392, 122, 7, 0.6), (408, 250, 10, 0.75),
-             (384, 152, 9, 0.7), (398, 220, 8, 0.7), (340, 312, 7, 0.6), (356, 128, 6, 0.5)]
+def shaded(level: float, rows: int = 72) -> list:
+    """The part of the disc where N.L is below `level`, in canvas u: on each
+    row it runs from where N.L falls through `level` to the trailing limb
+    (N.L falls monotonically toward that limb wherever it is that low)."""
+    leading, trailing = [], []
+    for k in range(rows + 1):
+        sy = 1 - 2 * k / rows
+        width = math.sqrt(max(0.0, 1 - sy * sy))
+        if width < 1e-3 or lit(width, sy) >= level:
+            continue
+        low, high = -width, width
+        if lit(low, sy) < level:
+            cross = low
+        else:
+            for _step in range(40):
+                mid = (low + high) / 2
+                low, high = (mid, high) if lit(mid, sy) >= level else (low, mid)
+            cross = high
+        leading.append((PLANET_X + PLANET_R * cross, PLANET_Y - PLANET_R * sy))
+        trailing.append((PLANET_X + PLANET_R * width, PLANET_Y - PLANET_R * sy))
+    return leading + trailing[::-1]
 
-    x0, y0, x1, y1 = 280.0, 58.0, 428.0, 422.0
-    w, h = x1 - x0, y1 - y0
-    local = lambda x, y: [round(U * (x - x0), 1), round(U * (y - y0), 1)]
 
-    def stroke_path(ident: str, line: list, width: float, alpha: float) -> dict:
-        return {"id": ident, "commands": [{"id": f"p{k}", "op": "line" if k else "move", "points": [local(*pt)]} for k, pt in enumerate(line)],
-                "stroke": {"paint": flat([1, 1, 1, round(alpha, 3)]), "widthDp": round(U * width, 2), "minimumPixels": 1, "join": "round",
-                           "cap": "round"}}
-
-    paths = []
-    # Broken runs inside the night limb, which fill the ring's trailing arc
-    # out toward the limb.
-    for index, (begin, end) in enumerate(((-62, -40), (-33, -4), (6, 36), (44, 66))):
-        steps = max(3, int((end - begin) / 4))
-        line = []
-        for k in range(steps + 1):
-            angle = math.radians(begin + (end - begin) * k / steps)
-            reach = PLANET_R - 24 + rng.gauss(0, 3)
-            line.append((PLANET_X + reach * math.cos(angle), PLANET_Y - reach * math.sin(angle)))
-        for layer_index, (width, alpha) in enumerate(((28, 0.22), (16, 0.3), (7, 0.45))):
-            paths.append(stroke_path(f"limb{index}-{layer_index}", line, width, alpha))
-    # The ring's runs, each wandering on its own.
-    for index, (begin, end, weight, girth) in enumerate(runs):
-        steps = max(3, int((end - begin) / 4))
-        drift = rng.uniform(-6, 6)
-        line = [on_ring(begin + (end - begin) * k / steps, drift + rng.gauss(0, 3.5)) for k in range(steps + 1)]
-        for layer_index, (width, alpha) in enumerate(((26, 0.3), (14, 0.48), (6, 0.9))):
-            paths.append(stroke_path(f"run{index}-{layer_index}", line, width * girth, alpha * weight))
-    # Filaments: short streaks off the ring, most of them leaning up and to
-    # the leading side as the picture's do.
-    for index in range(22):
-        bx, by = on_ring(rng.uniform(-70, 300), rng.gauss(0, 5))
-        lean = math.radians(rng.gauss(135, 25) if rng.random() < 0.7 else rng.uniform(0, 360))
-        reach = rng.uniform(6, 15)
-        line = [(bx, by), (bx + reach * 0.5 * math.cos(lean) + rng.gauss(0, 1.5), by - reach * 0.5 * math.sin(lean) + rng.gauss(0, 1.5)),
-                (bx + reach * math.cos(lean), by - reach * math.sin(lean))]
-        paths.append(stroke_path(f"filament{index}-0", line, 6, 0.18))
-        paths.append(stroke_path(f"filament{index}-1", line, 2.2, rng.uniform(0.3, 0.5)))
-    for index, (bx, by, size, weight) in enumerate(blobs):
-        ring = circle(bx, by, size, steps=24)
-        paths.append({"id": f"blob{index}",
-                      "commands": [{"id": f"p{k}", "op": "line" if k else "move", "points": [local(*pt)]} for k, pt in enumerate(ring)]
-                      + [{"id": "close", "op": "close"}],
-                      "fill": {"type": "radial", "from": local(bx, by), "to": local(bx + size, by),
-                               "stops": checked([(0, [1, 1, 1, weight]), (0.5, [1, 1, 1, round(weight * 0.6, 3)]), (1, [1, 1, 1, 0])])}})
-
-    def layer(ident: str, source: str, tile_w: float, tile_h: float, tint: list, offset: tuple = (0, 0)) -> dict:
-        return picture(ident, source, {**absolute(left=0, top=0), "width": length(100, "%"), "height": length(100, "%"),
-                                        "image-blend": keyword("additive"), "image-color": colour(tint),
-                                        "image-scale-x": number(round(w / tile_w, 3)), "image-scale-y": number(round(h / tile_h, 3)),
-                                        "image-offset-x": number(offset[0]), "image-offset-y": number(offset[1]), "opacity": number(1),
-                                        **NO_POINTER})
-
-    burning = group("init-fire", place(x0, y0, w, h), [
-        layer("init-lava-0", LAVA, 78, 120, [1.0, 0.86, 0.5, 1]),
-        layer("init-lava-1", LAVA, 60, 104, [1.0, 0.58, 0.2, 1], (0.37, 0.61)),
-        layer("init-embers", EMBERS, 50, 70, [1.0, 0.9, 0.62, 1], (0.2, 0.45))])
-    burning["mask"] = {"paths": paths}
-    nodes.append(burning)
-    for ident, period, low, high in (("init-lava-0", 5200, 0.85, 1.0), ("init-lava-1", 3700, 0.45, 0.9), ("init-embers", 2300, 0.6, 1.0)):
-        doc.timeline(f"{ident}.flicker", period, [track(ident, "opacity", pulse(rng, low, high, period, 3))], iterations=0)
-    # The fissures creep along the ring: one tile in a minute and a half.
-    doc.timeline("init-lava-1.creep", 90000, [track("init-lava-1", "image-offset-y", [(0, number(0.61)), (90000, number(1.61))])],
-                 iterations=0)
-
-    # Hot spots: clusters of bright specks on the ring and in the clump.
-    def speck(x: float, y: float, reach: float) -> list:
-        count = rng.randint(4, 6)
-        turn = rng.uniform(0, math.tau)
-        return [(x + reach * rng.uniform(0.5, 1.0) * math.cos(turn + math.tau * k / count) * 0.7,
-                 y + reach * rng.uniform(0.5, 1.0) * math.sin(turn + math.tau * k / count)) for k in range(count)]
-
-    spots = [on_ring(angle) for angle in (-52, -26, -8, 12, 24, 46, 84, 152, 186, 212, 280)] + [(352, 342), (336, 352), (374, 330), (408, 250),
-                                                                                            (404, 186), (398, 140), (410, 300), (384, 104)]
-    # In three flicker groups, mixed along the ring (one layer each).
-    flickers: dict = {}
-    for index, (sx, sy) in enumerate(spots):
-        cluster = [(sx + rng.gauss(0, 3.5), sy + rng.gauss(0, 7), rng.uniform(0.9, 2.4)) for _speck in range(rng.randint(4, 8))]
-        parts = flickers.setdefault(index % 3, {"halo": [], "hot": [], "core": []})
-        parts["halo"] += [speck(x, y, r * 2.8) for x, y, r in cluster]
-        parts["hot"] += [speck(x, y, r * 1.5) for x, y, r in cluster]
-        parts["core"] += [speck(x, y, r * 0.7) for x, y, r in cluster]
-    for key, parts in sorted(flickers.items()):
-        paths = [poly_path("halo", parts["halo"], fill=flat(rgb(EMBER_GLOW, 0.26)), blend="additive"),
-                 poly_path("hot", parts["hot"], fill=flat(rgb(EMBER_HOT, 0.85)), blend="additive"),
-                 poly_path("core", parts["core"], fill=flat(rgb(EMBER_CORE, 1.0)), blend="additive")]
-        ident = f"init-embers-{key}"
-        nodes.append(piece(ident, paths, opacity=number(1)))
-        period = (1900, 2700, 3500)[key]
-        doc.timeline(f"{ident}.flicker", period, [track(ident, "opacity", pulse(rng, 0.4, 1.0, period, 3))], iterations=0)
-    return nodes
+def fire(doc: Document) -> list:
+    """The night side's fires, on the ground itself. The planet is drawn a
+    second time, turning with the first, under the skin
+    opend3/startup/planetfire (materials/startup_opend3.mtr): Doom 3's own
+    lava fissures and embers, gathered into patches over the whole globe and
+    into its dark lowlands, flickering, and added to the planet as light. A
+    mask lets that drawing through only where the planet is in shade, and
+    the more the deeper the shade, so the fires never burn on the lit side,
+    and turn out of the light and into it as the planet turns."""
+    size = 2 * PLANET_R + 20
+    centre = U * size / 2
+    node = {"id": "init-fire", "type": "model",
+            "properties": place(PLANET_X - size / 2, PLANET_Y - size / 2, size, size),
+            "scene": {"parts": [{"model": "models/wipes/planet2.lwo", "skin": "opend3/startup/planetfire"}],
+                      "origin": [0, 0, -23.9], "rotation": [0, {"op": "+", "args": [40, {"op": "*", "args": [{"state": "clock"}, 0.33]}]}, 0],
+                      "camera": [-72.5, 0, 0], "fov": 40}}
+    # Nested regions of deepening shade, each adding opacity so that the
+    # whole reaches smoothstep(FIRE_FROM, FIRE_FULL) of N.L at its edge.
+    local = lambda x, y: [round(centre + U * (x - PLANET_X), 1), round(centre + U * (y - PLANET_Y), 1)]
+    paths, before = [], 0.0
+    steps = 14
+    for k in range(1, steps + 1):
+        level = FIRE_FROM + (FIRE_FULL - FIRE_FROM) * k / steps
+        t = (k / steps) ** 2 * (3 - 2 * k / steps)
+        alpha = 1.0 if t >= 0.999 else 1 - (1 - t) / (1 - before)
+        before = t
+        region = shaded(level)
+        if len(region) < 3:
+            continue
+        paths.append({"id": f"shade{k}", "commands": [{"id": f"p{i}", "op": "line" if i else "move", "points": [local(*pt)]}
+                                                       for i, pt in enumerate(region)] + [{"id": "close", "op": "close"}],
+                      "fill": {"type": "solid", "color": colour([1, 1, 1, round(alpha, 4)])}})
+    node["mask"] = {"paths": paths}
+    return [node]
 
 
 def honeycomb(doc: Document) -> list:
     """The fine grid. Each cell draws its two upper edges and its trailing
     side; its other three belong to its neighbours, so every edge of the
-    honeycomb is drawn once and neighbours share it. Lines are added light,
-    as in the picture, where they lighten the planet, and drawn without
+    honeycomb is drawn once and neighbours share it. Lines are blended, not
+    added, so over the planet they stay as quiet as the picture's, and drawn without
     anti-aliasing: start-up keeps no raster cache, and the grid's coverage
     would be some 400,000 vertices a frame; the picture's lines are hard
     too. The grid is drawn in strips four columns wide (one vector's
@@ -547,7 +485,7 @@ def honeycomb(doc: Document) -> list:
             lines.append([upper_lead, top, upper_trail, lower_trail])
     x0 = cell_centre(first, 0)[0] - CELL_W / 2 - 1.5
     bounds = (x0, GRID_Y + ROW_H * rows[0] - SIDE - 1.5, x0 + 4.5 * CELL_W + 3, GRID_Y + ROW_H * rows[-1] + SIDE + 1.5)
-    strip = poly_path("cells", lines, stroke_paint=flat(rgb(LINE, 0.4)), width=0.8, closed=False, blend="additive", smooth=False)
+    strip = poly_path("cells", lines, stroke_paint=flat(rgb(LINE, 0.46)), width=0.8, closed=False, smooth=False)
     nodes = [piece("init-honeycomb-0", [strip], bounds=bounds, doc=doc, symbol="init-honeycomb")]
     count = math.ceil(len(columns) / 4)
     nodes += [placed(f"init-honeycomb-{index}", "init-honeycomb", bounds, dx=4 * CELL_W * index) for index in range(1, count)]
@@ -744,7 +682,7 @@ def initialization_document() -> dict:
         *backdrop,
         *stars(doc, rng),
         *planet(doc),
-        *fire(doc, rng),
+        *fire(doc),
         glints,
         *honeycomb(doc),
         *lit_cells(doc, rng),

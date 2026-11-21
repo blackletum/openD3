@@ -7053,6 +7053,9 @@ static const char *const RETAINED_TITLE_GUI = "guis/menu/title.rui";
 static const char *const RETAINED_PAUSE_GUI = "guis/menu/pause.rui";
 static const char *const RETAINED_PAUSE_STROGG_GUI = "guis/menu/pause_strogg.rui";
 static const char *const RETAINED_LOADING_GUI = "guis/loading/loading.rui";
+// The start-up screen's document, which also presents for the fallback
+// loading screen (SelectRetainedLoadingGui).
+static const char *const RETAINED_INITIALIZATION_GUI = "guis/loading/initialization.rui";
 static const char *const RETAINED_SINGLEPLAYER_GUI = "guis/menu/singleplayer.rui";
 static const char *const RETAINED_CAMPAIGNS_GUI = "guis/menu/campaigns.rui";
 static const char *const RETAINED_SKILL_GUI = "guis/menu/campaign_skill.rui";
@@ -7367,6 +7370,9 @@ static const int RETAINED_LOADING_FURNITURE_COUNT = static_cast<int>( sizeof( RE
 // presents alone.
 static idUserInterface *retainedLoadingScene = NULL;
 static idUserInterface *retainedLoadingOver = NULL;
+// The fallback loading screen (the start-up screen's document) turns its
+// planet by the seconds it has shown, its `clock`; -1 for the other screens.
+static int retainedLoadingClockStart = -1;
 
 // Draws a stock GUI's scene alone, without the windows `furniture` names and
 // without its pointer, for a retained screen to draw over.
@@ -9139,6 +9145,9 @@ void idSessionLocal::DrawRetainedPageHome( int presentationTime ) {
 	if ( insideExecuteMapChange ) {
 		if ( retainedLoadingScene != NULL && guiLoading != NULL && guiLoading == retainedLoadingOver ) {
 			Session_DrawRetainedScene( retainedLoadingScene, presentationTime, RETAINED_LOADING_FURNITURE, RETAINED_LOADING_FURNITURE_COUNT );
+		} else if ( retainedLoadingClockStart >= 0 && guiLoading != NULL && guiLoading == retainedLoadingOver ) {
+			guiLoading->SetStateFloat( "clock", Max( 0, presentationTime - retainedLoadingClockStart ) * 0.001f );
+			guiLoading->StateChanged( presentationTime );
 		}
 		return;
 	}
@@ -11578,13 +11587,34 @@ idUserInterface *idSessionLocal::SelectRetainedLoadingGui( idUserInterface *lega
 	// read from the stock screen. Two screens are built another way and the
 	// document has a kind for each (load.kind): the hell screen's, a picture
 	// with the word in red and no bands or text, and the first level's, the
-	// word and the bar alone in the middle of a black screen. Any other
-	// screen keeps the stock presentation; the fallback (guis/map/loading.gui)
-	// is a picture with nothing over it to replace.
+	// word and the bar alone in the middle of a black screen. The fallback
+	// for a level with no screen of its own (guis/map/loading.gui) is the
+	// start-up picture without its status line, so the start-up screen's own
+	// document presents for it, whole, with no message and nothing stock
+	// beneath. Any other screen keeps the stock presentation.
 	retainedLoadingScene = NULL;
 	retainedLoadingOver = NULL;
+	retainedLoadingClockStart = -1;
 	if ( !Session_RetainedScreensEnabled() || legacy == NULL ) {
 		return legacy;
+	}
+	if ( idStr::Icmp( legacy->Name(), "guis/map/loading.gui" ) == 0 ) {
+		if ( Session_ModSuppliesFile( legacy->Name() ) ) {
+			common->DPrintf( "retained UI: the mod supplies its own '%s', so it presents instead of the retained loading screen\n", legacy->Name() );
+			return legacy;
+		}
+		idUserInterface *launch = FindRetainedGui( RETAINED_INITIALIZATION_GUI, true, false );
+		if ( launch == NULL ) {
+			return legacy;
+		}
+		// The planet turns by `clock`, which DrawRetainedPageHome sets each frame.
+		launch->SetStateString( "message", "" );
+		launch->SetStateFloat( "clock", 0.0f );
+		launch->StateChanged( common->GetPresentationTime() );
+		launch->HandleNamedEvent( "onEnter" );
+		retainedLoadingOver = launch;
+		retainedLoadingClockStart = common->GetPresentationTime();
+		return launch;
 	}
 	enum { LOADING_STANDARD, LOADING_HELL, LOADING_FIRST };
 	int kind = LOADING_STANDARD;

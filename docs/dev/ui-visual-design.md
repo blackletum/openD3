@@ -2516,7 +2516,7 @@ There is no closing animation in the GUI; the engine's fade from black covers th
 | Multiplayer maps (`d3dm1`-`d3dm5`) | Bottom band from y 435; the title alone at 16, 447; no subtitle, briefing or title bar |
 | Hell (`hell1`) | No bands; `load.word.hell`; frame tinted #FF0000; no level text |
 | First level (`mars_city1`) | No picture: black, with the word centred at y 211 and the bar centred beneath it (frame 235, 242, 170, 9) |
-| Fallback (`loading`) | The start-up picture full screen and one line of Default 0.40 in `load.status` at 5, 10; no bar, no animation |
+| Fallback (`loading`) | The start-up picture full screen and one line of Default 0.40 in `load.status` at 5, 10; no bar, no animation. Replaced by the retained start-up screen itself, without its status line (section 10.15) |
 
 **Replacement.**
 
@@ -2573,10 +2573,14 @@ Colour escapes select red #FF0000, green #00FF00, yellow #FFFF00, blue #0000FF, 
 | Frame-rate counter | Big cells (16 x 16 u), right-aligned to x 635 at y 2 | `console.fps`; the mean of the last four frames; debug lines stack beneath it in small cells at a 20 u pitch |
 
 **Start-up screen.** A full-screen picture with one status line: BigChars small cells, centred, at
-y 410, in `load.status`, upper case. The picture is letterboxed: black above 16% of its height, a
-bright cyan rule (about #3988A8) at 16-17%, the image to 84%, a darker strip to 94% in which the
-status line falls, then black. It shows Mars at the leading side under a teal hexagon grid, with the
-id mark in a square block at 80-95% of the width and 70-94% of the height.
+y 410, in `load.status`, upper case. The picture is letterboxed: black above y 75 (15.6% of its
+height), a bright cyan rule (#2F92AC) on the opening's edge that fades into it over about 8 u, the
+image to y 405 (84.4%), then black, in which the status line falls. It shows Mars at the leading
+side (centre 234, 240, radius 190) under a teal honeycomb of pointy-topped cells (side 10.4 u, a
+cell centred at 1.75, 21.25), the night side burning in a broken ring of fissures about 365, 236
+(50 by 112 u) with a clump at its foot, a stream of loose translucent hexagonal plates from the
+planet's lower trailing side up and out of the band, and the id mark in a square block at 80-95% of
+the width and 70-94% of the height, across the opening's bottom edge.
 
 **BigChars cell metrics** (16 x 16 texel cell; a small cell draws it 8 x 16 u, a big cell 16 x 16 u):
 
@@ -2603,13 +2607,20 @@ squeeze the sheet 2:1 horizontally. The sheet has no baked shadow.
 3. Keep the linear 167 ms drop. Never add a fade, blur or translucent backing: the console is
    opaque.
 4. The cursor keeps its two shapes and its blink.
-5. The start-up status line stays one centred line of small cells in `load.status` in the picture's
-   lower strip. The picture itself is rebuilt from its elements: stars, Mars as a lit 3D model with
-   the fires of its night side, the teal wash, the fine honeycomb (flat-topped cells 22.5 u across),
-   the large hexagons three cells to the side, the letterbox and its rules. Only the id mark stays
-   a bitmap. Motion is slight and never in step: the planet turns a third of a degree a second,
-   each large hexagon's transparency pulses on a period of its own, single cells light and fade,
-   and the fires flicker by cluster.
+5. The start-up status line stays one centred line of small cells in `load.status` under the
+   opening. The picture itself is rebuilt from its elements: stars, Mars as a lit 3D model with the
+   fires of its night side (Doom 3's own lava fissures and embers seen through a mask along the
+   ring), the teal clouds, the fine honeycomb on the picture's own cells with every edge drawn once,
+   the loose plates, the letterbox and its rules. Only the id mark stays a bitmap. Anything that
+   lights on the honeycomb (a cell, a cluster) lights the grid's own lines; the loose plates are off
+   the grid. Motion is slight and never in step: the planet turns a third of a degree a second, the
+   loose plates pulse in groups mixed through one another, each on a period of its own, cells and
+   clusters light and fade, and the fires flicker by layer and by hot spot.
+6. **Remastered** keeps the opening at the picture's share of the height (68.75%) on any view,
+   centred, with the honeycomb, the clouds, the stars and the stream running on to the view's
+   edges up to 32:9. On a view taller than 4:3 the opening grows with the height up to 520 u, so an
+   upright phone sees the whole planet; the bars take the rest. The id mark keeps its distance from
+   the trailing edge and its place across the opening's bottom edge.
 6. The frame-rate counter stays white big cells in the top-trailing corner. In **Remastered** it and
    the debug lines anchor 5 u from the trailing edge; the console spans the full width of the view
    and keeps its 8 u text inset, with as many columns as fit.

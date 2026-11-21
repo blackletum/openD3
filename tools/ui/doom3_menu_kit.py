@@ -355,6 +355,8 @@ class Document:
         self.bindings: list = []
         self.detail: dict | None = None
         self.hints: list[str] = []
+        # Vector art several nodes draw (a vector node's "symbol" names one): ID -> paths.
+        self.symbols: dict = {}
 
     def timeline(self, ident: str, duration: float, tracks: list, *, iterations: int | None = None,
                  complete: str | None = None, essential: bool | None = None) -> str:
@@ -458,6 +460,8 @@ class Document:
             result["bindings"] = self.bindings
         if self.detail:
             result["detail"] = self.detail
+        if self.symbols:
+            result["symbols"] = self.symbols
         result["timelines"] = self.timelines
         result["root"] = root
         return result

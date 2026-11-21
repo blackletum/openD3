@@ -38,7 +38,7 @@ to 0, because the retained HUD has no Doom 3 documents. `+set ui_retained 1` sel
 | In-game multiplayer menu: the tab strip; the Main panel (ready, spectate, team, vote, chat); New Vote (the type list, a number or a list of game types, players or maps with the map's picture, Call and Cancel); Multiplayer (data rate, always run, name, skins); Controls (four sub-tabs, 43 bindings); Options (nine rows); Exit; the hint line. System opens the SYSTEM page above under the strip | `guis/menu/mp_escape.rui` | 10.13 |
 | Death screen: Restart, Load and Main Menu, typed in letter by letter, and the line under each | `guis/menu/restartmenu.rui` | 9.8 |
 | System check before the main menu: the question, the detected hardware, the nine presets with the recommended one lit and the current one outlined, APPLY RECOMMENDED, KEEP CURRENT, ASK ME NEXT TIME | `guis/menu/presetcheck.rui` | 6.10, 9.9 |
-| Start-up screen: the stock picture rebuilt element by element (stars, Mars in 3D, its fires, the teal wash, the honeycomb, the large hexagons, the letterbox and its rules) with the id mark and the status line | `guis/loading/initialization.rui` | 10.15 |
+| Start-up screen: the stock picture rebuilt element by element (stars, Mars in 3D, its fires, the teal clouds, the honeycomb, the loose plates, the letterbox and its rules) with the id mark and the status line; also the fallback loading screen for a level with no screen of its own (`guis/map/loading.gui`), without the status line | `guis/loading/initialization.rui` | 10.14, 10.15 |
 | Create Server: the plate and its bridge to the tab, the server name, the map list under the chosen map's picture, nine option rows, the ADVANCED SERVER OPTIONS dialog with eight more, the create bar | `guis/menu/createserver.rui` | 6.5 to 6.7, 6.9, 6.10, 9.6 |
 
 Everything else is still the stock GUI, reached from the retained home as
@@ -231,22 +231,40 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
   `ui_retained` is 1 (`RetainedUI_DrawInitialization`: `onInit`, then
   `onEnter` once the first frame is on screen, `message` and `step`, and
   `stepChanged`). The document rebuilds the picture's elements one by
-  one, back to front:
-  - black space and a seeded field of stars;
+  one, back to front, with the picture's own measures (the honeycomb was
+  fitted to the installed picture and lands on its cells):
+  - the band's dark teal, with soft clouds where the picture is lighter
+    and darker gaps between, lighter strips, and a seeded field of warm
+    stars (one tile drawn five times, turned another way each time);
   - Mars as a 3D model, the main menu's own (`models/wipes/planet2.lwo`)
     in a `model` node under one light from the leading side, so its
-    trailing side is night; it turns a third of a degree a second;
-  - the night side's fires, additive specks along a ring of fissures in
-    clusters that each flicker on their own, over a dull glow;
-  - the band's teal wash and lighter strips;
-  - the fine honeycomb, flat-topped cells 22.5 u across, every edge drawn
-    once, and 44 single cells of it that light and fade at moments of
-    their own;
-  - the large hexagons, three cells to the side on the fine grid's own
-    lines, each a node of its own whose transparency pulses on its own
-    period (2.6 to 7.4 s), so no two keep step;
-  - a few very large soft hexagons;
-  - the letterbox and its two cyan rules;
+    trailing side is night; it turns a third of a degree a second. A
+    mask keeps it to its disc (the render fills its square box). Over it
+    a pale haze on the lit limb, a teal veil that deepens toward the
+    night side and a thin red rim on the night limb;
+  - the night side's fires as the picture has them: a broken ring of
+    fissures seen from the side, heaviest toward the limb, with a clump
+    at its foot. Doom 3's own `textures/hell/lava1fx` (twice, at two
+    scales) and `textures/decals/ember2_add3` are added in light through
+    one mask of soft strokes along the ring, over a dull red glow, with
+    hot spots that flicker each on its own;
+  - thin light lines that cross everything, the planet too;
+  - the fine honeycomb: pointy-topped cells of side 10.4 u, every edge
+    drawn once, so neighbours share their lines, hard-edged as the
+    picture's are (without anti-aliasing). Its strips are one symbol
+    drawn 25 times;
+  - 44 cells and small clusters of the honeycomb that light and fade at
+    moments of their own; a cluster lights its faces and its outline,
+    which are the grid's own lines;
+  - the loose plates: translucent hexagonal plates off the grid, most in
+    a stream from the planet's lower trailing side up and out of the
+    band, leaning alike, each tilted in depth with a back face and a
+    fading trail, and six large faint ones across the planet, which hold
+    still. The others pulse in six groups mixed through one another
+    (four along the stream, two elsewhere), each on a period of its own,
+    so neighbours never keep step;
+  - the letterbox's two rules, each a cyan line on the opening's edge
+    fading into it;
   - the id mark, the one bitmap: its block cropped from the installed
     picture by a clipping group (a logo is a bitmap exception);
   - the status line in BigChars small cells, which lights white for a
@@ -266,10 +284,23 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
   whole document for one and start-up then falls back to the stock
   picture without a word on screen.
 
-  The band, its rules, the honeycomb and the stars run to the view's
-  edges; the planet keeps its place on the centred canvas; the id mark
-  keeps its distance from the trailing edge; on a tall view the band
-  stays one canvas high, centred.
+  The opening is 68.75 % of the view's height, as in the picture, on
+  any view, and centred by a flex column; on a view taller than 4:3 it
+  grows with the height up to 520 u, so an upright phone sees the whole
+  planet, and the bars take the rest. Inside it everything is placed on
+  the centred canvas measured from the opening's middle; the clouds, the
+  stars, the honeycomb and the stream run on to the view's edges up to
+  32:9; the id mark keeps its distance from the trailing edge and its
+  place across the opening's bottom edge; the status line sits under
+  the opening.
+
+  The stock loading screen for a level with no screen of its own,
+  `guis/map/loading.gui`, is the start-up picture without the status
+  line, so the session presents this same document for it
+  (`SelectRetainedLoadingGui`, OPEND3): no message, `onEnter` when the
+  load begins, nothing stock beneath, and `clock` set each frame from
+  `DrawRetainedPageHome`. A mod that supplies its own `loading.gui` keeps
+  it.
 
 A mod whose main menu lacks one of those stock buttons keeps its own menu.
 
@@ -477,8 +508,9 @@ group box, the stepping rows over the service's draft and its two dialogs.
 `tools/ui/doom3_menu_death.py` holds the death screen's choices and their
 typing.
 `tools/ui/doom3_menu_init.py` holds the start-up screen: one function for
-each element of the stock picture, and `fit`, which gives a piece that is
-animated on its own a node no larger than itself.
+each element of the stock picture, and `piece`, which gives a piece that is
+animated on its own a node no larger than itself, or makes it a symbol
+other nodes draw (`placed`); the kit's `Document` now writes `symbols`.
 `tools/ui/doom3_menu_loading.py` holds the loading screen: its bands, bar,
 typed word and text block.
 `tools/ui/doom3_menu_mpmenu.py` holds the in-game multiplayer menu: the
@@ -586,7 +618,19 @@ Points that are easy to get wrong:
   real start-up frame (`INITIALIZATION_FRAME`, `RETAINED_INITIALIZATION_FRAME`).
 - One vector's coverage has a budget ("coverage exceeds output rectangle
   budget", and the vector draws nothing): the honeycomb is cut into
-  strips.
+  strips. Identical strips are one symbol, which keeps the document
+  small: drawing the honeycomb as 25 separate strips cost 0.9 MB.
+- A `model` node's render fills its whole box, opaque, so anything drawn
+  behind the box is hidden by a dark square; mask the node to the shape.
+- Masks take soft strokes and gradients, and an additive image inside a
+  masked node still adds (its light writes no alpha), which is how the
+  fires are shaped.
+- A display binding sets `display`, so a node shown or hidden by one
+  loses its own `display: flex`; bind a wrapper instead.
+- A `cancelTimeline` needs a `policy` (`hold` or `base`), and gradient
+  stops must increase strictly: either refuses the whole document, which
+  then falls back to the stock screen with only a log line. The init
+  generator checks its gradient stops.
 - A scripted run's profile keeps what earlier runs archived. After a
   multiplayer run `si_gameType` stays `deathmatch`, and a `devmap` then
   starts as a multiplayer game with no pause screen: pass `+set
@@ -834,6 +878,26 @@ from the window.
   invisible. Answered through `performancePresetCheck apply` and the Back
   event; the buttons and the link were not pressed with the pointer.
 
+- The start-up screen's second version (21 November): matched against the
+  installed picture at 4:3 side by side (the honeycomb's fitted cells land
+  on the picture's; the planet, the fires' ring and clump, the stream and
+  the mark where it has them), and shown through `testGUI` at 1920x540
+  (32:9), 1680x720, 1280x720, 960x720, 900x900, 960x1280 and 720x1280: the
+  opening is centred at its share of the height on the wide views, grows
+  on the square and upright ones to show the whole planet, and the field
+  reaches the edges at 32:9. Window grabs of real start-ups at 1280x720
+  and 720x1280 showed it live with its status line. Traced at 1280x720
+  while the machine's CPU was saturated by other programs: the first frame
+  277 ms and the rest 19 to 28 ms, 583,000 to 597,000 vertices, 331 to 349
+  draws and 16 to 22 layers, 28 frames painted; the previous version under
+  the same load took 512 ms, then 27 to 44 ms with 90 layers, 17 frames.
+  A pulse group's opacity change does not recompile its paths (3 to 13
+  paths a frame). The fallback loading screen on `testmaps/test_box` (no
+  map GUI of its own) at 1280x720: the same picture without the status
+  line, centred, its cells and plates moving between frames, from both a
+  window grab and `com_captureLoadingScreen`; `alphalabs1` still gets the
+  retained `loading.rui` with its bands, word, bar and briefing.
+
 Not verified: Resurrection of Evil, Vulkan, a controller, touch, reduced
 motion, languages other than English, the multiplayer pause, a mod's menu, and
 every platform but Windows.
@@ -908,17 +972,23 @@ every platform but Windows.
   only the selected save's date and time. The list's sort and filter verbs
   have no controls. More than 64 saves page through NEWER SAVES and OLDER
   SAVES rows, which were not exercised.
-- **Start-up screen.** The first frame costs about 0.4 s, which the stock
-  picture does not: the document is a megabyte and its geometry is built
-  then. The fires are drawn in the plane of the screen and do not turn
-  with the planet, which over a start-up of a few seconds moves a few u
-  under them. The planet's fires are an interpretation of the picture's,
-  not a trace of it. The id mark's block carries the picture's own
-  background at its edges. The status line shows the engine's message as
-  it comes, and `step` stays 0, because the engine matches the message
-  against Quake 4 string keys. On an upright phone the band is a strip a
-  quarter of the height. The engine holds the screen still under reduced
-  motion.
+- **Start-up screen.** The first frame costs about 0.3 s, which the stock
+  picture does not: the document is 1.1 MB and its geometry is built then.
+  Start-up keeps no raster cache (upstream's choice), so every
+  anti-aliased edge is resubmitted each frame; that is why the honeycomb
+  and the plates' faint edges are drawn hard and the plates and hot spots
+  pulse in groups. The fires are drawn in the plane of the screen and do
+  not turn with the planet, which over a start-up of a few seconds moves a
+  few u under them; they are an interpretation of the picture's, shaped
+  by a mask, not a trace of it. The planet's day side is the model's
+  texture under a haze, smoother and pinker than the picture's cratered
+  tan. The id mark's block carries the picture's own background at its
+  edges. The status line shows the engine's message as it comes, and
+  `step` stays 0, because the engine matches the message against Quake 4
+  string keys. The engine holds the screen still under reduced motion.
+  As the fallback loading screen it parses when the first such level
+  loads (about 0.15 s, or 0.6 s on a saturated CPU), and it does not show
+  the stock screen's demo line (`gui::demo`).
 - **Tall views.** The furniture goes to the edges but nothing grows: the
   save lists, the server list and the map list keep their canvas heights,
   with empty backdrop above or below them. Text keeps its u size, which on

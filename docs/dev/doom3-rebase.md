@@ -291,8 +291,10 @@ release of Doom 3 (1.3.1 packs):
   pages closing, the top bar's slide, the hint's wipe, the bindings' row
   flash and the grid lighting under the pointer; and the same screens in a
   720x1280 window, where the retained furniture goes to the top and bottom
-  edges; and the start-up screen, shown through `testGUI` at four shapes
-  and traced through a real start-up.
+  edges; and the start-up screen, shown through `testGUI` at seven shapes
+  from 32:9 to 9:16 and traced through a real start-up, and the same
+  screen standing in for the fallback loading screen on
+  `testmaps/test_box`.
   [Retained Doom 3 menus](ui/retained-menus.md) lists each check and
   what was not seen. From the merge of 18 November until 20 November the
   settings service refused the retained SYSTEM page (upstream's catalog

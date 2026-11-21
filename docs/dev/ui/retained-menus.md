@@ -37,6 +37,7 @@ to 0, because the retained HUD has no Doom 3 documents. `+set ui_retained 1` sel
 | Level loading screens: the two bands, the typed LOADING and its flare, the bar, the level's title, subtitle and briefing; the hell level's screen (no bands, the word in red, the frame tinted red); the first level's (black, the word and the bar in the middle) | `guis/loading/loading.rui` | 10.14 |
 | In-game multiplayer menu: the tab strip; the Main panel (ready, spectate, team, vote, chat); New Vote (the type list, a number or a list of game types, players or maps with the map's picture, Call and Cancel); Multiplayer (data rate, always run, name, skins); Controls (four sub-tabs, 43 bindings); Options (nine rows); Exit; the hint line. System opens the SYSTEM page above under the strip | `guis/menu/mp_escape.rui` | 10.13 |
 | Death screen: Restart, Load and Main Menu, typed in letter by letter, and the line under each | `guis/menu/restartmenu.rui` | 9.8 |
+| System check before the main menu: the question, the detected hardware, the nine presets with the recommended one lit and the current one outlined, APPLY RECOMMENDED, KEEP CURRENT, ASK ME NEXT TIME | `guis/menu/presetcheck.rui` | 6.10, 9.9 |
 | Start-up screen: the stock picture rebuilt element by element (stars, Mars in 3D, its fires, the teal wash, the honeycomb, the large hexagons, the letterbox and its rules) with the id mark and the status line | `guis/loading/initialization.rui` | 10.15 |
 | Create Server: the plate and its bridge to the tab, the server name, the map list under the chosen map's picture, nine option rows, the ADVANCED SERVER OPTIONS dialog with eight more, the create bar | `guis/menu/createserver.rui` | 6.5 to 6.7, 6.9, 6.10, 9.6 |
 
@@ -420,8 +421,10 @@ and Reverse Channels are outside the service's catalog and set their CVars at
 once through `settings.player.set`.
 
 Doom 3's four video qualities step through four of the engine's performance
-presets: low, balanced, quality and ultra. A draft on another preset shows
-that preset's own name. Screen Size steps the display's modes in exclusive
+presets: low, performance, balanced and ultra, the ones the stock page's
+quality buttons apply (`video low|medium|high|ultra` in `Session_menu.cpp`,
+`PerformancePresetForMachineSpec`), so both menus name a preset the same
+way. A draft on another preset shows that preset's own name. Screen Size steps the display's modes in exclusive
 full screen and otherwise shows the window's size.
 
 Create Server uses openQ4's route with Doom 3's tables at `OPEND3` sites.
@@ -821,6 +824,15 @@ from the window.
   frame costing 430 ms and the rest about 18 ms. With `ui_retained 0`
   start-up is the stock picture as before. Not seen: the real start-up's
   picture itself, the animation in motion, and reduced motion.
+- The system check (21 November), at 1280x720 and 720x1280, opened at
+  start-up from a profile whose preset record is stale. The session
+  activates the stock `guis/presetcheck.gui` beside the document and draws
+  its stars and Mars with its dialog (`CheckDialog`) hidden
+  (`Session_DrawPresetCheckScene`). The dialog appears in one frame, as the
+  message box does: an entrance timeline played from `onActivate` during
+  start-up, before the first frame, never completed and left the dialog
+  invisible. Answered through `performancePresetCheck apply` and the Back
+  event; the buttons and the link were not pressed with the pointer.
 
 Not verified: Resurrection of Evil, Vulkan, a controller, touch, reduced
 motion, languages other than English, the multiplayer pause, a mod's menu, and

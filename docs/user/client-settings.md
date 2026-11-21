@@ -64,6 +64,17 @@ On a widescreen or tall display the menus, HUD and loading screens use the whole
 | `ui_widescreenLayouts` | `1` | `0` draws the stock menus and HUD as a centred 4:3 picture instead. Takes effect when the menu or map next loads |
 | `ui_aspectCorrection` | `1` | `0` stretches all 2D interface to the screen shape instead of keeping its proportions |
 
+## Graphics Presets
+
+openD3 sets its graphics as one of nine presets, from **Minimum** to **Maximum**, and picks one for your PC the first time it starts. Doom 3's Video Quality choices under OPTIONS > SYSTEM apply four of them: **Low** is Low, **Medium** is Performance, **High** is Balanced and **Ultra** is Ultra. The button that scans your hardware applies the preset recommended for your PC.
+
+When a new version of openD3 changes the presets, the next start shows a system check before the main menu. It lists what it detected and the recommended preset beside your current one. **Apply Recommended** switches to it, **Keep Current** keeps your settings and stops asking until the presets change again, and **Ask Me Next Time** (or Escape) asks again at the next start.
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `com_performancePreset` | detected | The current preset: `minimum`, `lowpower`, `low`, `performance`, `balanced`, `enhanced`, `quality`, `ultra` or `maximum`. Set it with `applyPerformancePreset <name>`, or `autoDetectPerformancePreset` |
+| `com_performancePresetCheck` | - | The preset version you last answered the system check for. `performancePresetCheck reset` clears it so the next start asks again |
+
 ## Shadows
 
 Doom 3's stencil shadows are the default. Shadow maps replace them light by light: soft edges, and the same shapes as the stencil shadows. Both draw your own shadow: your body, head and held weapon throw a shadow you can see in first person, in single player and in multiplayer.

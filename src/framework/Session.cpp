@@ -37,6 +37,9 @@ If you have questions concerning this license or the applicable additional terms
 #include "BuildVersion.h"
 #include "SaveGameReleases.h"
 #include "VRSystemLocal.h"
+#if defined( OPEND3 )
+#include "SessionPresetCheck.h"
+#endif
 #include "../sys/NetworkEndpoint.h"
 #if defined( __has_include )
 #if __has_include( "opend3_savegame_compat_generated.h" )
@@ -10824,7 +10827,9 @@ void idSessionLocal::Draw() {
 		// Out of sight, before the page on screen draws: the pages it leads to.
 		WarmRetainedPages();
 #if defined( OPEND3 )
-		if ( guiRetainedRestartMenu != NULL && guiActive == guiRetainedRestartMenu ) {
+		if ( Session_DrawPresetCheckScene( guiActive, presentationTime ) ) {
+			// The system check: the stock screen's stars and Mars under the retained dialog.
+		} else if ( guiRetainedRestartMenu != NULL && guiActive == guiRetainedRestartMenu ) {
 			// Doom 3's death screen: the stock screen's scene under the retained choices.
 			DrawRetainedPageHome( presentationTime );
 		} else

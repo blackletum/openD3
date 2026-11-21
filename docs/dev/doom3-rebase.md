@@ -337,6 +337,21 @@ release of Doom 3 (1.3.1 packs):
   one with 64 bytes overwritten halfway, each end with "could not restore
   saved state" and the LOAD FAILED message at the main menu, and a good save
   then loads in the same process.
+- Performance presets and the startup system check, 2026-11-21, OpenGL,
+  windowed 1280x720 and 720x1280, a profile saved against an older preset
+  system (`com_performancePresetCheck` stale, `com_performancePreset low`).
+  A plain start opens the check before the main menu: the stock
+  `guis/presetcheck.gui` with `ui_retained 0`, `guis/menu/presetcheck.rui`
+  over the stock screen's stars and Mars with `ui_retained 1`. Both show the
+  detected GPU, memory, threads and display, the ladder with Low outlined and
+  Enhanced lit, Enhanced's scale and frame cap, and OPTIONS > SYSTEM in the
+  footer. KEEP CURRENT records the version and keeps Low; APPLY RECOMMENDED
+  applies Enhanced (15 settings), restarts the renderer and sound and opens
+  the main menu; Back records nothing, and the next start asks again. The
+  stock System page's High Quality button applies Balanced and lights High,
+  and its hardware scan applies the recommendation. The retained SYSTEM page
+  steps Video Quality Low, Medium, High (Low, Performance, Balanced), and
+  APPLY CHANGES with KEEP saves Balanced.
 
 That is all that has been run. In particular, nothing here is evidence for:
 playing past the first cinematic, combat, AI, the PDA beyond its first page,
@@ -486,9 +501,11 @@ Listed roughly by how much they block a player.
       Quality and above shadow-map every light. The split was measured by
       upstream on Quake 4 content, not on Doom 3.
     - Upstream's startup system check, which offers the detected preset when
-      the preset table changes, is skipped (`OPEND3` in
-      `Session_presetcheck.cpp`): its two screens are drawn from Quake 4's
-      menu art, and openD3 has none of its own yet. The check stays due.
+      the preset table changes, runs with Doom 3 screens of openD3's own
+      (see "Verified"). Not checked: Vulkan, a controller, a language
+      other than English, and pointer or keyboard input on either screen
+      (the answers were given through `performancePresetCheck` and the
+      retained Back event).
     - Stale profiles keep old values: a config written before these defaults
       changed still holds `g_showPlayerShadow 0` and `r_correctspecular 1`,
       `r_normalizebumpmap 1`. There is no config migration.

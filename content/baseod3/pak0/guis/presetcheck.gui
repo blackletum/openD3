@@ -1,0 +1,862 @@
+// Copyright (C) 2026 DarkMatter Productions. GPL-3.0-or-later.
+// openD3's system check for the stock interface: shown before the main menu
+// when the performance presets have changed since this configuration last
+// checked them (src/framework/Session_presetcheck.cpp). Built from the retail
+// menu's stars and Mars and the retail message box's art, by name only.
+//
+// With ui_retained 1 the session draws this screen's scene under
+// guis/menu/presetcheck.rui and hides CheckDialog. The plate stands at
+// (100, 75), 440 x 330, in both, so a change to one belongs in the other
+// (tools/ui/doom3_menu_presetcheck.py). The session publishes every value
+// already localized and takes presetCheckApply, presetCheckKeep and
+// presetCheckLater.
+windowDef Desktop
+{
+	rect		0, 0, 640, 480
+	backcolor	0, 0, 0, 1
+	menugui		1
+
+	// Back asks again at the next start; it changes no setting.
+	onESC {
+		if ( "gui::check_busy" == 0 ) {
+			set "cmd" "play guisounds_menuclickup ; presetCheckLater" ;
+		}
+	}
+
+	onActivate {
+		resetTime "CheckIntro" "0" ;
+		resetTime "MarsSpin" "0" ;
+	}
+
+	// The menu's scene where its opening leaves it.
+	windowDef Stars
+	{
+		rect		-205, -70, 1024, 1024
+		background	"gui/mainmenu/star"
+		matcolor	0.7, 0.7, 0.7, 0.7
+		matscalex	4
+		matscaley	4
+		screenstretchx	fill
+		screenstretchy	fill
+		noevents	1
+	}
+	windowDef Stars1
+	{
+		rect		-205, -90, 1024, 1024
+		background	"gui/mainmenu/star1"
+		matcolor	1, 1, 1, 1
+		matscalex	10
+		matscaley	10
+		screenstretchx	fill
+		screenstretchy	fill
+		noevents	1
+	}
+	windowDef Stars2
+	{
+		rect		-205, -110, 1024, 1024
+		background	"gui/mainmenu/star3"
+		matcolor	1, 1, 1, 1
+		matscalex	4
+		matscaley	4
+		screenstretchx	fill
+		screenstretchy	fill
+		noevents	1
+	}
+	renderDef MarsRender
+	{
+		rect		0, 20, 640, 430
+		backcolor	0, 0, 0, 0.4
+		model		"models/wipes/planet2.lwo"
+		needsRender	1
+		modelRotate	0, 0, 0, 0
+		modelOrigin	-80, 0, -25, 0
+		viewOffset	-128, 0, 0, 0
+		lightOrigin	-128, 10, 150, 0
+		lightColor	1, 1, 1, 1
+		notime		1
+		noevents	1
+	}
+	windowDef MarsSpin
+	{
+		rect		0, 0, 0, 0
+		noevents	1
+		notime		1
+
+		onTime 0 {
+			transition "MarsRender::modelRotate" "0 0 0 0" "0 -360 0 0" "500000" ;
+		}
+		onTime 500000 {
+			resetTime "0" ;
+		}
+	}
+	windowDef MarsHighlight
+	{
+		rect		133, 57, 373, 373
+		background	"gui/mainmenu/marshighlight"
+		matcolor	0.7, 0.7, 0.7, 0.7
+		noevents	1
+	}
+
+	// The dialog: the retained screen draws its own and hides this one.
+	windowDef CheckDialog
+	{
+		rect		0, 0, 640, 480
+		screenstretchx	fill
+		screenstretchy	fill
+
+		windowDef CheckDim
+		{
+			rect		0, 0, 640, 480
+			backcolor	0, 0, 0, 0.5
+			screenstretchx	fill
+			screenstretchy	fill
+			noevents	1
+		}
+		windowDef CheckPlate
+		{
+			rect		100, 75, 440, 330
+			visible		0
+
+			windowDef PlateC1
+			{
+				rect		0, 0, -32, -32
+				background	"gui/mainmenu/content_smallcorner"
+				matcolor	0.18, 0.25, 0.3, 1
+				noevents	1
+			}
+			windowDef PlateTop
+			{
+				rect		32, 0, 376, 32
+				backcolor	0.18, 0.25, 0.3, 1
+				noevents	1
+			}
+			windowDef PlateC2
+			{
+				rect		408, 0, 32, -32
+				background	"gui/mainmenu/content_smallcorner"
+				matcolor	0.18, 0.25, 0.3, 1
+				noevents	1
+			}
+			windowDef PlateMid
+			{
+				rect		0, 32, 440, 266
+				backcolor	0.18, 0.25, 0.3, 1
+				noevents	1
+			}
+			windowDef PlateC3
+			{
+				rect		0, 298, -32, 32
+				background	"gui/mainmenu/content_smallcorner"
+				matcolor	0.18, 0.25, 0.3, 1
+				noevents	1
+			}
+			windowDef PlateBottom
+			{
+				rect		32, 298, 376, 32
+				backcolor	0.18, 0.25, 0.3, 1
+				noevents	1
+			}
+			windowDef PlateC4
+			{
+				rect		408, 298, 32, 32
+				background	"gui/mainmenu/content_smallcorner"
+				matcolor	0.18, 0.25, 0.3, 1
+				noevents	1
+			}
+			windowDef PlateSheen
+			{
+				rect		3, 3, 400, 320
+				background	"gui/mainmenu/content_glow2"
+				matcolor	1, 1, 1, 0.18
+				noevents	1
+			}
+			windowDef CheckTitle
+			{
+				rect		20, 5, 400, 20
+				text		"#str_232000"
+				font		"fonts/english"
+				textscale	0.32
+				forecolor	1, 1, 1, 1
+				noevents	1
+			}
+			windowDef CheckTitleBar
+			{
+				rect		5, 23, 430, 2
+				backcolor	0.6, 0.8, 1, 0.2
+				noevents	1
+			}
+			windowDef CheckBody
+			{
+				rect		30, 30, 380, 56
+				text		"gui::check_body"
+				font		"fonts/bank"
+				textscale	0.25
+				forecolor	1, 1, 1, 1
+				noevents	1
+			}
+			windowDef CheckHardware
+			{
+				rect		30, 90, 380, 12
+				text		"#str_232025"
+				font		"fonts/english"
+				textscale	0.2
+				forecolor	0.6, 0.8, 1, 0.8
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckHardwareRule
+			{
+				rect		30, 103, 380, 1
+				backcolor	0.6, 0.8, 1, 0.2
+				noevents	1
+			}
+			windowDef CheckPreset
+			{
+				rect		30, 170, 380, 12
+				text		"#str_232026"
+				font		"fonts/english"
+				textscale	0.2
+				forecolor	0.6, 0.8, 1, 0.8
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckPresetRule
+			{
+				rect		30, 183, 380, 1
+				backcolor	0.6, 0.8, 1, 0.2
+				noevents	1
+			}
+			windowDef CheckGpuName
+			{
+				rect		30, 106, 109, 12
+				text		"#str_232004"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckGpuValue
+			{
+				rect		145, 106, 265, 12
+				text		"gui::check_gpu"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 1
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckVramName
+			{
+				rect		30, 118, 109, 12
+				text		"#str_232005"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckVramValue
+			{
+				rect		145, 118, 265, 12
+				text		"gui::check_vram"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 1
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckRamName
+			{
+				rect		30, 130, 109, 12
+				text		"#str_232006"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckRamValue
+			{
+				rect		145, 130, 265, 12
+				text		"gui::check_ram"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 1
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckCpuName
+			{
+				rect		30, 142, 109, 12
+				text		"#str_232007"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckCpuValue
+			{
+				rect		145, 142, 265, 12
+				text		"gui::check_cpu"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 1
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckDisplayName
+			{
+				rect		30, 154, 109, 12
+				text		"#str_232008"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckDisplayValue
+			{
+				rect		145, 154, 265, 12
+				text		"gui::check_display"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 1
+				nowrap	1
+				noevents	1
+			}
+			// The nine presets, Minimum leading: the recommended one lit, the current one outlined.
+			windowDef Tier0
+			{
+				rect		30.0, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.18
+				noevents	1
+			}
+			windowDef Tier0Lit
+			{
+				rect		30.0, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 0 )
+				noevents	1
+			}
+			windowDef Tier0Current
+			{
+				rect		30.0, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 0 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier0Marker
+			{
+				rect		48.0, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 0 )
+				noevents	1
+			}
+			windowDef Tier1
+			{
+				rect		72.5, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.21
+				noevents	1
+			}
+			windowDef Tier1Lit
+			{
+				rect		72.5, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 1 )
+				noevents	1
+			}
+			windowDef Tier1Current
+			{
+				rect		72.5, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 1 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier1Marker
+			{
+				rect		90.5, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 1 )
+				noevents	1
+			}
+			windowDef Tier2
+			{
+				rect		115.0, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.24
+				noevents	1
+			}
+			windowDef Tier2Lit
+			{
+				rect		115.0, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 2 )
+				noevents	1
+			}
+			windowDef Tier2Current
+			{
+				rect		115.0, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 2 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier2Marker
+			{
+				rect		133.0, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 2 )
+				noevents	1
+			}
+			windowDef Tier3
+			{
+				rect		157.5, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.27
+				noevents	1
+			}
+			windowDef Tier3Lit
+			{
+				rect		157.5, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 3 )
+				noevents	1
+			}
+			windowDef Tier3Current
+			{
+				rect		157.5, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 3 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier3Marker
+			{
+				rect		175.5, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 3 )
+				noevents	1
+			}
+			windowDef Tier4
+			{
+				rect		200.0, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.3
+				noevents	1
+			}
+			windowDef Tier4Lit
+			{
+				rect		200.0, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 4 )
+				noevents	1
+			}
+			windowDef Tier4Current
+			{
+				rect		200.0, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 4 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier4Marker
+			{
+				rect		218.0, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 4 )
+				noevents	1
+			}
+			windowDef Tier5
+			{
+				rect		242.5, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.33
+				noevents	1
+			}
+			windowDef Tier5Lit
+			{
+				rect		242.5, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 5 )
+				noevents	1
+			}
+			windowDef Tier5Current
+			{
+				rect		242.5, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 5 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier5Marker
+			{
+				rect		260.5, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 5 )
+				noevents	1
+			}
+			windowDef Tier6
+			{
+				rect		285.0, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.36
+				noevents	1
+			}
+			windowDef Tier6Lit
+			{
+				rect		285.0, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 6 )
+				noevents	1
+			}
+			windowDef Tier6Current
+			{
+				rect		285.0, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 6 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier6Marker
+			{
+				rect		303.0, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 6 )
+				noevents	1
+			}
+			windowDef Tier7
+			{
+				rect		327.5, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.39
+				noevents	1
+			}
+			windowDef Tier7Lit
+			{
+				rect		327.5, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 7 )
+				noevents	1
+			}
+			windowDef Tier7Current
+			{
+				rect		327.5, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 7 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier7Marker
+			{
+				rect		345.5, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 7 )
+				noevents	1
+			}
+			windowDef Tier8
+			{
+				rect		370.0, 188, 40.0, 10
+				backcolor	0.45, 0.55, 0.7, 0.42
+				noevents	1
+			}
+			windowDef Tier8Lit
+			{
+				rect		370.0, 188, 40.0, 10
+				backcolor	0.6, 1, 1, 0.85
+				visible		( "gui::check_recommendedTier" == 8 )
+				noevents	1
+			}
+			windowDef Tier8Current
+			{
+				rect		370.0, 188, 40.0, 10
+				visible		( "gui::check_currentTier" == 8 )
+				bordersize	1
+				bordercolor	1, 1, 1, 0.9
+				noevents	1
+			}
+			windowDef Tier8Marker
+			{
+				rect		388.0, 200, 4, 2
+				backcolor	1, 1, 1, 0.9
+				visible		( "gui::check_currentTier" == 8 )
+				noevents	1
+			}
+			windowDef TierLow
+			{
+				rect		30, 203, 190, 10
+				text		"gui::check_tierLow"
+				font		"fonts/bank"
+				textscale	0.18
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef TierHigh
+			{
+				rect		220, 203, 190, 10
+				text		"gui::check_tierHigh"
+				font		"fonts/bank"
+				textscale	0.18
+				forecolor	1, 1, 1, 0.5
+				textalign	2
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckRecommendedName
+			{
+				rect		30, 216, 109, 12
+				text		"#str_232010"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckRecommendedValue
+			{
+				rect		145, 216, 265, 12
+				text		"gui::check_recommended"
+				font		"fonts/english"
+				textscale	0.25
+				forecolor	0.6, 1, 1, 1
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckCurrentName
+			{
+				rect		30, 240, 109, 12
+				text		"#str_232009"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckCurrentValue
+			{
+				rect		145, 240, 265, 12
+				text		"gui::check_current"
+				font		"fonts/english"
+				textscale	0.22
+				forecolor	1, 1, 1, 1
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckDetail
+			{
+				rect		145, 228, 265, 12
+				text		"gui::check_detail"
+				font		"fonts/bank"
+				textscale	0.2
+				forecolor	0.6, 0.8, 0.8, 1
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckFooter
+			{
+				rect		20, 255, 400, 10
+				text		"gui::check_footer"
+				font		"fonts/bank"
+				textscale	0.17
+				forecolor	1, 1, 1, 0.5
+				nowrap	1
+				noevents	1
+			}
+			windowDef CheckBusy
+			{
+				rect		30, 276, 380, 19
+				text		"#str_232022"
+				font		"fonts/english"
+				textscale	0.28
+				forecolor	1, 0.75, 0.4, 1
+				textalign	1
+				visible		( "gui::check_busy" == 1 )
+				noevents	1
+			}
+			windowDef CheckChoices
+			{
+				rect		0, 0, 440, 330
+				visible		( "gui::check_busy" == 0 )
+
+				windowDef CheckApplyBtn
+				{
+					rect		25, 270, 190, 32
+					noevents	1
+					windowDef CheckApplyBorder
+					{
+						rect		4, 6, 170, 19
+						backcolor	0.45, 0.55, 0.7, 0.3
+						noevents	1
+					}
+					windowDef CheckApplyCorner
+					{
+						rect		174, 0, 16, 32
+						background	"gui/mainmenu/button_cornerangle"
+						matcolor	0.45, 0.55, 0.7, 0.3
+						noevents	1
+					}
+					windowDef CheckApplyEdgeG
+					{
+						rect		0, 0, 16, 32
+						background	"gui/mainmenu/buttong_cornersquare"
+						matcolor	0.55, 0.65, 0.75, 0.5
+						noevents	1
+					}
+					windowDef CheckApplyBorderG
+					{
+						rect		16, 0, 158, 32
+						background	"gui/mainmenu/buttong_middlesm"
+						matcolor	0.55, 0.65, 0.75, 0.5
+						noevents	1
+					}
+					windowDef CheckApplyCornerG
+					{
+						rect		174, 0, 16, 32
+						background	"gui/mainmenu/buttong_cornerangle"
+						matcolor	0.55, 0.65, 0.75, 0.5
+						noevents	1
+					}
+				}
+				windowDef CheckApplyText
+				{
+					rect		29, 276, 170, 19
+					text		"gui::check_primary"
+					font		"fonts/english"
+					textscale	0.25
+					textalign	1
+					textaligny	-1
+					forecolor	0.6, 1, 1, 1
+					nowrap	1
+
+					onMouseEnter {
+						transition "forecolor" "0.6 1 1 1" "1 1 1 1" "250" ;
+						transition "CheckApplyEdgeG::matcolor" "0.8 0.9 1 1" "0.55 0.65 0.75 1" "250" ;
+						transition "CheckApplyBorderG::matcolor" "0.8 0.9 1 1" "0.55 0.65 0.75 1" "250" ;
+						transition "CheckApplyCornerG::matcolor" "0.8 0.9 1 1" "0.55 0.65 0.75 1" "250" ;
+						transition "CheckApplyBorder::backcolor" "0.45 0.55 0.7 0.3" "0.55 0.65 0.75 0.5" "200" ;
+						transition "CheckApplyCorner::matcolor" "0.45 0.55 0.7 0.3" "0.55 0.65 0.75 0.5" "200" ;
+					}
+
+					onMouseExit {
+						set "forecolor" "0.6 1 1 1" ;
+						set "CheckApplyEdgeG::matcolor" "0.55 0.65 0.75 0.5" ;
+						set "CheckApplyBorderG::matcolor" "0.55 0.65 0.75 0.5" ;
+						set "CheckApplyCornerG::matcolor" "0.55 0.65 0.75 0.5" ;
+						set "CheckApplyBorder::backcolor" "0.45 0.55 0.7 0.3" ;
+						set "CheckApplyCorner::matcolor" "0.45 0.55 0.7 0.3" ;
+					}
+
+					onActionRelease {
+						set "cmd" "play guisounds_menuclickup ; presetCheckApply" ;
+					}
+				}
+				windowDef CheckKeepBtn
+				{
+					rect		225, 270, 190, 32
+					noevents	1
+					windowDef CheckKeepBorder
+					{
+						rect		4, 6, 170, 19
+						backcolor	0.45, 0.55, 0.7, 0.3
+						noevents	1
+					}
+					windowDef CheckKeepCorner
+					{
+						rect		174, 0, 16, 32
+						background	"gui/mainmenu/button_cornerangle"
+						matcolor	0.45, 0.55, 0.7, 0.3
+						noevents	1
+					}
+					windowDef CheckKeepEdgeG
+					{
+						rect		0, 0, 16, 32
+						background	"gui/mainmenu/buttong_cornersquare"
+						matcolor	0.55, 0.65, 0.75, 0.5
+						noevents	1
+					}
+					windowDef CheckKeepBorderG
+					{
+						rect		16, 0, 158, 32
+						background	"gui/mainmenu/buttong_middlesm"
+						matcolor	0.55, 0.65, 0.75, 0.5
+						noevents	1
+					}
+					windowDef CheckKeepCornerG
+					{
+						rect		174, 0, 16, 32
+						background	"gui/mainmenu/buttong_cornerangle"
+						matcolor	0.55, 0.65, 0.75, 0.5
+						noevents	1
+					}
+				}
+				windowDef CheckKeepText
+				{
+					rect		229, 276, 170, 19
+					text		"#str_232012"
+					font		"fonts/english"
+					textscale	0.25
+					textalign	1
+					textaligny	-1
+					forecolor	0.6, 1, 1, 1
+					nowrap	1
+
+					onMouseEnter {
+						transition "forecolor" "0.6 1 1 1" "1 1 1 1" "250" ;
+						transition "CheckKeepEdgeG::matcolor" "0.8 0.9 1 1" "0.55 0.65 0.75 1" "250" ;
+						transition "CheckKeepBorderG::matcolor" "0.8 0.9 1 1" "0.55 0.65 0.75 1" "250" ;
+						transition "CheckKeepCornerG::matcolor" "0.8 0.9 1 1" "0.55 0.65 0.75 1" "250" ;
+						transition "CheckKeepBorder::backcolor" "0.45 0.55 0.7 0.3" "0.55 0.65 0.75 0.5" "200" ;
+						transition "CheckKeepCorner::matcolor" "0.45 0.55 0.7 0.3" "0.55 0.65 0.75 0.5" "200" ;
+					}
+
+					onMouseExit {
+						set "forecolor" "0.6 1 1 1" ;
+						set "CheckKeepEdgeG::matcolor" "0.55 0.65 0.75 0.5" ;
+						set "CheckKeepBorderG::matcolor" "0.55 0.65 0.75 0.5" ;
+						set "CheckKeepCornerG::matcolor" "0.55 0.65 0.75 0.5" ;
+						set "CheckKeepBorder::backcolor" "0.45 0.55 0.7 0.3" ;
+						set "CheckKeepCorner::matcolor" "0.45 0.55 0.7 0.3" ;
+					}
+
+					onActionRelease {
+						set "cmd" "play guisounds_menuclickup ; presetCheckKeep" ;
+					}
+				}
+				windowDef CheckLater
+				{
+					rect		120, 302, 200, 16
+					text		"#str_232013"
+					font		"fonts/english"
+					textscale	0.25
+					textalign	1
+					forecolor	1, 1, 1, 0.4
+					nowrap	1
+
+					onMouseEnter {
+						transition "forecolor" "1 1 1 0.4" "1 1 1 1" "100" ;
+					}
+					onMouseExit {
+						transition "forecolor" "1 1 1 1" "1 1 1 0.4" "200" ;
+					}
+					onActionRelease {
+						set "cmd" "play guisounds_menuclickup ; presetCheckLater" ;
+					}
+				}
+			}
+		}
+	}
+
+	// The retail message box's entrance: the dim, then the plate.
+	windowDef CheckIntro
+	{
+		rect		0, 0, 0, 0
+		notime		1
+		noevents	1
+
+		onTime 0 {
+			set "CheckPlate::visible" "0" ;
+			transition "CheckDim::backcolor" "0 0 0 0" "0 0 0 0.5" "200" ;
+		}
+		onTime 200 {
+			set "CheckPlate::visible" "1" ;
+		}
+	}
+}

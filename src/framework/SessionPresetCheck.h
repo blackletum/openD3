@@ -11,6 +11,12 @@ class idCmdArgs;
 // At startup, in place of the main menu: presents the check and returns true
 // when it is due (or `force`d), else false and the caller opens the menu.
 bool Session_StartPresetCheck( bool force = false );
+#if defined( OPEND3 )
+// When `active` is the retained check, draws the stock screen's scene (the
+// menu's stars and Mars) under it with the stock dialog hidden, and returns
+// true.
+bool Session_DrawPresetCheckScene( const idUserInterface *active, int presentationTime );
+#endif
 // Whether `gui` is the retained check, whose verbs come here.
 bool Session_PresetCheckOwns( const idUserInterface *gui );
 // The retained check's verbs: presetCheckApply, presetCheckKeep, presetCheckLater.

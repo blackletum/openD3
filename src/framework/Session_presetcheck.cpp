@@ -22,6 +22,9 @@ GUI state and answer with the same three verbs:
 #include "Session_local.h"
 #include "PerformancePresetCheck.h"
 #include "SessionPresetCheck.h"
+#if defined( OPEND3 )
+#include "../ui/UserInterfaceManaged.h"
+#endif
 
 #include <string>
 
@@ -35,6 +38,11 @@ enum class PresetCheckStage { Idle, Showing, Applying };
 
 struct PresetCheckScreen {
 	idUserInterface *gui = NULL;
+#if defined( OPEND3 )
+	// The stock screen, drawing its scene under the retained document with
+	// its dialog hidden (Session_DrawPresetCheckScene).
+	idUserInterface *scene = NULL;
+#endif
 	bool retained = false;
 	bool playIntro = true;      // the main menu plays its intro after a startup check
 	PresetCheckStage stage = PresetCheckStage::Idle;
@@ -123,8 +131,14 @@ void Publish( idUserInterface *gui, const opend3::PerformancePresetCheck &check,
 		va( Localized( "#str_232021" ), check.screenFraction ) );
 	// Where the choice lives afterwards, in the menu's own words: SETTINGS >
 	// DISPLAY in the retained interface, SETTINGS > SYSTEM in the stock one.
+#if defined( OPEND3 )
+	// Doom 3's menus, stock and retained, both keep it under OPTIONS > SYSTEM.
+	(void)retained;
+	gui->SetStateString( "check_footer", va( Localized( "#str_232023" ), Localized( "#str_00186" ), Localized( "#str_00167" ) ) );
+#else
 	gui->SetStateString( "check_footer", va( Localized( "#str_232023" ), Localized( "#str_200009" ),
 		Localized( retained ? "#str_229900" : "#str_200085" ) ) );
+#endif
 	gui->SetStateInt( "check_currentTier", check.currentTier );
 	gui->SetStateInt( "check_recommendedTier", check.recommendedTier );
 	gui->SetStateBool( "check_matches", check.matches );
@@ -137,12 +151,22 @@ void Publish( idUserInterface *gui, const opend3::PerformancePresetCheck &check,
 void ForgetIfReplaced() {
 	if ( presetCheck.stage == PresetCheckStage::Showing && sessLocal.guiActive != presetCheck.gui ) {
 		common->Printf( "Performance preset check: replaced on screen; the check asks again at the next start\n" );
+#if defined( OPEND3 )
+		if ( presetCheck.scene != NULL ) {
+			presetCheck.scene->Activate( false, common->GetPresentationTime() );
+		}
+#endif
 		presetCheck = PresetCheckScreen();
 	}
 }
 
 void Finish() {
 	const bool playIntro = presetCheck.playIntro;
+#if defined( OPEND3 )
+	if ( presetCheck.scene != NULL ) {
+		presetCheck.scene->Activate( false, common->GetPresentationTime() );
+	}
+#endif
 	presetCheck = PresetCheckScreen();
 	// Replaces the check; StartMenu deactivates it.
 	sessLocal.StartMenu( playIntro );
@@ -220,15 +244,6 @@ bool Session_StartPresetCheck( bool force ) {
 	if ( sessLocal.guiMainMenu == NULL || sessLocal.mapSpawned || ( !force && !Common_PerformancePresetCheckDue() ) ) {
 		return false;
 	}
-#if defined( OPEND3 )
-	// openD3 ships no system-check screen yet: upstream's two are drawn from
-	// Quake 4's menu art. Without one the main menu opens as it always did,
-	// and the check stays due for the first build that installs a screen.
-	if ( fileSystem->ReadFile( STOCK_PRESET_CHECK_GUI, NULL ) < 0 && fileSystem->ReadFile( RETAINED_PRESET_CHECK_GUI, NULL ) < 0 ) {
-		common->Printf( "Performance preset check: skipped, no system-check screen is installed\n" );
-		return false;
-	}
-#endif
 	opend3::PerformancePresetCheck check;
 	std::string error;
 	if ( !Common_DescribePerformancePresetCheck( check, error ) ) {
@@ -252,6 +267,19 @@ bool Session_StartPresetCheck( bool force ) {
 		retained ? "retained" : "stock", check.stored.c_str(), check.version.c_str(), check.current.c_str(),
 		check.recommended.c_str(), check.differences, check.summary.c_str() );
 	Publish( gui, check, retained );
+#if defined( OPEND3 )
+	// The retained document draws the dialog only: the stock screen goes on
+	// drawing the menu's stars and Mars under it, as the death screen's does.
+	idUserInterface *scene = NULL;
+	if ( retained ) {
+		scene = uiManager->FindGui( STOCK_PRESET_CHECK_GUI, true, false, true );
+		if ( scene != NULL ) {
+			Publish( scene, check, retained );
+			scene->Activate( true, common->GetPresentationTime() );
+		}
+	}
+	presetCheck.scene = scene;
+#endif
 	// A check opened from the console over the main menu returns to it as it
 	// was; the startup check hands over to the menu's intro.
 	presetCheck.playIntro = !force || sessLocal.guiActive == NULL;
@@ -264,6 +292,26 @@ bool Session_StartPresetCheck( bool force ) {
 	return true;
 #endif
 }
+
+#if defined( OPEND3 )
+bool Session_DrawPresetCheckScene( const idUserInterface *active, int presentationTime ) {
+#ifdef ID_DEDICATED
+	(void)active; (void)presentationTime;
+	return false;
+#else
+	if ( active == NULL || !presetCheck.retained || active != presetCheck.gui || presetCheck.scene == NULL ) {
+		return false;
+	}
+	idUserInterface *scene = presetCheck.scene;
+	UI_SetLegacyWindowHidden( scene, "CheckDialog", true );
+	UI_SetLegacyCursorHidden( scene, true );
+	scene->Redraw( presentationTime );
+	UI_SetLegacyCursorHidden( scene, false );
+	UI_SetLegacyWindowHidden( scene, "CheckDialog", false );
+	return true;
+#endif
+}
+#endif
 
 bool Session_PresetCheckOwns( const idUserInterface *gui ) {
 #ifdef ID_DEDICATED

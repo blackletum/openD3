@@ -56,8 +56,11 @@ CATALOG = {
 RENDER_SLOTS = 32   # the renderer device list (RenderingSettings)
 MODE_SLOTS = system_display_catalog.MODE_SLOTS
 
-# Doom 3's four video qualities as the engine's performance presets.
-QUALITIES = (("low", "#str_02149"), ("balanced", "#str_02148"), ("quality", "#str_02147"), ("ultra", "#str_04078"))
+# Doom 3's four video qualities as the engine's performance presets, the
+# ones the stock page's buttons apply (Session_menu.cpp "video", and
+# PerformancePresetForMachineSpec): Low, Medium is Performance, High is
+# Balanced, Ultra. Both menus then name the same preset the same way.
+QUALITIES = (("low", "#str_02149"), ("performance", "#str_02148"), ("balanced", "#str_02147"), ("ultra", "#str_04078"))
 
 STR = {
     "title": "#str_00183", "video": "#str_02145", "audio": "#str_02158", "quality": "#str_02146", "size": "#str_02153",

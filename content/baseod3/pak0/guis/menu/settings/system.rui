@@ -366,8 +366,8 @@
   "soundForward": {"operation": "session.menu", "arguments": {"command": "soundForward"}},
   "soundBack": {"operation": "session.menu", "arguments": {"command": "soundBack"}},
   "preset.low": {"operation": "settings.system.preset", "arguments": {"name": "low"}},
+  "preset.performance": {"operation": "settings.system.preset", "arguments": {"name": "performance"}},
   "preset.balanced": {"operation": "settings.system.preset", "arguments": {"name": "balanced"}},
-  "preset.quality": {"operation": "settings.system.preset", "arguments": {"name": "quality"}},
   "preset.ultra": {"operation": "settings.system.preset", "arguments": {"name": "ultra"}},
   "system_fullscreenClear": {"operation": "settings.system.edit", "arguments": {"r_fullscreen": false}},
   "system_fullscreenSet": {"operation": "settings.system.edit", "arguments": {"r_fullscreen": true}},
@@ -397,16 +397,16 @@
    {
     "op": "if",
     "condition": {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "low"]},
-    "then": [{"op": "action", "action": "preset.balanced"}],
+    "then": [{"op": "action", "action": "preset.performance"}],
     "else": [
      {
       "op": "if",
-      "condition": {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "balanced"]},
-      "then": [{"op": "action", "action": "preset.quality"}],
+      "condition": {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "performance"]},
+      "then": [{"op": "action", "action": "preset.balanced"}],
       "else": [
        {
         "op": "if",
-        "condition": {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "quality"]},
+        "condition": {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "balanced"]},
         "then": [{"op": "action", "action": "preset.ultra"}],
         "else": [{"op": "action", "action": "preset.low"}]
        }
@@ -566,21 +566,21 @@
    }
   },
   {
+   "id": "system_quality-performance.display",
+   "node": "system_quality-performance",
+   "property": "display",
+   "value": {
+    "op": "select",
+    "args": [{"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "performance"]}, "block", "none"]
+   }
+  },
+  {
    "id": "system_quality-balanced.display",
    "node": "system_quality-balanced",
    "property": "display",
    "value": {
     "op": "select",
     "args": [{"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "balanced"]}, "block", "none"]
-   }
-  },
-  {
-   "id": "system_quality-quality.display",
-   "node": "system_quality-quality",
-   "property": "display",
-   "value": {
-    "op": "select",
-    "args": [{"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "quality"]}, "block", "none"]
    }
   },
   {
@@ -612,10 +612,10 @@
             "op": "||",
             "args": [
              {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "low"]},
-             {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "balanced"]}
+             {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "performance"]}
             ]
            },
-           {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "quality"]}
+           {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "balanced"]}
           ]
          },
          {"op": "==", "args": [{"state": "settings.draft.com_performancePreset"}, "ultra"]}
@@ -1519,7 +1519,7 @@
      ]
     },
     {
-     "node": "system_quality-balanced",
+     "node": "system_quality-performance",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [0.6, 0.8, 0.8, 1.0]}},
@@ -1527,7 +1527,7 @@
      ]
     },
     {
-     "node": "system_quality-quality",
+     "node": "system_quality-balanced",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [0.6, 0.8, 0.8, 1.0]}},
@@ -1565,7 +1565,7 @@
      ]
     },
     {
-     "node": "system_quality-balanced",
+     "node": "system_quality-performance",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]}},
@@ -1573,7 +1573,7 @@
      ]
     },
     {
-     "node": "system_quality-quality",
+     "node": "system_quality-balanced",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]}},
@@ -1611,7 +1611,7 @@
      ]
     },
     {
-     "node": "system_quality-balanced",
+     "node": "system_quality-performance",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]}},
@@ -1619,7 +1619,7 @@
      ]
     },
     {
-     "node": "system_quality-quality",
+     "node": "system_quality-balanced",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]}},
@@ -1657,7 +1657,7 @@
      ]
     },
     {
-     "node": "system_quality-balanced",
+     "node": "system_quality-performance",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]}},
@@ -1665,7 +1665,7 @@
      ]
     },
     {
-     "node": "system_quality-quality",
+     "node": "system_quality-balanced",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [1.0, 1.0, 1.0, 1.0]}},
@@ -1703,7 +1703,7 @@
      ]
     },
     {
-     "node": "system_quality-balanced",
+     "node": "system_quality-performance",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [1.0, 1.0, 1.0, 0.5]}},
@@ -1711,7 +1711,7 @@
      ]
     },
     {
-     "node": "system_quality-quality",
+     "node": "system_quality-balanced",
      "property": "color",
      "keys": [
       {"atMs": 0, "value": {"type": "color", "value": [1.0, 1.0, 1.0, 0.5]}},
@@ -4815,7 +4815,7 @@
             }
            },
            {
-            "id": "system_quality-balanced",
+            "id": "system_quality-performance",
             "type": "text",
             "properties": {
              "text": {"type": "text", "value": "#str_02148"},
@@ -4836,7 +4836,7 @@
             }
            },
            {
-            "id": "system_quality-quality",
+            "id": "system_quality-balanced",
             "type": "text",
             "properties": {
              "text": {"type": "text", "value": "#str_02147"},

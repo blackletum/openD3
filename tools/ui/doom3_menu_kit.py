@@ -607,7 +607,7 @@ def cut_plate(width: float, height: float, cuts: tuple) -> list:
 def dialog(doc: Document, ident: str, title_key: str, body_key: str, buttons: list, *, initial: str,
            back: str, width: float = 364.0, height: float = 144.0, contents: list | None = None,
            animate: bool = True, dim_alpha: float | None = None, body_lines: float = 56.0, button_width: float = 96.0,
-           button_face: str = FACE_DEFAULT) -> dict:
+           button_face: str = FACE_DEFAULT, top: float = 130.0) -> dict:
     """Section 6.10's dialog shell: the one opaque object in the menus. A
     slate plate with all four corners cut 22 u, a corner sheen and its
     mirrored shade, and a separate pale-blue hairline 5 u outside it with its
@@ -621,7 +621,8 @@ def dialog(doc: Document, ident: str, title_key: str, body_key: str, buttons: li
     fades everything together in 200 ms. `buttons` is [(id, key, x in the
     plate, action or None, event or None, hint)]; `initial` takes the focus
     and `back` is the event Back runs. With `animate` off the shell appears
-    and vanishes in one frame, as engine message boxes do (section 9.9)."""
+    and vanishes in one frame, as engine message boxes do (section 9.9).
+    `top` is the plate's top on the canvas, in u."""
     visible, shown = f"{ident}.visible", f"{ident}.contents"
     doc.state[visible] = {"type": "boolean", "initial": False}
     doc.state[shown] = {"type": "boolean", "initial": False}
@@ -650,7 +651,7 @@ def dialog(doc: Document, ident: str, title_key: str, body_key: str, buttons: li
     items = [menu_item(doc, button_id, key, absolute(left=U * x, top=U * (height - 38)), button_width, action=action, event=event,
                        hint=hint, centred=True, face=button_face) for button_id, key, x, action, event, hint in buttons]
     inner = group(f"{ident}-contents", {**FULL, "display": keyword("none")}, [title, rule, *body, *items])
-    shell = group(f"{ident}-shell", {**absolute(top=U * 130, width=w, height=h), "left": length(50, "%"),
+    shell = group(f"{ident}-shell", {**absolute(top=U * top, width=w, height=h), "left": length(50, "%"),
                                      "margin-left": length(-w / 2), "opacity": number(0 if animate else 1)},
                   [outline, plate, flash, inner])
     dim_alpha = TOKENS["plate.dim"][1] if dim_alpha is None else dim_alpha

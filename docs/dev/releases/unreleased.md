@@ -131,8 +131,13 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
   cubes, BC6H textures and more texture-pack formats, each pak mounted once
   when two search roots hold it, and cheaper particles, decals and reverb. Quake 4's in-place switch to The Awakening and its
   Russian gameplay tables stay out.
-- Skip upstream's startup system check, which offers the detected performance
-  preset, until openD3 ships a screen for it.
+- Show upstream's startup system check, which offers the detected
+  performance preset when the presets have changed, on Doom 3 screens of
+  openD3's own: the stock `guis/presetcheck.gui` from the retail menu's stars,
+  Mars and message-box art, and a retained `guis/menu/presetcheck.rui`.
+- Make the retained SYSTEM page's Video Quality apply the same presets as the
+  stock page's buttons: Medium is Performance and High is Balanced (they were
+  Balanced and Quality).
 - Default `g_showPlayerShadow` to 1 in both game modules.
 - Shade stock specular as Doom 3 does: `r_correctspecular` and
   `r_normalizebumpmap` default to 0, and the OpenGL ARB path no longer doubles

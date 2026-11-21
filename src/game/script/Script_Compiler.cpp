@@ -372,78 +372,256 @@ ID_INLINE float idCompiler::Divide( float numerator, float denominator ) {
 
 /*
 ============
+MixImmediateBits
+
+spreads a value over all bits, so the hash's low bits see a float's exponent
+============
+*/
+static unsigned int MixImmediateBits( unsigned int x ) {
+	x ^= x >> 16;
+	x *= 0x7feb352dU;
+	x ^= x >> 15;
+	x *= 0x846ca68bU;
+	x ^= x >> 16;
+	return x;
+}
+
+/*
+============
+ImmediateFloatBits
+
+the bits of a float, with a negative zero as zero because they compare equal
+============
+*/
+static unsigned int ImmediateFloatBits( float f ) {
+	unsigned int bits;
+
+	if ( f == 0.0f ) {
+		f = 0.0f;
+	}
+	memcpy( &bits, &f, sizeof( bits ) );
+	return bits;
+}
+
+/*
+============
+idCompiler::ImmediateKey
+
+hashes an immediate's type and value; values ImmediateMatches treats as equal
+hash alike
+============
+*/
+int idCompiler::ImmediateKey( const idTypeDef *type, const eval_t *eval, const char *string ) {
+	unsigned int value;
+
+	switch( type->Type() ) {
+	case ev_field :
+	case ev_argsize :
+	case ev_jumpoffset :
+	case ev_virtualfunction :
+		value = static_cast<unsigned int>( eval->_int );
+		break;
+
+	case ev_entity :
+		value = static_cast<unsigned int>( eval->entity );
+		break;
+
+	case ev_string :
+		value = static_cast<unsigned int>( idStr::Hash( string ) );
+		break;
+
+	case ev_float :
+		value = ImmediateFloatBits( eval->_float );
+		break;
+
+	case ev_vector :
+		value = ImmediateFloatBits( eval->vector[ 0 ] );
+		value = MixImmediateBits( value ) ^ ImmediateFloatBits( eval->vector[ 1 ] );
+		value = MixImmediateBits( value ) ^ ImmediateFloatBits( eval->vector[ 2 ] );
+		break;
+
+	default :
+		// ImmediateMatches reports an immediate of any other type
+		value = 0;
+		break;
+	}
+
+	const unsigned int typeBits = static_cast<unsigned int>( reinterpret_cast<uintptr_t>( type ) >> 4 );
+	return static_cast<int>( MixImmediateBits( value ^ MixImmediateBits( typeBits ) ) & 0x7fffffff );
+}
+
+/*
+============
+idCompiler::ImmediateKey
+
+hashes an allocated immediate the way a lookup of its value is hashed
+============
+*/
+int idCompiler::ImmediateKey( const idVarDef *def ) {
+	eval_t		value;
+	const char	*string = "";
+
+	memset( &value, 0, sizeof( value ) );
+	switch( def->Type() ) {
+	case ev_field :
+		value._int = *def->value.intPtr;
+		break;
+
+	case ev_entity :
+		value.entity = *def->value.intPtr;
+		break;
+
+	case ev_argsize :
+		value._int = def->value.argSize;
+		break;
+
+	case ev_jumpoffset :
+		value._int = def->value.jumpOffset;
+		break;
+
+	case ev_virtualfunction :
+		value._int = def->value.virtualFunction;
+		break;
+
+	case ev_string :
+		string = def->value.stringPtr;
+		break;
+
+	case ev_float :
+		value._float = *def->value.floatPtr;
+		break;
+
+	case ev_vector :
+		value.vector[ 0 ] = def->value.vectorPtr->x;
+		value.vector[ 1 ] = def->value.vectorPtr->y;
+		value.vector[ 2 ] = def->value.vectorPtr->z;
+		break;
+
+	default :
+		break;
+	}
+
+	return ImmediateKey( def->TypeDef(), &value, string );
+}
+
+/*
+============
+idCompiler::ImmediateMatches
+
+true when an immediate has this type and value
+============
+*/
+bool idCompiler::ImmediateMatches( const idVarDef *def, const idTypeDef *type, const eval_t *eval, const char *string ) const {
+	if ( def->TypeDef() != type ) {
+		return false;
+	}
+
+	switch( type->Type() ) {
+	case ev_field :
+		return *def->value.intPtr == eval->_int;
+
+	case ev_argsize :
+		return def->value.argSize == eval->_int;
+
+	case ev_jumpoffset :
+		return def->value.jumpOffset == eval->_int;
+
+	case ev_entity :
+		return *def->value.intPtr == eval->entity;
+
+	case ev_string :
+		return idStr::Cmp( def->value.stringPtr, string ) == 0;
+
+	case ev_float :
+		return *def->value.floatPtr == eval->_float;
+
+	case ev_virtualfunction :
+		return def->value.virtualFunction == eval->_int;
+
+	case ev_vector :
+		return ( def->value.vectorPtr->x == eval->vector[ 0 ] ) &&
+			( def->value.vectorPtr->y == eval->vector[ 1 ] ) &&
+			( def->value.vectorPtr->z == eval->vector[ 2 ] );
+
+	default :
+		Error( "weird immediate type" );
+		break;
+	}
+
+	return false;
+}
+
+/*
+============
+idCompiler::IndexImmediates
+
+hashes the immediates earlier compiles left in the program
+============
+*/
+void idCompiler::IndexImmediates( void ) {
+	idVarDef *def;
+	int i;
+
+	immediates.Clear();
+	immediates.SetGranularity( 1024 );
+	immediateHash.Clear( 4096, 4096 );
+
+	for( def = gameLocal.program.GetDefList( "<IMMEDIATE>" ); def != NULL; def = def->Next() ) {
+		immediates.Append( def );
+	}
+
+	// The list runs newest first; hashing it oldest first keeps each chain
+	// newest first, the order the walk over the list used to find them in.
+	for( i = immediates.Num() - 1; i >= 0; i-- ) {
+		immediateHash.Add( ImmediateKey( immediates[ i ] ), i );
+	}
+}
+
+/*
+============
+idCompiler::AddImmediate
+============
+*/
+void idCompiler::AddImmediate( idVarDef *def ) {
+	const int index = immediates.Append( def );
+	immediateHash.Add( ImmediateKey( def ), index );
+}
+
+/*
+============
+idCompiler::ForgetImmediate
+
+called before a def that may be an immediate is freed
+============
+*/
+void idCompiler::ForgetImmediate( const idVarDef *def ) {
+	int i;
+
+	if ( idStr::Cmp( def->Name(), "<IMMEDIATE>" ) != 0 ) {
+		return;
+	}
+	for( i = immediateHash.First( ImmediateKey( def ) ); i != -1; i = immediateHash.Next( i ) ) {
+		if ( immediates[ i ] == def ) {
+			immediates[ i ] = NULL;
+			return;
+		}
+	}
+}
+
+/*
+============
 idCompiler::FindImmediate
 
 tries to find an existing immediate with the same value
 ============
 */
 idVarDef *idCompiler::FindImmediate( const idTypeDef *type, const eval_t *eval, const char *string ) const {
-	idVarDef	*def;
-	etype_t		etype;
+	int i;
 
-	etype = type->Type();
-
-	// check for a constant with the same value
-	for( def = gameLocal.program.GetDefList( "<IMMEDIATE>" ); def != NULL; def = def->Next() ) {
-		if ( def->TypeDef() != type ) {
-			continue;
-		}
-
-		switch( etype ) {
-		case ev_field :
-			if ( *def->value.intPtr == eval->_int ) {
-				return def;
-			}
-			break;
-
-		case ev_argsize :
-			if ( def->value.argSize == eval->_int ) {
-				return def;
-			}
-			break;
-
-		case ev_jumpoffset :
-			if ( def->value.jumpOffset == eval->_int ) {
-				return def;
-			}
-			break;
-
-		case ev_entity :
-			if ( *def->value.intPtr == eval->entity ) {
-				return def;
-			}
-			break;
-
-		case ev_string :
-			if ( idStr::Cmp( def->value.stringPtr, string ) == 0 ) {
-				return def;
-			}
-			break;
-
-		case ev_float :
-			if ( *def->value.floatPtr == eval->_float ) {
-				return def;
-			}
-			break;
-
-		case ev_virtualfunction :
-			if ( def->value.virtualFunction == eval->_int ) {
-				return def;
-			}
-			break;
-
-
-		case ev_vector :
-			if ( ( def->value.vectorPtr->x == eval->vector[ 0 ] ) && 
-				( def->value.vectorPtr->y == eval->vector[ 1 ] ) && 
-				( def->value.vectorPtr->z == eval->vector[ 2 ] ) ) {
-				return def;
-			}
-			break;
-
-		default :
-			Error( "weird immediate type" );
-			break;
+	for( i = immediateHash.First( ImmediateKey( type, eval, string ) ); i != -1; i = immediateHash.Next( i ) ) {
+		idVarDef *def = immediates[ i ];
+		if ( def != NULL && ImmediateMatches( def, type, eval, string ) ) {
+			return def;
 		}
 	}
 
@@ -471,6 +649,7 @@ idVarDef *idCompiler::GetImmediate( idTypeDef *type, const eval_t *eval, const c
 		} else {
 			def->SetValue( *eval, true );
 		}
+		AddImmediate( def );
 	}
 
 	return def;
@@ -548,12 +727,14 @@ idVarDef *idCompiler::OptimizeOpcode( const opcode_t *op, idVarDef *var_a, idVar
 	if ( var_a ) {
 		var_a->numUsers--;
 		if ( var_a->numUsers <= 0 ) {
+			ForgetImmediate( var_a );
 			gameLocal.program.FreeDef( var_a, NULL );
 		}
 	}
 	if ( var_b ) {
 		var_b->numUsers--;
 		if ( var_b->numUsers <= 0 ) {
+			ForgetImmediate( var_b );
 			gameLocal.program.FreeDef( var_b, NULL );
 		}
 	}
@@ -2570,6 +2751,10 @@ void idCompiler::ParseNamespace( idVarDef *newScope ) {
 		}
 
 		ParseDefs();
+
+		// A definition is complete here and the compiler's state is its own,
+		// so a loading-screen redraw touches nothing half-built.
+		common->LoadingCheckpoint();
 	}
 
 	scope = oldscope;
@@ -2599,6 +2784,8 @@ void idCompiler::CompileFile( const char *text, const char *filename, bool toCon
 	console				= toConsole;
 	
 	memset( &immediate, 0, sizeof( immediate ) );
+
+	IndexImmediates();
 
 	parser.SetFlags( LEXFL_ALLOWMULTICHARLITERALS );
 	parser.LoadMemory( text, strlen( text ), filename );

@@ -268,6 +268,28 @@ release of Doom 3 (1.3.1 packs):
   the warnings are the known retail ones. Not run: shadow maps, volumetric
   haze and parallax occlusion (no stock Doom 3 content uses them), texture
   reloads from the settings, and Resurrection of Evil.
+- The game library's loading checkpoints and indexed script immediates
+  (2026-11-21), on OpenGL at the staged build's default window, `ui_retained
+  1`, `+map game/alphalabs1` at launch, seven runs before the change and
+  seven after (`com_loadingFrameTrace` 1 or 2). With `g_disasm 1` the
+  disassembly of the compiled scripts is byte for byte the same as before.
+  `doom_main.script` compiles in 345-570 ms instead of 537-701 ms with the
+  start-up screen drawing (216 ms with `ui_retained 0`). Before, the stall
+  sampler found start-up gaps of 46-77 ms with the script compiler or its
+  includes on the stack (`idCompiler::GetImmediate`, `idProgram::GetDefList`,
+  `idParser::Directive_include`); after, those gaps are 44-50 ms, the
+  start-up pacer's own cadence (intervals p50 about 43 ms). `INITIALIZATION_PRESENTATION maxGapMsec`
+  stays 130-290 ms in most runs either way, because it is set by the
+  start-up screen's first vector tessellation and first present (127-409 ms,
+  retained interface and driver), not by the game; in the runs where that
+  falls before the window it was 57 ms before and 50-51 ms after. The
+  start-up took 2,061 ms on average instead of 2,189 ms. The level load's
+  gaps did not change (max 96-208 ms after, 83-128 ms before, the same
+  spread): on `alphalabs1` no gap over 25 ms has script or animation code on
+  the stack before or after, and the longest are the game's first hidden
+  frames (`idPhysics_AF::Evaluate`) and the driver at the hand-off. The logs
+  have the same 75 warning lines before and after and no error.
+  Resurrection of Evil's module carries the same change and was built, not run.
 - Stock specular follows Doom 3 on every path. `r_correctspecular` and
   `r_normalizebumpmap` default to 0 (they came from Prey at 1), and the OpenGL
   ARB path passes the specular constant unscaled, as id's `draw_arb2.cpp`
@@ -668,9 +690,13 @@ detection carried upstream's Quake 4 game changes (the medic's combat stance,
 an indexed lookup of script immediates, `common->LoadingCheckpoint` calls in
 the script compiler and the model parser) into `src/game` and `src/d3xp`;
 both trees keep openD3's side, and the new medic test stays out. Those are
-SDK-licensed code; openD3's game library makes no `LoadingCheckpoint` call
-yet, so its script compile and model parses are still offered frames only by
-prints and file reads. The Ambient Occlusion choice adds `r_ssaoMethod` to the
+SDK-licensed code. openD3's game library got its own GPL equivalent
+afterwards, written from its own sources: `common->LoadingCheckpoint` after
+each definition the script compiler finishes, after each script file is read
+and before it is compiled, and after each animation `idAnimManager::GetAnim`
+loads, and script immediates found through a hash of type and value instead
+of a walk over all of them (`idCompiler::FindImmediate`), in both trees; the
+"Verified" section has the measurements. The Ambient Occlusion choice adds `r_ssaoMethod` to the
 settings service's catalog, so `tools/ui/doom3_menu_system.py` declares it
 and `system.rui` was regenerated; openD3's SYSTEM page shows no ambient
 occlusion row, so upstream's two new strings (`#str_232633`, `#str_232634`)

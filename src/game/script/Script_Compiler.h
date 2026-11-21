@@ -218,6 +218,19 @@ private:
 	idVarDef		*scope;				// the function being parsed, or NULL
 	const idVarDef	*basetype;			// for accessing fields
 
+	// Every immediate of the program, hashed by type and value, so finding an
+	// existing constant is a probe instead of a walk over all of them. Built
+	// when a compile starts; a slot is NULL once its immediate was freed.
+	idList<idVarDef *>	immediates;
+	idHashIndex		immediateHash;
+
+	static int		ImmediateKey( const idTypeDef *type, const eval_t *eval, const char *string );
+	static int		ImmediateKey( const idVarDef *def );
+	bool			ImmediateMatches( const idVarDef *def, const idTypeDef *type, const eval_t *eval, const char *string ) const;
+	void			IndexImmediates( void );
+	void			AddImmediate( idVarDef *def );
+	void			ForgetImmediate( const idVarDef *def );
+
 	float			Divide( float numerator, float denominator );
 	void			Error( const char *error, ... ) const id_attribute((format(printf,2,3)));
 	void			Warning( const char *message, ... ) const id_attribute((format(printf,2,3)));

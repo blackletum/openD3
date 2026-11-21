@@ -974,6 +974,10 @@ idMD5Anim *idAnimManager::GetAnim( const char *name ) {
 			anim = NULL;
 		}
 		animations.Set( filename, anim );
+
+		// A model's animations load one after another; this one is complete
+		// and registered, so a loading-screen redraw may run before the next.
+		common->LoadingCheckpoint();
 	}
 
 	return anim;

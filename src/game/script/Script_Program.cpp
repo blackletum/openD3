@@ -1845,6 +1845,10 @@ void idProgram::CompileFile( const char *filename ) {
 		gameLocal.Error( "Couldn't load %s\n", filename );
 	}
 
+	// Between reading a script and compiling it the program is whole, so a
+	// loading-screen redraw may run; the compiler offers more between definitions.
+	common->LoadingCheckpoint();
+
 	result = CompileText( filename, src, false );
 
 	fileSystem->FreeFile( src );

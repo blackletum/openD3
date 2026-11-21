@@ -11253,6 +11253,7 @@ static void RB_ARB2_UploadCustomGLSLShaderParms( const shaderStage_t *stage, con
 		}
 
 		if ( RB_BindGLSLShaderParm( newStage->shaderParmBindings[parmIndex], location, stage, din ) ) {
+			RB_GLSLStageForgetUniform( newStage, location );
 			continue;
 		}
 
@@ -11265,45 +11266,25 @@ static void RB_ARB2_UploadCustomGLSLShaderParms( const shaderStage_t *stage, con
 		for ( int component = 0; component < numRegisters && component < 4; component++ ) {
 			parm[component] = regs[ newStage->shaderParmRegisters[parmIndex][component] ];
 		}
-
-		switch ( numRegisters ) {
-		case 1:
-			glUniform1fvARB( location, 1, parm );
-			break;
-		case 2:
-			glUniform2fvARB( location, 1, parm );
-			break;
-		case 3:
-			glUniform3fvARB( location, 1, parm );
-			break;
-		default:
-			glUniform4fvARB( location, 1, parm );
-			break;
-		}
+		RB_GLSLStageUniform( newStage, location, numRegisters, parm );
 	}
 }
 
 static void RB_ARB2_BindCustomGLSLShaderTextures( const newShaderStage_t *newStage, const drawInteraction_t *din ) {
-	for ( int textureIndex = 0; textureIndex < newStage->numShaderTextures; textureIndex++ ) {
+	for ( int order = 0; order < newStage->numShaderTextures; order++ ) {
+		const int textureIndex = RB_GLSLShaderTextureBindOrder( newStage->numShaderTextures, order );
 		idImage *image = RB_ResolveGLSLShaderTextureImage( newStage, textureIndex, din );
 		if ( image == NULL ) {
 			continue;
 		}
-
-		GL_SelectTextureNoClient( textureIndex );
-		image->SetSamplerState( newStage->shaderTextureFilters[textureIndex], newStage->shaderTextureRepeats[textureIndex] );
-		image->Bind();
-		if ( newStage->shaderTextureLocations[textureIndex] >= 0 ) {
-			glUniform1iARB( newStage->shaderTextureLocations[textureIndex], textureIndex );
-		}
+		RB_BindGLSLShaderTexture( newStage, textureIndex, image, false );
 	}
 }
 
 static void RB_ARB2_UnbindCustomGLSLShaderTextures( const newShaderStage_t *newStage ) {
 	for ( int textureIndex = newStage->numShaderTextures - 1; textureIndex >= 0; textureIndex-- ) {
 		if ( textureIndex == 0 || RB_ResolveGLSLShaderTextureImage( newStage, textureIndex, NULL ) != NULL ) {
-			GL_SelectTextureNoClient( textureIndex );
-			globalImages->BindNull();
+			RB_UnbindGLSLShaderTexture( textureIndex, false );
 		}
 	}
 	GL_SelectTexture( 0 );

@@ -907,9 +907,10 @@ SCENARIOS = {
     # The Create Server sub-page (FLOW-050), the default: CREATE SERVER on the
     # Multiplayer page goes deeper and the sub-page presents at 350 ms under
     # the MULTIPLAYER crumb, the game type's maps listed and the chosen one's
-    # levelshot shown. Choosing CTF lists its maps again, ADVANCED OPTIONS
-    # opens the popup's options (a password typed, the seeded ban list opened
-    # and one ban removed), and BACK climbs out onto CREATE SERVER.
+    # levelshot shown. Choosing CTF lists its maps again, the SERVER tab shows
+    # the server's settings (a password typed, the seeded ban list opened and
+    # one ban removed), RULES and MODIFIERS theirs, and BACK climbs out onto
+    # CREATE SERVER.
     'createserver': (None, [
         'waitMsec 4000',
         'opend3_retainedGui focus nav_multiplayer', 'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0',
@@ -923,7 +924,7 @@ SCENARIOS = {
         'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0',
         'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 600', 'si_gameType', 'si_map',
         'screenshot "screenshots/createserver-ctf.tga"',
-        'opend3_retainedGui event advancedModalShow', 'waitMsec 500', 'opend3_retainedGui report',
+        'opend3_retainedGui event tab_server', 'waitMsec 500', 'opend3_retainedGui report',
         'screenshot "screenshots/createserver-advanced.tga"',
         # Use password unlocks Set password; a typed password shows as its
         # mask while editing and once the session has taken it.
@@ -945,8 +946,8 @@ SCENARIOS = {
         # RULES, then MODIFIERS: Instagib turned on sets si_instagib and dims the
         # rules it overrides (and, on RULES, Weapon Stay and buying, which have
         # nothing to act on under it); turned off again after.
-        'opend3_retainedGui event advancedTab2', 'waitMsec 400', 'screenshot "screenshots/createserver-rules.tga"',
-        'opend3_retainedGui event advancedTab3', 'waitMsec 400', 'opend3_retainedGui focus "create-instagib"',
+        'opend3_retainedGui event tab_rules', 'waitMsec 400', 'screenshot "screenshots/createserver-rules.tga"',
+        'opend3_retainedGui event tab_modifiers', 'waitMsec 400', 'opend3_retainedGui focus "create-instagib"',
         'screenshot "screenshots/createserver-modifiers.tga"',
         'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 400', 'si_instagib',
         'screenshot "screenshots/createserver-instagib.tga"',
@@ -963,7 +964,7 @@ SCENARIOS = {
         'opend3_retainedGui menu home 1', 'opend3_retainedGui menu home 0', 'opend3_retainedGui menu down 1', 'opend3_retainedGui menu down 0', 
         'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0', 'waitMsec 600',
         'si_preset', 'si_weaponArena', 'si_powerups', 'si_selfDamage', 'si_fallDamage',
-        'opend3_retainedGui event advancedModalHide', 'waitMsec 600',
+        'opend3_retainedGui event tab_match', 'waitMsec 600',
         'opend3_retainedGui focus create_back', 'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0',
         'waitMsec 150', 'screenshot "screenshots/createserver-back.tga"', 'waitMsec 1200', 'opend3_retainedGui report',
         'screenshot "screenshots/createserver-returned.tga"',
@@ -1170,7 +1171,7 @@ SCENARIOS = {
     ]),
     # The retained GAME OPTIONS page (UI-01): the GAME OPTIONS button opens it
     # on GENERAL's first row; the HUD tab's custom crosshair turns on and steps
-    # to the next one; the gun position applies; the language
+    # to the next one; VIEW WEAPON's gun position applies; GENERAL's language
     # list switches to German, which reloads the language and the menus; Back
     # returns to the settings screen.
     'game': (None, [
@@ -1180,8 +1181,9 @@ SCENARIOS = {
         'g_crosshairCustom', 'opend3_retainedGui focus game_customcrosshair', *menu_step('accept'), *menu_step('down'),
         *menu_step('accept'), 'g_crosshairCustom', 'opend3_retainedGui focus game_crosshair', *menu_step('right'),
         'g_crosshairCustomFile', 'waitMsec 400', 'screenshot "screenshots/game-crosshair.tga"',
-        'opend3_retainedGui event tab_general', 'waitMsec 400',
+        'opend3_retainedGui event tab_viewweapon', 'waitMsec 400',
         'opend3_retainedGui focus game_gunposition', *menu_step('accept'), *menu_step('down'), *menu_step('accept'), 'g_gunY',
+        'opend3_retainedGui event tab_general', 'waitMsec 400',
         'opend3_retainedGui focus game_language', *menu_step('accept'), *[step for _ in range(6) for step in menu_step('down')],
         *menu_step('accept'), 'waitMsec 3000', 'sys_lang', 'opend3_retainedGui report', 'ui_retainedStatus',
         'screenshot "screenshots/game-language.tga"',
@@ -1205,6 +1207,35 @@ SCENARIOS = {
         'opend3_guiAction set_b_gameopts', 'waitMsec 3000', 'opend3_retainedGui report', 'ui_retainedStatus',
         'screenshot "screenshots/game-mp-game.tga"', 'opend3_retainedGui event onBack', 'waitMsec 1500', 'opend3_retainedGui report',
         'opend3_guiGet desktop::active', 'opend3_guiGet desktop::curr', 'screenshot "screenshots/game-mp-game-back.tga"',
+    ]),
+    # The settings tree (UI-01): every tab of every settings sub-page, as the
+    # settings tree audit of 20 November 2026 laid them out, each reached by
+    # its tab event from the SETTINGS page and left with Back.
+    'settings-tree': (None, [
+        'waitMsec 9000', 'opend3_guiAction main_b_settings', 'waitMsec 2000',
+        *[command for button, page, first, tabs in (
+            ('set_b_controls', 'controls', 'move', ('mouse', 'controller')),
+            ('set_b_gameoptions', 'game', 'general', ('hud', 'viewweapon', 'accessibility', 'vr')),
+            ('set_b_system', 'display', 'graphics', ('screen', 'image', 'effects')),
+            ('set_b_audio', 'audio', 'audio', ()))
+          for command in (f'opend3_guiAction {button}', 'waitMsec 1500', 'opend3_retainedGui report',
+                          f'screenshot "screenshots/tree-{page}-{first}.tga"',
+                          *[part for tab in tabs for part in (f'opend3_retainedGui event tab_{tab}', 'waitMsec 500',
+                                                               f'screenshot "screenshots/tree-{page}-{tab}.tga"')],
+                          'opend3_retainedGui event onBack', 'waitMsec 2500')],
+        'ui_retainedStatus',
+    ]),
+    # The DISPLAY rows the audit added (Frame Rate Cap, Anisotropic Filtering,
+    # Shadow Maps, Motion Blur) edit the draft, and APPLY CHANGES sets their
+    # CVars: each is stepped, applied and read back.
+    'settings-tree-apply': (None, [
+        'waitMsec 15000', 'com_maxfps', 'image_anisotropy', 'r_useShadowMap', 'r_motionBlur',
+        'opend3_guiAction main_b_settings', 'waitMsec 2000', 'opend3_guiAction set_b_system', 'waitMsec 2000',
+        *[command for tab, row, step in (('screen', 'settings_framecap', 'right'), ('image', 'settings_anisotropy', 'left'),
+                                         ('effects', 'settings_shadowmaps', 'accept'), ('effects', 'settings_motionblur', 'accept'))
+          for command in (f'opend3_retainedGui event tab_{tab}', 'waitMsec 500', f'opend3_retainedGui focus {row}',
+                          *menu_step(step), 'waitMsec 400', 'opend3_retainedGui event apply', 'waitMsec 2500')],
+        'screenshot "screenshots/tree-apply.tga"', 'com_maxfps', 'image_anisotropy', 'r_useShadowMap', 'r_motionBlur',
     ]),
     # The retained CONTROLS page (UI-01): the CONTROLS button opens the page on Move
     # Forward; Accept waits for a key and testControlsKey stands in for F,
@@ -1257,7 +1288,7 @@ SCENARIOS = {
         'opend3_retainedGui focus game', 'opend3_retainedGui menu accept 1', 'opend3_retainedGui menu accept 0',
         'waitMsec 175', 'screenshot "screenshots/subpages-game-change.tga"', 'waitMsec 1200', 'ui_retainedStatus',
         'opend3_retainedGui report', 'screenshot "screenshots/subpages-game.tga"',
-        *[step for name in ('hud', 'vr') for step in (
+        *[step for name in ('hud', 'viewweapon', 'accessibility', 'vr') for step in (
             'opend3_retainedGui event onTabNext', 'waitMsec 400', 'opend3_retainedGui report',
             f'screenshot "screenshots/subpages-game-{name}.tga"')],
         'opend3_retainedGui focus game_vrsnap', 'waitMsec 100', 'opend3_retainedGui choice open game_vrsnap', 'waitMsec 400',
@@ -1336,6 +1367,19 @@ SCENARIOS = {
         'opend3_retainedGui event tab_controller', 'waitMsec 400', 'screenshot "screenshots/controls-pause-controller.tga"',
         'opend3_retainedGui event onBack', 'waitMsec 1500', 'ui_retainedStatus', 'opend3_retainedGui report',
         'screenshot "screenshots/controls-pause-back.tga"',
+    ]),
+    # The settings tree over the paused game: GAME OPTIONS' ACCESSIBILITY tab,
+    # then DISPLAY's Shadow Maps applied in the level, and play resumed.
+    'settings-tree-pause': ('game/airdefense1', [
+        'opend3_assertMenuActivation 10000', 'waitMsec 1200', 'r_useShadowMap', 'opend3_retainedGui focus nav_settings',
+        *menu_step('accept'), 'waitMsec 1200', 'opend3_retainedGui focus game', *menu_step('accept'), 'waitMsec 1500',
+        'opend3_retainedGui event tab_accessibility', 'waitMsec 500', 'screenshot "screenshots/tree-pause-accessibility.tga"',
+        'opend3_retainedGui event onBack', 'waitMsec 1500', 'opend3_retainedGui focus display', *menu_step('accept'),
+        'waitMsec 1500', 'opend3_retainedGui event tab_effects', 'waitMsec 500', 'opend3_retainedGui focus settings_shadowmaps',
+        *menu_step('accept'), 'opend3_retainedGui event apply', 'waitMsec 2500', 'r_useShadowMap',
+        'screenshot "screenshots/tree-pause-effects.tga"', 'opend3_retainedGui event onBack', 'waitMsec 1500',
+        'opend3_retainedGui event onBack', 'waitMsec 1500', 'opend3_retainedGui focus nav_resume', *menu_step('accept'),
+        'waitMsec 1500', 'ui_retainedStatus', 'screenshot "screenshots/tree-pause-resumed.tga"',
     ]),
     'settings-strogg': ('game/recomp', [
         'opend3_assertMenuActivation 10000', 'waitMsec 1200', 'opend3_retainedGui focus nav_settings', *menu_step('accept'),

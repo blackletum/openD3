@@ -260,17 +260,21 @@ differ for Doom 3, each at an `OPEND3` site in `src/framework/Session_menu.cpp`.
     turn into and out of the light with the planet;
   - thin light lines that cross everything, the planet too;
   - the fine honeycomb: pointy-topped cells of side 10.4 u, every edge
-    drawn once, so neighbours share their lines, hard-edged as the
-    picture's are (without anti-aliasing). Its strips are one symbol
-    drawn 25 times;
+    drawn once, so neighbours share their lines. Each line is 1.4 u of
+    added light over a near-black band (`#02080B`), measured against the
+    picture's (its line peaks near `#0E474F` over about `#040508`), drawn
+    without anti-aliasing. Its strips are one symbol drawn 25 times;
   - 44 cells and small clusters of the honeycomb that light and fade at
     moments of their own; a cluster lights its faces and its outline,
     which are the grid's own lines;
-  - the loose plates: translucent hexagonal plates off the grid, most in
-    a stream from the planet's lower trailing side up and out of the
-    band, leaning alike, each tilted in depth with a back face and a
-    fading trail, and six large faint ones across the planet, which hold
-    still. The others pulse in six groups mixed through one another
+  - the loose plates, as the picture's: hexagonal prisms off the grid,
+    side 19 to 34 u, most in a stream from the planet's lower trailing
+    side up and out of the band, leaning alike, each a translucent teal
+    face under a thin cyan outline with its back face and the edges
+    between, the outline smeared once or more a few u back, a soft halo,
+    and on about a third of them a long soft horizontal streak; and six
+    large pale prisms across the planet, which hold still. All are drawn
+    hard-edged. The others pulse in six groups mixed through one another
     (four along the stream, two elsewhere), each on a period of its own,
     so neighbours never keep step;
   - the letterbox's two rules, each a cyan line on the opening's edge
@@ -918,6 +922,15 @@ from the window.
   Traced through a real start-up at 1280x720: 37 frames, the first 255 ms
   and the rest a median of 12 ms (at most 33), 556,000 vertices, 238
   draws, 17 layers.
+- The grid and the loose plates against the picture (21 November), at
+  960x720 side by side in four regions (the dark grid, the stream, the
+  leading side, the planet) and by sampled line profiles: the grid's line
+  peaks within about 10 % of the picture's over the same cells; the plates
+  are the picture's prisms in size, colour and density. Also at 1280x720
+  and 720x1280. Traced back to back with the previous document under the
+  same load (the CPU saturated by other programs): 395,000 vertices
+  against 552,000, later frames a median of 18 to 22 ms against 20 to 24,
+  the first frame 395 to 444 ms against 323 to 345.
 
 Not verified: Resurrection of Evil, Vulkan, a controller, touch, reduced
 motion, languages other than English, the multiplayer pause, a mod's menu, and

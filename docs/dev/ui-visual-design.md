@@ -2612,8 +2612,9 @@ squeeze the sheet 2:1 horizontally. The sheet has no baked shadow.
    (its model, its light turned to the leading side, its lit-crescent highlight) with the fires of
    its night side on the ground itself (Doom 3's own lava fissures and embers on the turning globe,
    gathered into burning regions and lowlands, shown only in shade and more the deeper the shade),
-   the teal clouds, the fine honeycomb on the picture's own cells with every edge drawn once,
-   the loose plates, the letterbox and its rules. Only the id mark stays a bitmap. Anything that
+   the teal clouds, the fine honeycomb on the picture's own cells with every edge drawn once (soft
+   teal lines over near-black cells), the loose plates (the picture's translucent hexagonal prisms,
+   their outlines smeared, with long soft horizontal streaks), the letterbox and its rules. Only the id mark stays a bitmap. Anything that
    lights on the honeycomb (a cell, a cluster) lights the grid's own lines; the loose plates are off
    the grid. Motion is slight and never in step: the planet turns a third of a degree a second, the
    loose plates pulse in groups mixed through one another, each on a period of its own, cells and

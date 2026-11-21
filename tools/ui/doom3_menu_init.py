@@ -23,14 +23,17 @@ the picture's own measures (fitted against the installed picture):
                  globe (skins/ and materials/startup_opend3.*), turning with
                  it and shown only where it is in shade, the more the deeper
     honeycomb    the fine grid: pointy-topped cells of side 10.4 u, every
-                 edge drawn once, so neighbouring cells share their lines
+                 edge drawn once, so neighbouring cells share their lines;
+                 soft teal lines over near-black cells, as the picture's
     cells        cells and small clusters of that grid that light and fade at
                  random, drawn on the grid's own lines
-    loose hexes  the translucent hexagonal plates that float off the grid in
+    loose hexes  the picture's hexagonal prisms that float off the grid in
                  a stream from the planet's lower trailing side up and out of
-                 the band, leaning alike, each tilted in depth with its back
-                 face, edges and a fading trail, pulsing on its
-                 own period; a few large faint ones lie across the planet
+                 the band: translucent teal faces under thin cyan outlines,
+                 a back face and the edges between, the outline smeared once
+                 or more and a few long soft horizontal streaks, leaning
+                 alike and pulsing in groups; large pale ones lie across the
+                 planet
     letterbox    the black bars and their cyan rules
     id mark      the one bitmap: the mark's block cropped from the installed
                  picture (a logo is a bitmap exception, section 6)
@@ -84,9 +87,9 @@ STATUS_GAP = 5.0                              # u: the status line under the ope
 
 # Tokens, sampled from the picture.
 RULE = "#2F92AC"
-BASE = "#041A22"
+BASE = "#02080B"
 CLOUD = "#127089"
-LINE = "#1B8EA0"
+LINE = "#16707E"
 LIT = "#4FC4E0"
 PLATE = "#2A9CBC"
 STATUS = "#00CFF0"
@@ -283,7 +286,7 @@ def space(rng: random.Random) -> list:
     for index, (x, y, reach, alpha) in enumerate(clouds):
         x, y = x + rng.uniform(-6, 6), y + rng.uniform(-6, 6)
         box = [(x - reach, y - reach), (x + reach, y - reach), (x + reach, y + reach), (x - reach, y + reach)]
-        paint = glow((x, y), reach, [(0, rgb(CLOUD, alpha)), (0.45, rgb(CLOUD, alpha * 0.55)), (1, rgb(CLOUD, 0))])
+        paint = glow((x, y), reach, [(0, rgb(CLOUD, alpha * 0.5)), (0.45, rgb(CLOUD, alpha * 0.28)), (1, rgb(CLOUD, 0))])
         nodes.append(piece(f"init-cloud-{index}", [poly_path("cloud", [box], fill=paint)], pad=0))
     gaps = [(40, 330, 85, 0.60), (585, 262, 80, 0.7), (470, 125, 55, 0.5), (640, 330, 75, 0.6), (-150, 90, 110, 0.45), (520, 380, 60, 0.45),
             (930, 300, 120, 0.40), (-330, 360, 120, 0.40)]
@@ -469,11 +472,14 @@ def fire(doc: Document) -> list:
 def honeycomb(doc: Document) -> list:
     """The fine grid. Each cell draws its two upper edges and its trailing
     side; its other three belong to its neighbours, so every edge of the
-    honeycomb is drawn once and neighbours share it. Lines are blended, not
-    added, so over the planet they stay as quiet as the picture's, and drawn without
-    anti-aliasing: start-up keeps no raster cache, and the grid's coverage
-    would be some 400,000 vertices a frame; the picture's lines are hard
-    too. The grid is drawn in strips four columns wide (one vector's
+    honeycomb is drawn once and neighbours share it. Each line is 1.4 u of
+    added light, near the picture's soft line (about 2 u across, peaking
+    near #0E474F over black), and lightens the planet as the picture's
+    does. It is drawn without anti-aliasing: start-up keeps no raster
+    cache, and the grid's coverage would be some 400,000 vertices a frame
+    (a wider glow under it cost 100,000 vertices and 0.2 s of the first
+    frame, so there is none).
+    The grid is drawn in strips four columns wide (one vector's
     coverage has a budget), and as every strip is the same, one strip is a
     symbol the others draw."""
     columns, rows = grid_range()
@@ -485,8 +491,8 @@ def honeycomb(doc: Document) -> list:
             lines.append([upper_lead, top, upper_trail, lower_trail])
     x0 = cell_centre(first, 0)[0] - CELL_W / 2 - 1.5
     bounds = (x0, GRID_Y + ROW_H * rows[0] - SIDE - 1.5, x0 + 4.5 * CELL_W + 3, GRID_Y + ROW_H * rows[-1] + SIDE + 1.5)
-    strip = poly_path("cells", lines, stroke_paint=flat(rgb(LINE, 0.46)), width=0.8, closed=False, smooth=False)
-    nodes = [piece("init-honeycomb-0", [strip], bounds=bounds, doc=doc, symbol="init-honeycomb")]
+    core = poly_path("cells", lines, stroke_paint=flat(rgb(LINE, 0.3)), width=1.4, closed=False, blend="additive", smooth=False)
+    nodes = [piece("init-honeycomb-0", [core], bounds=bounds, doc=doc, symbol="init-honeycomb")]
     count = math.ceil(len(columns) / 4)
     nodes += [placed(f"init-honeycomb-{index}", "init-honeycomb", bounds, dx=4 * CELL_W * index) for index in range(1, count)]
     return nodes
@@ -560,67 +566,84 @@ def loose_hexes(doc: Document, rng: random.Random) -> list:
         return (ax + (bx - ax) * f, ay + (by - ay) * f), ((bx - ax) / length_, (by - ay) / length_)
 
     placed = []
-    for _n in range(56):
-        t = rng.random() ** 0.85
+    for _n in range(58):
+        t = rng.random()
         (x, y), (dx, dy) = along(t)
-        spread = rng.gauss(0, 34)
+        spread = rng.gauss(0, 56)
         x, y = x - dy * spread, y + dx * spread
-        side = rng.uniform(12, 27) * (1.2 if 0.15 < t < 0.6 else 1.0)
+        side = rng.uniform(19, 34) * (1.15 if 0.15 < t < 0.6 else 1.0)
         placed.append((x, y, side, (dx, dy), rng.uniform(0.55, 1.0)))
-    for x, y, side in ((40, 112, 19), (95, 96, 14), (150, 108, 17), (-20, 160, 22), (8, 236, 15), (-70, 255, 18), (215, 90, 13),
-                       (-160, 120, 20), (-300, 210, 17), (-470, 150, 19), (850, 230, 21), (960, 160, 17), (1080, 280, 20), (40, 450, 17),
-                       (575, 475, 18), (300, 15, 16), (470, 0, 14), (590, 96, 24), (628, 150, 20), (556, 128, 17), (650, 92, 22)):
-        placed.append((x, y, side, (0.74, -0.67), rng.uniform(0.4, 0.75)))
-    for x, y, side in ((262, 165, 58), (318, 300, 64), (150, 335, 52), (372, 196, 46), (300, 108, 42), (196, 250, 48)):
-        placed.append((x, y, side, (0.74, -0.67), 0.42))
+    for x, y, side in ((40, 112, 24), (100, 96, 18), (160, 104, 21), (-20, 160, 27), (10, 236, 19), (-70, 255, 22), (215, 90, 16),
+                       (-160, 120, 25), (-300, 210, 21), (-470, 150, 23), (850, 230, 26), (960, 160, 21), (1080, 280, 25), (40, 450, 21),
+                       (575, 475, 22), (300, 15, 20), (470, 0, 18), (590, 100, 30), (628, 150, 25), (556, 128, 21), (650, 92, 27)):
+        placed.append((x, y, side, (0.74, -0.67), rng.uniform(0.45, 0.8)))
+    # The large pale plates across the planet, as the picture has them.
+    for x, y, side in ((258, 178, 62), (196, 285, 56), (318, 318, 58), (150, 150, 50), (360, 190, 48), (282, 96, 44)):
+        placed.append((x, y, side, (0.74, -0.67), 0.75))
 
     # A node whose opacity moves is drawn through a composition layer of its
     # own, and start-up keeps no raster cache, so the plates pulse in six
     # groups (four along the stream, two elsewhere) whose members are mixed
     # through one another; the large ones across the planet are still.
-    groups: dict = {}
     # Paths are many shapes of one paint: a group's plates are merged by
     # part and by weight (three steps), so a group is a few dozen paths.
-    # Fills draw as triangles under their anti-aliased outlines.
+    # Everything draws as triangles, hard-edged like the grid: start-up keeps
+    # no raster cache, and anti-aliased outlines cost some 150,000 vertices
+    # a frame.
     shapes: dict = {}
 
     def add(group_key, part: str, level: float, polys: list) -> None:
         shapes.setdefault(group_key, {}).setdefault((part, level), []).extend(polys)
 
+    def grown(shape: list, by: float, cx: float, cy: float) -> list:
+        return [(round(cx + (px - cx) * by, 2), round(cy + (py - cy) * by, 2)) for px, py in shape]
+
     for index, (x, y, side, (dx, dy), weight) in enumerate(placed):
         large = side > 40
-        depth = (dx * side * rng.uniform(0.3, 0.6), dy * side * rng.uniform(0.3, 0.6)) if not large else (6.0, -5.0)
+        depth = (dx * side * rng.uniform(0.2, 0.4), dy * side * rng.uniform(0.2, 0.4)) if not large else (5.0, -4.0)
         # The stream's plates lean alike, as the picture's do.
         tilt = (rng.gauss(36, 8), rng.gauss(-12, 9), rng.gauss(4, 5)) if not large else (rng.uniform(0, 20), 0, rng.uniform(-6, 6))
         face, back, sides = plate(rng, x, y, side, depth, tilt)
         level = max(0.5, round(weight * 4) / 4)
-        group_key = "still" if large else rng.randrange(4) if index < 56 else 4 + rng.randrange(2)
+        group_key = "still" if large else rng.randrange(4) if index < 58 else 4 + rng.randrange(2)
+        add(group_key, "halo", level, [grown(face, 1.45, x, y)])
         add(group_key, "back", level, [back])
         add(group_key, "sides", level, sides)
         add(group_key, "face-large" if large else "face", level, [face])
-        if not large:
-            # A trail: the plate's outline once or twice more, fainter, back down the stream.
-            for copy in range(rng.choice((0, 1, 1, 2))):
-                step = side * rng.uniform(0.5, 0.9) * (copy + 1)
-                add(group_key, f"trail{copy}", level, [[(round(px - dx * step, 2), round(py - dy * step, 2)) for px, py in face]])
+        # The smear: the outline again, a few u down and back, as the
+        # picture's plates are doubled.
+        for copy in range(1 if large else rng.choice((1, 2, 2, 3))):
+            step = (copy + 1) * rng.uniform(2.5, 4.5)
+            add(group_key, "smear", level, [[(round(px - dx * step, 2), round(py - dy * step, 2)) for px, py in face]])
+        # A streak: a thin horizontal smear through some plates.
+        if not large and rng.random() < 0.35:
+            reach, lift = side * rng.uniform(2.5, 5.5), rng.uniform(-0.4, 0.4) * side
+            add(group_key, "streak-soft", level, [[(x - reach, y + lift - 2), (x + reach * 0.5, y + lift - 2), (x + reach * 0.5, y + lift + 2),
+                                                   (x - reach, y + lift + 2)]])
+            add(group_key, "streak", level, [[(x - reach * 0.8, y + lift - 0.5), (x + reach * 0.4, y + lift - 0.5), (x + reach * 0.4, y + lift + 0.5),
+                                              (x - reach * 0.8, y + lift + 0.5)]])
     for key, parts in sorted(shapes.items(), key=lambda item: str(item[0])):
         paths = []
         for (part, level), polys in sorted(parts.items()):
             a = lambda alpha: round(alpha * level, 3)
             name = f"{part}-{int(level * 100)}"
-            if part == "back":
-                paths += [poly_path(f"{name}-fill", polys, fill=flat(rgb(PLATE, a(0.05))), blend="additive", smooth=False),
-                          poly_path(f"{name}-edge", polys, stroke_paint=flat(rgb(LIT, a(0.2))), width=0.8, blend="additive", smooth=False)]
+            if part == "halo":
+                paths.append(poly_path(name, polys, fill=flat(rgb(PLATE, a(0.025))), blend="additive", smooth=False))
+            elif part == "back":
+                paths += [poly_path(f"{name}-fill", polys, fill=flat(rgb(PLATE, a(0.07))), blend="additive", smooth=False),
+                          poly_path(f"{name}-edge", polys, stroke_paint=flat(rgb(LIT, a(0.14))), width=1.2, blend="additive", smooth=False)]
             elif part == "sides":
-                paths.append(poly_path(name, polys, stroke_paint=flat(rgb(LIT, a(0.1))), width=0.7, closed=False, blend="additive", smooth=False))
+                paths.append(poly_path(name, polys, stroke_paint=flat(rgb(LIT, a(0.12))), width=0.9, closed=False, blend="additive", smooth=False))
             elif part.startswith("face"):
                 large = part == "face-large"
-                paths += [poly_path(f"{name}-fill", polys, fill=flat(rgb(PLATE, a(0.05 if large else 0.15))), blend="additive", smooth=False),
-                          poly_path(f"{name}-edge", polys, stroke_paint=flat(rgb(LIT, a(0.3 if large else 0.55))), width=1.0, blend="additive")]
+                paths += [poly_path(f"{name}-fill", polys, fill=flat(rgb(PLATE, a(0.1 if large else 0.11))), blend="additive", smooth=False),
+                          poly_path(f"{name}-edge", polys, stroke_paint=flat(rgb(LIT, a(0.5 if large else 0.32))), width=1.0, blend="additive", smooth=False)]
+            elif part == "smear":
+                paths.append(poly_path(name, polys, stroke_paint=flat(rgb(LIT, a(0.1))), width=1.2, blend="additive", smooth=False))
+            elif part == "streak-soft":
+                paths.append(poly_path(name, polys, fill=flat(rgb(LIT, a(0.05))), blend="additive", smooth=False))
             else:
-                copy = int(part[-1])
-                paths += [poly_path(f"{name}-fill", polys, fill=flat(rgb(PLATE, a(0.05 / (copy + 1)))), blend="additive", smooth=False),
-                          poly_path(f"{name}-edge", polys, stroke_paint=flat(rgb(LIT, a(0.2 / (copy + 1)))), width=0.8, blend="additive", smooth=False)]
+                paths.append(poly_path(name, polys, fill=flat(rgb(LIT, a(0.14))), blend="additive", smooth=False))
         ident = f"init-hexes-{key}"
         if key == "still":
             nodes.append(piece(ident, paths))

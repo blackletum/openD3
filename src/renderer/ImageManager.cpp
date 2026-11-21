@@ -34,7 +34,11 @@ If you have questions concerning this license or the applicable additional terms
 #include "RendererResourceSettings.h"
 #include "DisplayPresentation.h"
 #include "../imagetools/LegacyScopeMask.h"
+#ifdef OPEND3_RENDERER_VK_MODULE
+#include "Vulkan/vk_Image.h"
+#endif
 
+#include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
@@ -342,6 +346,13 @@ joined the list only a full renderer restart applied it.
 */
 extern idCVar image_usePrecompressedTextures;
 
+idCVar image_reloadWorkers( "image_reloadWorkers", "2", CVAR_RENDERER | CVAR_INTEGER,
+	"worker threads that decode, resample and compress textures for a texture setting change; the main thread "
+	"keeps the file reads and the upload. 0 decodes on the main thread", 0, 8 );
+idCVar image_reloadFrameMsec( "image_reloadFrameMsec", "4", CVAR_RENDERER | CVAR_INTEGER,
+	"milliseconds of texture reloading one frame may spend after a texture setting changes (at least one texture "
+	"a frame); 0 reloads every affected texture in the frame of the change", 0, 1000 );
+
 static bool R_ImageReductionCvarsChanged( bool clear ) {
 	idCVar *const reductionCvars[] = {
 		&image_picmip, &image_picmipFilter, &image_picmipMinSize, &image_useHighRes,
@@ -402,38 +413,62 @@ idImageManager::CheckCvars
 Image reduction cvars change the pixels a texture is built from, so they take
 effect through a reload. Sampling cvars only reapply loaded TF_DEFAULT samplers.
 Doing both here makes console changes visible without a vid_restart.
+
+Only the images a change reaches are reloaded: each file-backed image keeps the
+reduction key its last load was built under (idImage::ReductionInputsChanged).
+A preset that moves the bump limit reloads the bump maps, not the whole
+catalogue, and the interface, fonts and nopicmip images, whose policy is empty
+whatever the settings, are never touched by one.
+
+A change made during a level load, or while a checked image-policy attempt owns
+resource mutation, stays pending: the flags are left set and the first frame
+after either reloads what is stale. Clearing them early lost the change for
+every image the load kept resident (the interface, models referenced outside
+the level), which kept the size or block format of the old settings until the
+next vid_restart.
 ===============
 */
 void idImageManager::CheckCvars() {
+	const bool changed = R_ImageReductionCvarsChanged( false ) || R_ImageSamplerCvarsChanged( false );
+	if ( !changed && PendingReductionReloads() <= 0 ) {
+		return;
+	}
+	if ( insideLevelLoad || R_ImagePolicyActive() ) {
+		return;
+	}
+	ApplyPendingImageCvars( false );
+}
+
+/*
+===============
+idImageManager::ApplyPendingImageCvars
+
+Takes a pending cvar change (queueing the images a reduction change reaches,
+reapplying samplers for a sampling change) and then reloads queued images:
+within image_reloadFrameMsec from CheckCvars, all of them at the end of a level
+load, where the loading screen already holds the frame.
+===============
+*/
+void idImageManager::ApplyPendingImageCvars( bool finishReloads ) {
 	const bool reductionChanged = R_ImageReductionCvarsChanged( true );
 	const bool samplerChanged = R_ImageSamplerCvarsChanged( true );
-	if ( !reductionChanged && !samplerChanged ) {
-		return;
-	}
-
-	// vid_restart already purges and reloads everything, and a level load is
-	// about to touch every image anyway, so do not duplicate that work here.
-	if ( insideLevelLoad ) {
-		return;
-	}
 
 	if ( reductionChanged ) {
-		common->Printf( "Texture reduction changed, reloading images...\n" );
-		// Only file-backed images are built from the reduction cvars. Reloading
-		// the rest reallocated every generated TTF glyph atlas with no texels,
-		// and nothing re-rasterises them without a vid_restart, so all menu and
-		// HUD text disappeared the moment a video quality preset moved
-		// image_downSize/image_downSizeBump/image_downSizeSpecular.
-		ReloadImages( true, true );
-		return;
+		ReloadReductionChangedImages();
 	}
 
-	common->Printf( "Texture sampling changed, updating samplers...\n" );
-	for ( int i = 0; i < images.Num(); i++ ) {
-		idImage *image = images[i];
-		if ( image != NULL && image->IsLoaded() && image->GetFilter() == TF_DEFAULT ) {
-			image->RefreshSamplerState();
+	if ( samplerChanged ) {
+		common->Printf( "Texture sampling changed, updating samplers...\n" );
+		for ( int i = 0; i < images.Num(); i++ ) {
+			idImage *image = images[i];
+			if ( image != NULL && image->IsLoaded() && image->GetFilter() == TF_DEFAULT ) {
+				image->RefreshSamplerState();
+			}
 		}
+	}
+
+	if ( PendingReductionReloads() > 0 ) {
+		ContinueReductionReloads( finishReloads ? 0.0 : static_cast<double>( Max( 0, image_reloadFrameMsec.GetInteger() ) ) );
 	}
 }
 
@@ -652,6 +687,9 @@ public:
 		entries.resize( static_cast<size_t>( images.Num() ) );
 		for ( int i = 0; i < images.Num(); ++i ) {
 			images[ i ].image->PredictDirectDDSPayload( entries[ static_cast<size_t>( i ) ].qpath );
+			// Each prediction opens the image's file and reads its header: a
+			// level's worth takes seconds on a cold disk.
+			common->LoadingCheckpoint();
 		}
 		const unsigned int hardware = std::thread::hardware_concurrency();
 		const int workerCount = idMath::ClampInt( 1, LEVEL_IMAGE_PREFETCH_MAX_WORKERS,
@@ -793,7 +831,13 @@ private:
 				entry.done = true;
 				readHere = wantData;
 			} else {
-				workDone.wait( lock, [&entry] { return entry.done; } );
+				// A worker is reading this file. The loading screen keeps
+				// presenting meanwhile, outside the lock the workers take.
+				while ( !workDone.wait_for( lock, std::chrono::milliseconds( 2 ), [&entry] { return entry.done; } ) ) {
+					lock.unlock();
+					common->LoadingCheckpoint();
+					lock.lock();
+				}
 			}
 		}
 		if ( readHere ) {
@@ -1367,6 +1411,8 @@ idImage *idImageManager::GetImage( const char *_name ) const {
 	return NULL;
 }
 
+static void R_StopImageDecodeWorkers();
+
 /*
 ===============
 PurgeAllImages
@@ -1374,6 +1420,9 @@ PurgeAllImages
 */
 void idImageManager::PurgeAllImages() {
 	R_RenderThread_Sync( "image registry" );
+	// the reload after a purge rebuilds every image under the settings in effect
+	ClearReductionReloads();
+	R_StopImageDecodeWorkers();
 	int		i;
 	idImage	*image;
 
@@ -1744,6 +1793,8 @@ Shutdown
 */
 void idImageManager::Shutdown() {
 	R_ImagePolicyLifecycleChanged();
+	ClearReductionReloads();
+	R_StopImageDecodeWorkers();
 	images.DeleteContents( true );
 	imageHash.Clear();
 
@@ -1819,6 +1870,458 @@ static bool R_RendererDeviceAwaitsRestart() {
 	renderDisplayPresentation_t presentation{};
 	R_GetDisplayPresentation( &presentation );
 	return presentation.available == 0 && presentation.outcome >= RDP_INIT_FAILED;
+}
+
+/*
+===============
+idImageManager::ReloadReductionChangedImages
+
+Queues the resident file-backed images whose reduction key moved, in name
+order; ContinueReductionReloads reloads them. Generated and persistent images
+are built from no file and keep their content. Purged and never-loaded images
+are left alone; they load under the new settings when they are next bound.
+
+The reload is spread across frames because it blocked the frame it ran in:
+1.4 s on OpenGL for the 318 normal maps of Air Defense 1, 4 to 7 s for every
+texture. Until an image's turn it keeps its old pixels, which are complete and
+valid, so a frame shows a mix of old and new sizes and never a missing
+texture. The queue holds the images, not the change: each one is checked
+again at its turn, so one loaded in the meantime (a level load, a bind, a
+device restart) or brought back to its key by a second change is skipped, and
+a second change before the queue drains simply builds a new queue.
+Returns the number queued.
+
+The level load's file prefetch is not used: right after a load the files sit
+in the operating system's cache, and its worker threads made a 318-image reload
+slower, 1.0 to 3.1 s against 1.3 to 1.5 s without them (OpenGL, Air Defense 1,
+a busy machine).
+===============
+*/
+// Vulkan stores an image that did not fit in video memory without its top
+// levels. A reduction elsewhere may free the room for them, so such an image is
+// reloaded by any reduction change, as every image was before.
+static bool R_ImageHeldBelowRequest( idImage *image ) {
+#ifdef OPEND3_RENDERER_VK_MODULE
+	const vkImageEntry_t *entry = VK_Image_GetEntry( image->GetDeviceHandle() );
+	return entry != NULL && entry->droppedLevels > 0;
+#else
+	(void)image;
+	return false;
+#endif
+}
+
+static double R_ReductionReloadClockMsec() {
+	return std::chrono::duration<double, std::milli>( std::chrono::steady_clock::now().time_since_epoch() ).count();
+}
+
+// Scratch pages and render targets are authored in memory, so there is nothing
+// on disk to rebuild them from. idImage::Reload answers a persistent image by
+// reallocating it with no data, which is correct after a device loss and
+// destructive at any other time.
+static bool R_ImageNeedsReductionReload( idImage *image ) {
+	if ( image == NULL || !image->IsFileBacked() || R_IsMutableRenderImage( image ) || !image->IsLoaded() ) {
+		return false;
+	}
+	if ( !R_ImagePolicyShouldReload( image ) ) {
+		return false;
+	}
+	return image->ReductionInputsChanged() || R_ImageHeldBelowRequest( image );
+}
+
+// The one texture that took longest, for the completion line: a single texture
+// larger than the frame budget sets the longest frame the reload can cost.
+static idStr reductionSlowestName;
+static double reductionSlowestMsec = 0.0;
+// Where the reload's time went, from ActuallyLoadImage's phase accounting:
+// probes, generated-cache reads, source reads and decoding (direct DDS reads
+// included), and the GPU upload. Only the upload must stay on the renderer thread.
+static imageLoadPhaseTimings_t reductionPhases;
+// main-thread time by kind of step: loads finished inline, deferrals, publications
+static double reductionInlineMsec = 0.0, reductionDeferMsec = 0.0, reductionPublishMsec = 0.0;
+static imageLoadPhaseTimings_t reductionSlowestPhases;
+
+static void R_AddPhaseDelta( imageLoadPhaseTimings_t &total, const imageLoadPhaseTimings_t &before,
+		const imageLoadPhaseTimings_t &after ) {
+	total.probeMsec += after.probeMsec - before.probeMsec;
+	total.generatedMsec += after.generatedMsec - before.generatedMsec;
+	total.decodeMsec += after.decodeMsec - before.decodeMsec;
+	total.uploadMsec += after.uploadMsec - before.uploadMsec;
+	total.probeCount += after.probeCount - before.probeCount;
+	total.generatedCount += after.generatedCount - before.generatedCount;
+	total.decodeCount += after.decodeCount - before.decodeCount;
+	total.uploadCount += after.uploadCount - before.uploadCount;
+}
+
+/*
+===============
+idImageDecodeWorkers
+
+The threads that run imageDecodeJob_t for the settings reload. Started when a
+reload first defers a decode and stopped when its queue drains, at shutdown and
+by PurgeAllImages, so no thread idles through play. A job holds no image
+pointer; the main thread publishes or drops it. Each worker takes the main
+thread's floating-point control word, so its resampling and compression round
+as an inline decode would.
+===============
+*/
+#if defined( _M_X64 ) || defined( _M_IX86 ) || defined( __x86_64__ ) || defined( __i386__ )
+#include <xmmintrin.h>
+#define OPEND3_IMAGE_WORKER_MXCSR 1
+#endif
+#if defined( __linux__ )
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#elif defined( __APPLE__ )
+#include <pthread.h>
+#endif
+
+// Below the main thread, which reads the files the decodes wait for. At equal
+// priority two busy decoders on a loaded machine made the main thread's file
+// lookups three to five times slower, which cost more than the decode saved.
+static void R_LowerImageWorkerPriority() {
+#if defined( _WIN32 )
+	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL );
+#elif defined( __linux__ )
+	setpriority( PRIO_PROCESS, static_cast<id_t>( syscall( SYS_gettid ) ), 10 );
+#elif defined( __APPLE__ )
+	pthread_set_qos_class_self_np( QOS_CLASS_UTILITY, 0 );
+#endif
+}
+
+class idImageDecodeWorkers {
+public:
+	~idImageDecodeWorkers() {
+		// Shutdown stops the workers. Joining from a static destructor can wait
+		// on the loader lock while a module unloads, so a survivor is let go.
+		for ( std::thread &worker : workers ) {
+			if ( worker.joinable() ) {
+				worker.detach();
+			}
+		}
+	}
+
+	void EnsureStarted( int count ) {
+		if ( count <= 0 || static_cast<int>( workers.size() ) == count ) {
+			return;
+		}
+		Stop();
+#ifdef OPEND3_IMAGE_WORKER_MXCSR
+		controlWord = _mm_getcsr();
+#endif
+		stopping = false;
+		for ( int i = 0; i < count; i++ ) {
+			workers.emplace_back( &idImageDecodeWorkers::Work, this );
+		}
+	}
+
+	void Submit( const std::shared_ptr<imageDecodeJob_t> &job ) {
+		{
+			std::lock_guard<std::mutex> lock( mutex );
+			queue.push_back( job );
+		}
+		ready.notify_one();
+	}
+
+	// Blocks until the job is done. Only while the workers run.
+	void WaitFor( const std::shared_ptr<imageDecodeJob_t> &job ) {
+		std::unique_lock<std::mutex> lock( mutex );
+		done.wait( lock, [&] { return job->state.load() == imageDecodeJob_t::DONE || workers.empty(); } );
+	}
+
+	// Drops queued jobs, lets the running ones finish and joins every worker.
+	void Stop() {
+		{
+			std::lock_guard<std::mutex> lock( mutex );
+			stopping = true;
+			for ( const std::shared_ptr<imageDecodeJob_t> &job : queue ) {
+				job->decoded = false;
+				job->state.store( imageDecodeJob_t::DONE );
+			}
+			queue.clear();
+		}
+		ready.notify_all();
+		for ( std::thread &worker : workers ) {
+			if ( worker.joinable() ) {
+				worker.join();
+			}
+		}
+		workers.clear();
+		done.notify_all();
+	}
+
+	bool Running() const { return !workers.empty(); }
+
+private:
+	void Work() {
+#ifdef OPEND3_IMAGE_WORKER_MXCSR
+		_mm_setcsr( controlWord );
+#endif
+		R_LowerImageWorkerPriority();
+		for ( ;; ) {
+			std::shared_ptr<imageDecodeJob_t> job;
+			{
+				std::unique_lock<std::mutex> lock( mutex );
+				ready.wait( lock, [this] { return stopping || !queue.empty(); } );
+				if ( queue.empty() ) {
+					return;
+				}
+				job = queue.front();
+				queue.pop_front();
+				job->state.store( imageDecodeJob_t::RUNNING );
+			}
+			R_RunImageDecodeJob( *job );
+			{
+				std::lock_guard<std::mutex> lock( mutex );
+				job->state.store( imageDecodeJob_t::DONE );
+			}
+			done.notify_all();
+		}
+	}
+
+	std::vector<std::thread>						workers;
+	std::deque<std::shared_ptr<imageDecodeJob_t>>	queue;
+	std::mutex										mutex;
+	std::condition_variable							ready;
+	std::condition_variable							done;
+	bool											stopping = false;
+	unsigned int									controlWord = 0;
+};
+
+static idImageDecodeWorkers imageDecodeWorkers;
+
+static void R_StopImageDecodeWorkers() {
+	imageDecodeWorkers.Stop();
+}
+
+struct reductionInFlight_t {
+	idImage *							image;
+	std::shared_ptr<imageDecodeJob_t>	job;
+};
+// Deferred images in the order they were deferred, published in the same order.
+static std::deque<reductionInFlight_t> reductionInFlight;
+// Recorded source bytes a deferral may hold at once, and deferrals per worker.
+static const size_t REDUCTION_IN_FLIGHT_BYTES = size_t( 256 ) << 20;
+static const int REDUCTION_IN_FLIGHT_PER_WORKER = 3;
+
+static int R_ReductionWorkerCount() {
+	const int requested = Max( 0, image_reloadWorkers.GetInteger() );
+	if ( requested == 0 ) {
+		return 0;
+	}
+	const unsigned int hardware = std::thread::hardware_concurrency();
+	const int available = hardware > 1 ? static_cast<int>( hardware ) - 1 : 1;
+	return Min( requested, available );
+}
+
+static size_t R_ReductionInFlightBytes() {
+	size_t bytes = 0;
+	for ( const reductionInFlight_t &entry : reductionInFlight ) {
+		if ( entry.job->state.load() != imageDecodeJob_t::DONE ) {
+			bytes += entry.job->tape.bytes;
+		}
+	}
+	return bytes;
+}
+
+int idImageManager::PendingReductionReloads() const {
+	return reductionReloads.Num() - reductionReloadNext + static_cast<int>( reductionInFlight.size() );
+}
+
+void idImageManager::ClearReductionReloads() {
+	// a worker still running a dropped job finishes it into nothing
+	reductionInFlight.clear();
+	reductionSlowestName.Clear();
+	reductionSlowestMsec = 0.0;
+	reductionPhases.Clear();
+	reductionSlowestPhases.Clear();
+	reductionInlineMsec = reductionDeferMsec = reductionPublishMsec = 0.0;
+	reductionReloads.Clear();
+	reductionReloadNext = 0;
+	reductionReloadStats = reductionReloadStats_t();
+}
+
+int idImageManager::ReloadReductionChangedImages() {
+	if ( !R_ImagePolicyOperationAllowed() ) {
+		return 0;
+	}
+	R_RenderThread_Sync( "image registry" );
+	// a reload exists to observe the files in place now; never let it consult
+	// (or leave behind) memoized probe results
+	R_SetDDSProbeCacheActive( false );
+
+	if ( PendingReductionReloads() > 0 ) {
+		common->Printf( "Texture reduction changed again: %d queued textures are checked again\n", PendingReductionReloads() );
+	}
+	ClearReductionReloads();
+	idList<sortedImage_t> stale;
+	int unaffected = 0;
+	for ( int i = 0; i < images.Num(); i++ ) {
+		idImage *image = images[i];
+		if ( R_ImageNeedsReductionReload( image ) ) {
+			sortedImage_t &entry = stale.Alloc();
+			entry.image = image;
+			entry.size = 0;
+			entry.index = i;
+		} else if ( image != NULL && image->IsFileBacked() && image->IsLoaded() && !R_IsMutableRenderImage( image ) ) {
+			unaffected++;
+		}
+	}
+	if ( stale.Num() > 1 ) {
+		qsort( stale.Ptr(), stale.Num(), sizeof( sortedImage_t ), R_QsortImageName );
+	}
+	reductionReloads.SetNum( stale.Num() );
+	for ( int i = 0; i < stale.Num(); i++ ) {
+		reductionReloads[i] = stale[i].image;
+	}
+	reductionReloadStats.startMsec = R_ReductionReloadClockMsec();
+	reductionReloadStats.unaffected = unaffected;
+	common->Printf( "Texture reduction changed: %d textures to reload, %d unaffected\n", stale.Num(), unaffected );
+	return stale.Num();
+}
+
+bool idImageManager::ContinueReductionReloads( double budgetMsec ) {
+	if ( PendingReductionReloads() <= 0 ) {
+		return false;
+	}
+	if ( !R_ImagePolicyOperationAllowed() ) {
+		return true;
+	}
+	// a failed device reloads everything when it restarts
+	if ( R_RendererDeviceAwaitsRestart() ) {
+		common->Printf( "Texture reduction: %d queued textures left for the renderer restart\n", PendingReductionReloads() );
+		ClearReductionReloads();
+		imageDecodeWorkers.Stop();
+		return false;
+	}
+	R_RenderThread_Sync( "image registry" );
+
+	const bool finishing = budgetMsec <= 0.0;
+	const int workerCount = R_ReductionWorkerCount();
+	const size_t inFlightLimit = static_cast<size_t>( Max( 1, workerCount ) * REDUCTION_IN_FLIGHT_PER_WORKER );
+	const double frameStart = R_ReductionReloadClockMsec();
+	int workThisFrame = 0;
+	const auto overBudget = [&]() {
+		return workThisFrame > 0 && !finishing && R_ReductionReloadClockMsec() - frameStart >= budgetMsec;
+	};
+	// One step of main-thread work on one image, timed for the completion line.
+	double lastStepMsec = 0.0;
+	const auto timed = [&]( idImage *image, const auto &step ) {
+		const double imageStart = R_ReductionReloadClockMsec();
+		const imageLoadPhaseTimings_t phasesBefore = imageLoadPhaseTimings;
+		step();
+		const double imageMsec = R_ReductionReloadClockMsec() - imageStart;
+		lastStepMsec = imageMsec;
+		R_AddPhaseDelta( reductionPhases, phasesBefore, imageLoadPhaseTimings );
+		if ( imageMsec > reductionSlowestMsec ) {
+			reductionSlowestMsec = imageMsec;
+			reductionSlowestName = image->GetName();
+			reductionSlowestPhases.Clear();
+			R_AddPhaseDelta( reductionSlowestPhases, phasesBefore, imageLoadPhaseTimings );
+		}
+		workThisFrame++;
+	};
+
+	for ( ;; ) {
+		// Publish what the workers finished, in the order it was deferred.
+		while ( !reductionInFlight.empty() && !overBudget() ) {
+			if ( reductionInFlight.front().job->state.load() != imageDecodeJob_t::DONE ) {
+				if ( !finishing || !imageDecodeWorkers.Running() ) {
+					break;
+				}
+				imageDecodeWorkers.WaitFor( reductionInFlight.front().job );
+				continue;
+			}
+			const reductionInFlight_t entry = reductionInFlight.front();
+			reductionInFlight.pop_front();
+			if ( !R_ImageNeedsReductionReload( entry.image ) ) {
+				reductionReloadStats.skipped++;
+				continue;
+			}
+			if ( entry.job->decoded ) {
+				reductionReloadStats.workerDecoded++;
+				reductionReloadStats.workerMsec += entry.job->workerMsec;
+				reductionReloadStats.longestWorkerMsec = Max( reductionReloadStats.longestWorkerMsec, entry.job->workerMsec );
+			}
+			bool published = false;
+			timed( entry.image, [&]() { published = entry.image->PublishDecodeJob( entry.job ); } );
+			if ( published ) {
+				reductionReloadStats.workerPublished++;
+			}
+			reductionPublishMsec += lastStepMsec;
+			reductionReloadStats.reloaded++;
+		}
+
+		// Start the next images: a load that needs no decode (a DDS, the
+		// generated cache) finishes here; a 2D decode goes to a worker.
+		while ( reductionReloadNext < reductionReloads.Num() && !overBudget()
+				&& ( workerCount == 0 || reductionInFlight.size() < inFlightLimit )
+				&& R_ReductionInFlightBytes() < REDUCTION_IN_FLIGHT_BYTES ) {
+			idImage *image = reductionReloads[ reductionReloadNext++ ];
+			if ( !R_ImageNeedsReductionReload( image ) ) {
+				reductionReloadStats.skipped++;
+				continue;
+			}
+			if ( workerCount == 0 ) {
+				timed( image, [&]() { image->Reload( true ); } );
+				reductionInlineMsec += lastStepMsec;
+				reductionReloadStats.reloaded++;
+				continue;
+			}
+			std::shared_ptr<imageDecodeJob_t> job;
+			bool deferred = false;
+			timed( image, [&]() { deferred = image->ReloadOrDefer( job ); } );
+			( deferred ? reductionDeferMsec : reductionInlineMsec ) += lastStepMsec;
+			if ( deferred ) {
+				imageDecodeWorkers.EnsureStarted( workerCount );
+				imageDecodeWorkers.Submit( job );
+				reductionInFlight.push_back( { image, job } );
+				reductionReloadStats.deferred++;
+			} else {
+				reductionReloadStats.reloaded++;
+			}
+		}
+
+		if ( !finishing || PendingReductionReloads() <= 0 ) {
+			break;
+		}
+		if ( !reductionInFlight.empty() && !imageDecodeWorkers.Running() ) {
+			// nothing left to run them: load them inline
+			for ( reductionInFlight_t &entry : reductionInFlight ) {
+				entry.job->decoded = false;
+				entry.job->state.store( imageDecodeJob_t::DONE );
+			}
+		}
+	}
+	const double frameMsec = R_ReductionReloadClockMsec() - frameStart;
+	reductionReloadStats.workMsec += frameMsec;
+	reductionReloadStats.longestFrameMsec = Max( reductionReloadStats.longestFrameMsec, frameMsec );
+	reductionReloadStats.frames++;
+
+	if ( PendingReductionReloads() > 0 ) {
+		return true;
+	}
+	imageDecodeWorkers.Stop();
+	const double totalMsec = R_ReductionReloadClockMsec() - reductionReloadStats.startMsec;
+	common->Printf( "Texture reduction applied: reloaded %d textures over %d frames in %.0f ms "
+		"(%.0f ms of loading, at most %.1f ms in one frame), %d already current, %d unaffected\n",
+		reductionReloadStats.reloaded, reductionReloadStats.frames, totalMsec, reductionReloadStats.workMsec,
+		reductionReloadStats.longestFrameMsec, reductionReloadStats.skipped, reductionReloadStats.unaffected );
+	common->Printf( "Texture reduction workers: %d of %d textures deferred, %d decoded by a worker, %d published from it, %.0f ms of worker decoding (longest %.1f ms)\n",
+		reductionReloadStats.deferred, reductionReloadStats.reloaded, reductionReloadStats.workerDecoded,
+		reductionReloadStats.workerPublished, reductionReloadStats.workerMsec, reductionReloadStats.longestWorkerMsec );
+	common->Printf( "Texture reduction main thread: %.0f ms loading inline, %.0f ms deferring, %.0f ms publishing\n",
+		reductionInlineMsec, reductionDeferMsec, reductionPublishMsec );
+	common->Printf( "Texture reduction phases: probe %.0f ms (%d), cache %.0f ms (%d), read and decode %.0f ms (%d), upload %.0f ms (%d)\n",
+		reductionPhases.probeMsec, reductionPhases.probeCount, reductionPhases.generatedMsec, reductionPhases.generatedCount,
+		reductionPhases.decodeMsec, reductionPhases.decodeCount, reductionPhases.uploadMsec, reductionPhases.uploadCount );
+	if ( reductionSlowestName.Length() > 0 ) {
+		common->Printf( "Texture reduction: slowest main-thread step %s, %.1f ms (probe %.1f, cache %.1f, read and decode %.1f, upload %.1f)\n",
+			reductionSlowestName.c_str(), reductionSlowestMsec, reductionSlowestPhases.probeMsec,
+			reductionSlowestPhases.generatedMsec, reductionSlowestPhases.decodeMsec, reductionSlowestPhases.uploadMsec );
+	}
+	ClearReductionReloads();
+	return false;
 }
 
 int idImageManager::LoadLevelImages( bool pacifier ) {
@@ -1979,6 +2482,14 @@ void idImageManager::EndLevelLoad() {
 	//R_ListImages_f( idCmdArgs( "sorted sorted", false ) );
 
 	R_SetDDSProbeCacheActive( false );
+
+	// A texture setting changed before or during the load, and the images the
+	// load kept still carry the old one. Finish them now, behind the loading
+	// screen, rather than over the first frames of play.
+	if ( ( R_ImageReductionCvarsChanged( false ) || R_ImageSamplerCvarsChanged( false ) || PendingReductionReloads() > 0 )
+			&& !R_ImagePolicyActive() ) {
+		ApplyPendingImageCvars( true );
+	}
 }
 
 /*

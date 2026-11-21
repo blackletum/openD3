@@ -47,7 +47,7 @@ CATALOG = {
         "com_machineSpec", "com_maxfps", "image_anisotropy", "image_downSizeBumpLimit", "image_downSizeLimit",
         "image_downSizeSpecularLimit", "image_usePrecompressedTextures", "r_rendererUploadFrameBuffers", "r_rendererUploadMegs",
         "r_shadowMapMaxUpdatesPerView", "r_shadowMapCascadeCount", "r_shadowMapPointFilterMode", "image_picmip", "r_shadowMapSize",
-        "s_maxEmitterChannels", "s_maxSoundsPerShader", "s_numberOfSpeakers")},
+        "s_maxEmitterChannels", "s_maxSoundsPerShader", "s_numberOfSpeakers", "r_ssaoMethod")},
     "r_shadowMapPointSize": ("number", 512), "r_shadowMapFilterTaps": ("number", 9), "r_shadowMapPointFilterTaps": ("number", 9),
     "r_shadowMapFilterMode": ("number", 2), "r_shadowMapAtlasSize": ("number", 4096), "r_ssaoSamples": ("number", 20),
     "r_bloomMipCount": ("number", 5), "r_motionBlurSamples": ("number", 8), "ui_retainedScale": ("number", 1),

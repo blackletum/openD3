@@ -28,12 +28,22 @@ The branch history, oldest first:
 1. **Merge openQ4** through `55bbe166a`, taking the upstream tree unchanged.
    openQ4's history is now part of openD3's, so later syncs are ordinary
    merges of `openq4-upstream/main`. The latest sync merged upstream through
-   `b1f6ed617` (2026-11-21): one GLSL program per shader source with
+   `d3056567a` (2026-11-21): HBAO and GTAO beside SSAO (`r_ssaoMethod`) with
+   SSAO filtered so it no longer dithers, shadowed volumetric haze, parallax
+   occlusion mapping for PBR height maps, one loading-frame pacer for the
+   start-up and level loading screens (`LoadingFramePacer`,
+   `common->LoadingCheckpoint`), a map change from the start-up screen
+   handed straight to the loading screen, the level's first view drawn
+   unseen before the hand-over, the start autosave written on the storage
+   worker, texture reloads limited to the images a setting reaches, spread
+   across frames and decoded on worker threads, and cheaper retained UI
+   events. The one before it, through
+   `b1f6ed617` (2026-11-21), brought one GLSL program per shader source with
    unchanged uniforms skipped, sixteen `shaderTexture`s per GLSL stage, and
    the retained runtime's frame savings (no layout pass at rest beside
    settings controls, lists, fields and scrollbars; sliding vectors
    compiled at cached phases; a vector's alike paths drawn as one
-   geometry). The one before it, through
+   geometry). The one before that, through
    `966d8ae6f` (2026-11-20), brought cascaded outdoor shadow maps on Quality and
    Ultra, a per-receiver normal offset for distant lights' shadows, layered
    OpenGL point-shadow cubes, BC6H (HDR) textures and more texture-pack
@@ -242,6 +252,22 @@ release of Doom 3 (1.3.1 packs):
   refinement round), and the start-up screen draws in about 120 draws a
   frame where it took about 240. Logs have no error. Not run: shadow maps,
   `mars_city1`, saves, and Resurrection of Evil.
+- After the `d3056567a` sync (2026-11-21), on the staged build at 1280x720:
+  compile and stage of every target, and `vk_shader_header_pin` passes on
+  the regenerated headers. `game/mars_city1` loads on OpenGL (1,969
+  entities), draws the Traffic Monitoring Station, saves and loads.
+  `game/alphalabs1`, started with `map`, draws with its HUD on OpenGL and
+  Vulkan and writes its start autosave through the storage worker; with
+  `r_ssao 1`, `r_ssaoMethod` 0, 1 and 2 (SSAO, HBAO, GTAO) each change the
+  picture on both renderers. With `ui_retained 1`, `+map game/alphalabs1`
+  at launch goes from the start-up screen to the loading screen and into the
+  level on Vulkan, and at the title `opend3_system open` is accepted
+  (`result=1`) and the SYSTEM page draws. A `game/mp/d3dm1` listen server
+  draws the world and HUD on Vulkan (887 entities), and the dedicated server
+  spawns the same map with `si_map` and `spawnServer`. Logs have no error;
+  the warnings are the known retail ones. Not run: shadow maps, volumetric
+  haze and parallax occlusion (no stock Doom 3 content uses them), texture
+  reloads from the settings, and Resurrection of Evil.
 - Stock specular follows Doom 3 on every path. `r_correctspecular` and
   `r_normalizebumpmap` default to 0 (they came from Prey at 1), and the OpenGL
   ARB path passes the specular constant unscaled, as id's `draw_arb2.cpp`
@@ -448,8 +474,10 @@ Listed roughly by how much they block a player.
    the Prey data blocks formerly behind `HUMANHEAD`, and the stretching of
    Quake 4's message dimmer and Tourney warm-up bar, which layout patches
    replace. The chapter list and the campaign commands now name Doom 3's maps. Still to go through: the Quake 4
-   HUD routes in the retained HUD, the Quake 4 language-pack listing, and
-   Quake 4 image and font fallbacks.
+   HUD routes in the retained HUD, the Quake 4 language-pack listing,
+   Quake 4 image and font fallbacks, and the Prey retail image aliases and
+   known-missing list in `src/renderer/Image_load.cpp`
+   (`PREY_RETAIL_IMAGE_ALIASES`), which came with the openPREY layer.
 4. **Startup warnings still to clear** (Procedure 1 in `AGENTS.md`): the
    engine's chat window and menu background precache four Quake 4 menu images;
    the retained HUD looks for a Quake 4 HUD document; the engine asks for a
@@ -634,6 +662,33 @@ keep openD3's side and the adapter drops those verbs and CVars. Git's rename
 detection carried the settings-tree and multiplayer strings from
 `content/baseoq4`'s language tables into openD3's; `content/baseod3` keeps
 openD3's side. No shader source changed.
+
+On the `d3056567a` sync no Quake 4 feature reached the engine, but rename
+detection carried upstream's Quake 4 game changes (the medic's combat stance,
+an indexed lookup of script immediates, `common->LoadingCheckpoint` calls in
+the script compiler and the model parser) into `src/game` and `src/d3xp`;
+both trees keep openD3's side, and the new medic test stays out. Those are
+SDK-licensed code; openD3's game library makes no `LoadingCheckpoint` call
+yet, so its script compile and model parses are still offered frames only by
+prints and file reads. The Ambient Occlusion choice adds `r_ssaoMethod` to the
+settings service's catalog, so `tools/ui/doom3_menu_system.py` declares it
+and `system.rui` was regenerated; openD3's SYSTEM page shows no ambient
+occlusion row, so upstream's two new strings (`#str_232633`, `#str_232634`)
+are not taken. `content/baseod3/pak0/glprogs/ssao.fs` takes upstream's new
+OpenGL kernels. The stock Display page's `gui_set_sys_ao` sync in
+`Session_menu.cpp` arrived with it and does nothing for Doom 3's menus.
+openD3 does not keep upstream's new developer documents (loading
+presentation, parallax occlusion, retained event costs) or the multiplayer
+guide. The only real conflicts after the converted three-way merge were
+`Image_load.cpp` (openD3's Prey alias table beside upstream's new include)
+and `tr_fontTTF.cpp`, where upstream's parallel glyph rasterizer now passes
+openD3's `verticalScale`. Both sides had touched the Vulkan shader sources;
+the SPIR-V headers were regenerated after the rebrand, which renames the
+parallax functions inside `pbr_direct.glsl`.
+
+`rebrand_upstream.py` has no `--help`: any argument other than `--check`
+runs it for real. Besides the files below, it renames openD3's own
+`Session_ShowOpenD3Levelshot` in `src/framework/Session.cpp`; restore it.
 
 The script also rewrites openD3's own prose in `docs/` and `assets/` and a
 few tools that the merge did not touch, and the legacy `openq4-ui` format

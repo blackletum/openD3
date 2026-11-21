@@ -78,18 +78,37 @@ def validate_stock_bump_sampling_contract() -> None:
         "Quake 4 bump red-to-alpha texture view",
     )
 
+    # The classic samples go through RetailTexture, which is the stock
+    # texture() call unless the retail Parallaxbump guide traces its REN-11
+    # ray (pbr_direct.glsl); then it samples with the untraced gradients.
+    direct = read("src/renderer/Vulkan/shaders/pbr_direct.glsl")
+    retail = braced_body(
+        direct,
+        "vec4 RetailTexture(sampler2D map, vec2 texCoord, vec2 dx, vec2 dy)",
+        "retail parallax sampling helper",
+    )
+    require_order(
+        retail,
+        (
+            "if (gRetailParallaxRay) {",
+            "return textureGrad(map, texCoord, dx, dy);",
+            "return texture(map, texCoord);",
+        ),
+        "retail parallax sampling helper",
+    )
+
     fragment = read("src/renderer/Vulkan/shaders/interaction.frag")
     require_order(
         fragment,
         (
-            "vec4 bumpSample = texture(bumpMap, bumpTexCoord);",
+            "vec4 bumpSample = RetailTexture(bumpMap, bumpTexCoord, gPBRBumpDx, gPBRBumpDy);",
             # r_enhancedMaterials replaces only the decode and the specular
             # term (enhanced_material.glsl); the stock pair is retail Prey's
             # model (stock_specular.glsl).
             "vec3 localNormal = EnhancedMaterialActive() ? EnhancedLocalNormal(bumpSample)",
             ": StockLocalNormal(bumpSample);",
             "float ndotl = max(dot(lightDir, localNormal), 0.0);",
-            "vec3 specularSample = texture(specularMap, specularTexCoord).rgb;",
+            "vec3 specularSample = RetailTexture(specularMap, specularTexCoord, gPBRDataDx, gPBRDataDy).rgb;",
             "specularTerm = EnhancedSpecularTerm(halfAngle, SafeNormalize(vViewVector), localNormal, specularSample);",
             "specularTerm = StockSpecularTerm(halfAngle, lightDir, SafeNormalize(vViewVector), localNormal) * 2.0;",
             "vec3 specular = specularSample * inter.specularColor.rgb * specularTerm;",

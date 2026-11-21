@@ -2176,6 +2176,9 @@ void RetainedUI_PrecacheModelWorlds() { host.PrecacheModelWorlds(); }
 void RetainedUI_EndInitialization() {
 	RetainedUI_DestroyView(initializationView); initializationView = nullptr;
 }
+bool RetainedUI_HasInitializationView() {
+	return initializationView != nullptr && !initializationView->failed;
+}
 bool RetainedUI_CanUpdateInitialization() {
 	return std::this_thread::get_id() == editThread && !editCallDepth && !editWorkDepth &&
 		!resourcesRefreshing && !editDraining && initializationView && !initializationView->failed &&
@@ -2564,6 +2567,7 @@ void RetainedUI_ClearModelWorlds() {}
 void RetainedUI_PrecacheModelWorlds() {}
 bool RetainedUI_DrawInitialization(const char*) { return false; }
 bool RetainedUI_CanUpdateInitialization() { return false; }
+bool RetainedUI_HasInitializationView() { return false; }
 void RetainedUI_EndInitialization() {}
 void RetainedUI_Init() {}
 void RetainedUI_Shutdown() {}

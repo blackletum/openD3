@@ -167,6 +167,11 @@ imageFilterState_t R_GetDefaultImageFilterState();
 
 #include "ImageOpts.h"
 #include "../imagetools/BinaryImage.h"
+#include "../imagetools/ImageTools.h"
+#include <atomic>
+#include <memory>
+
+struct imageDecodeJob_t;
 
 #define	MAX_IMAGE_NAME	256
 
@@ -246,6 +251,24 @@ public:
 	// from the image's source. A pure lock reloads such images (see
 	// idImageManager::ReloadGeneratedCacheImages).
 	bool		HoldsGeneratedCacheContent() const { return generatedCacheContent && IsLoaded(); }
+	// The reduction settings (downsize/picmip policy, decoded block format and
+	// the precompressed-texture switch) this image would be built under now
+	// differ from the ones its last load was built under. Unknown counts as
+	// changed. idImageManager::CheckCvars reloads only these images.
+	bool		ReductionInputsChanged() const;
+
+	// The settings reload's worker route (idImageManager::ContinueReductionReloads).
+	// ReloadOrDefer reloads the image as Reload( true ) would, except that a load
+	// which reaches the decode of a 2D source stops there: the image keeps its
+	// current texture untouched, the files the decode reads are recorded into a
+	// job for an image worker, and the call returns true. PublishDecodeJob then
+	// reloads the image with the worker's result standing in for that decode.
+	// A result that no longer fits the load (other settings, another source)
+	// is ignored and the load decodes inline, so the outcome is always the one
+	// Reload( true ) gives.
+	bool		ReloadOrDefer( std::shared_ptr<imageDecodeJob_t> &job );
+	// true when the worker's result was used, false when the load decoded inline
+	bool		PublishDecodeJob( const std::shared_ptr<imageDecodeJob_t> &job );
 
 	void		SetReferencedOutsideLevelLoad() { referencedOutsideLevelLoad = true; }
 	bool		IsReferencedOutsideLevelLoad() const { return referencedOutsideLevelLoad; }
@@ -382,6 +405,22 @@ private:
 	uint64_t consumedLoadRevision = 0;
 	const uint64_t		imagePolicyIdentity;
 	bool				generatedCacheContent = false;	// set by the last ActuallyLoadImage that uploaded content
+	// What ActuallyLoadImage built the image under; see ReductionInputsChanged.
+	struct reductionKey_t {
+		imageDownsizePolicy_t	policy;
+		int						decodedFormat = 0;	// R_DecodedImageCompression's answer
+		int						decodedColor = 0;
+		int						usePrecompressed = 0;
+		bool					known = false;
+		bool operator==( const reductionKey_t &other ) const {
+			return known && other.known && policy.maxDimension == other.policy.maxDimension
+				&& policy.mipShift == other.policy.mipShift && policy.minDimension == other.policy.minDimension
+				&& decodedFormat == other.decodedFormat && decodedColor == other.decodedColor
+				&& usePrecompressed == other.usePrecompressed;
+		}
+	};
+	reductionKey_t		CurrentReductionKey() const;
+	reductionKey_t		loadedReductionKey;
 
 
 };
@@ -451,6 +490,48 @@ bool	R_WritePNG(const char* filename, const byte* data, int width, int height, i
 bool	R_WriteImageFile(const char* filename, const byte* data, int width, int height, bool flipVertical = false, const char* basePath = "fs_savepath");
 
 
+/*
+================================================
+imageDecodeJob_t
+
+One 2D source decode for an image worker: the inputs the load had resolved
+when it reached the decode, the recorded file reads, and what the decode,
+downsize, mip derivation and block compression produced. Nothing here points at
+the idImage; the main thread matches the result to the load again when it
+publishes it.
+================================================
+*/
+struct imageDecodeJob_t {
+	// set on the main thread when the load is deferred
+	idStr					imageName;
+	idStr					sourceName;
+	idStr					generatedName;
+	textureUsage_t			usage = TD_DEFAULT;
+	textureFilter_t			filter = TF_DEFAULT;
+	unsigned int			flags = 0;
+	bool					allowDownSize = true;
+	imageDownsizePolicy_t	policy;
+	idImageOpts				opts;				// derived before the decode
+	idImageFileTape			tape;
+
+	// set by the worker; read by the main thread once state is DONE
+	enum { QUEUED = 0, RUNNING = 1, DONE = 2 };
+	std::atomic<int>		state{ QUEUED };
+	bool					decoded = false;
+	textureUsage_t			resultUsage = TD_DEFAULT;	// an image program may infer TD_BUMP
+	ID_TIME_T				sourceFileTime = FILE_NOT_FOUND_TIMESTAMP;
+	imageReductionResult_t	reduction;
+	bool					exactReduction = false;
+	idImageOpts				resultOpts;
+	std::unique_ptr<idBinaryImage> image;
+	double					workerMsec = 0.0;
+};
+
+// Runs on an image worker: decodes job.sourceName from the job's tape, applies
+// the policy, derives the levels and compresses. False when the replay missed,
+// the source did not decode or anything threw; the main thread then loads the
+// image inline.
+bool R_RunImageDecodeJob( imageDecodeJob_t &job );
 
 class idImageManager {
 public:
@@ -508,8 +589,18 @@ public:
 	bool				ReloadGeneratedCacheImages();
 	void ClearCheckedImagePolicyChanges(); // Only after an exact checked restart.
 
-	// reloads every image when a texture reduction cvar changed this frame
+	// reloads the images a texture reduction cvar change reaches, and
+	// reapplies samplers when a sampling cvar changed
 	void				CheckCvars();
+	// Queues the resident images a reduction change reaches; CheckCvars then
+	// reloads them within image_reloadFrameMsec a frame. Returns the count.
+	int					ReloadReductionChangedImages();
+	// Reloads queued images until the queue is empty or, when budgetMsec is
+	// above zero, that much time has passed (at least one image either way).
+	// True while images are still queued.
+	bool				ContinueReductionReloads( double budgetMsec );
+	// queued images plus those an image worker is decoding
+	int					PendingReductionReloads() const;
 
 	// swallows the born-modified state of those cvars during startup
 	void				PrimeCvars();
@@ -577,6 +668,29 @@ public:
 	idHashIndex			imageHash;
 
 	bool				insideLevelLoad;			// don't actually load images now
+
+	// The images a reduction change still has to reload, in name order, and
+	// the totals the completion line reports. Cleared at shutdown and by
+	// PurgeAllImages, whose reload rebuilds everything.
+	struct reductionReloadStats_t {
+		double	startMsec = 0.0;
+		double	workMsec = 0.0;
+		double	longestFrameMsec = 0.0;
+		int		frames = 0;
+		int		reloaded = 0;
+		int		skipped = 0;
+		int		unaffected = 0;
+		int		deferred = 0;			// handed to an image worker
+		int		workerDecoded = 0;		// decoded by a worker
+		int		workerPublished = 0;	// published from a worker's result
+		double	workerMsec = 0.0;
+		double	longestWorkerMsec = 0.0;
+	};
+	idList<idImage*>	reductionReloads;
+	int					reductionReloadNext = 0;
+	reductionReloadStats_t reductionReloadStats;
+	void				ClearReductionReloads();
+	void				ApplyPendingImageCvars( bool finishReloads );
 	bool				preloadingMapImages;		// unless this is set
 };
 

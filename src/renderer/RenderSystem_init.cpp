@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 
 
 #include "tr_local.h"
+#include "VolumetricLighting.h"
 #if !defined( OPEND3_RENDERER_VK_MODULE ) && !defined( OPEND3_RENDERER_GLES_MODULE )
 #include "draw_pbr.h"
 #endif
@@ -50,6 +51,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "RenderGraph.h"
 #include "RenderGraphResources.h"
 #include "MaterialResourceTable.h"
+#include "PBRNativeContract.h"
 #include "ClassicGuiDomain.h"
 #include "ClassicCinematicPostDomain.h"
 #include "ClassicSpecialFrameDomain.h"
@@ -345,6 +347,12 @@ static void R_MSAAResolvesLastFrame( int &color, int &depth ) {
 idCVar r_postAA( "r_postAA", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "post AA mode: 0 = off, 1 = SMAA 1x medium, 2 = SMAA 1x high, 3 = SMAA 1x ultra, 4 = SMAA 1x colour-edge prototype", 0, 4, idCmdSystem::ArgCompletion_Integer<0,4> );
 idCVar r_postAAStatePoisonTest( "r_postAAStatePoisonTest", "0", CVAR_RENDERER | CVAR_BOOL, "intentionally dirty GL texture/client state before SMAA post-AA draws for validation" );
 idCVar r_pbrMaterials( "r_pbrMaterials", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "draw explicitly PBR-authored materials as PBR; 0 keeps their classic stages. Stock materials are never PBR" );
+// Parallax occlusion mapping (REN-11): authored PBR heightMap materials and,
+// on Vulkan, the retail Parallaxbump guide. Off draws both exactly as before.
+idCVar r_parallaxOcclusion( "r_parallaxOcclusion", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "ray-marched parallax occlusion mapping for PBR materials with a heightMap, and on Vulkan for the retail Parallaxbump guide; 0 draws heightMap materials flat and keeps the retail single-step offset" );
+idCVar r_parallaxSamples( "r_parallaxSamples", "32", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "most height samples one parallax ray takes, at grazing angles; a quarter of it at normal incidence, falling with distance", 8, 64, idCmdSystem::ArgCompletion_Integer<8,64> );
+idCVar r_parallaxDistance( "r_parallaxDistance", "1536", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "view distance at which parallax has faded back to the flat surface; it fades over the last quarter", 64.0f, 16384.0f );
+idCVar r_parallaxShadows( "r_parallaxShadows", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "trace a self-shadow ray through the height field toward each light for parallax surfaces" );
 idCVar r_vkPBRSpecularAA( "r_vkPBRSpecularAA", "1", CVAR_RENDERER | CVAR_BOOL, "filter native Vulkan PBR roughness by shading-normal variance; disable only for comparison" );
 idCVar r_pbrGeneratedLegacyFallback( "r_pbrGeneratedLegacyFallback", "1", CVAR_RENDERER | CVAR_BOOL, "allow development-only classic fallback generation for PBR-only materials" );
 idCVar r_pbrDebug( "r_pbrDebug", "0", CVAR_RENDERER | CVAR_INTEGER, "PBR debug view: 0=off, 1=albedo, 2=normal, 3=metallic, 4=roughness, 5=AO, 6=emissive, 7=state marker (green=PBR, magenta=contract mismatch)", 0, 7, idCmdSystem::ArgCompletion_Integer<0,7> );
@@ -383,10 +391,10 @@ idCVar r_ssaoBias( "r_ssaoBias", "2.0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOA
 idCVar r_ssaoIntensity( "r_ssaoIntensity", "1.35", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "SSAO darkening strength", 0.0f, 4.0f );
 idCVar r_ssaoPower( "r_ssaoPower", "1.6", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "SSAO response curve", 0.1f, 4.0f );
 idCVar r_ssaoMaxDistance( "r_ssaoMaxDistance", "220.0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "fade SSAO out past this view-space distance", 16.0f, 4096.0f );
-idCVar r_ssaoSamples( "r_ssaoSamples", "20", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "number of SSAO spiral samples", 4, 32, idCmdSystem::ArgCompletion_Integer<4,32> );
+idCVar r_ssaoSamples( "r_ssaoSamples", "20", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "depth samples per pixel for every r_ssaoMethod (32 also selects full resolution when r_ssaoResolution is 0)", 4, 32, idCmdSystem::ArgCompletion_Integer<4,32> );
 idCVar r_ssaoDebug( "r_ssaoDebug", "0", CVAR_RENDERER | CVAR_BOOL, "visualize SSAO only" );
 idCVar r_ssaoResolution( "r_ssaoResolution", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER,
-	"SSAO resolution: 0 automatic (full at the maximum r_ssaoSamples, half below), 1 full, 2 half", 0, 2,
+	"SSAO resolution: 0 automatic (full at the maximum r_ssaoSamples, half below), 1 full, 2 half; r_ssaoMethod 3 (the reference) is always full", 0, 2,
 	idCmdSystem::ArgCompletion_Integer<0,2> );
 
 /*
@@ -401,11 +409,69 @@ Both renderers read it (OpenGL since FPS-04).
 ====================
 */
 bool R_SSAOHalfResolution() {
+	if ( R_SSAOMethod() == SSAO_METHOD_REFERENCE ) {
+		// The reference is the comparison every other result is measured against.
+		return false;
+	}
 	switch ( r_ssaoResolution.GetInteger() ) {
 		case 1: return false;
 		case 2: return true;
 		default: return r_ssaoSamples.GetInteger() < 32;
 	}
+}
+
+/*
+====================
+R_SSAOMethod
+
+The ambient occlusion kernel of the occlusion pass (REN-10, ssaoMethod_t).
+0 is the SSAO obscurance estimate the presets ship with. 1 is horizon-based
+ambient occlusion (HBAO): per screen direction, the rises of the horizon above
+the tangent plane, weighted evenly over directions. 2 is ground-truth ambient
+occlusion (GTAO): a horizon search per slice and the cosine-weighted visible
+arc between the horizons, the visibility native PBR's multi-bounce and
+specular occlusion expect. 3 is a brute-force reference, cosine-weighted rays
+marched through the depth buffer at full resolution and unfiltered, many
+times GTAO's cost, for comparisons only. All four share the occlusion target,
+filter, resolve and native PBR field, so the application (classic factor,
+indirect-only PBR occlusion), MSAA, dynamic resolution, subviews and both
+backends are the same. The r_ssao* cvars keep their names: every method is
+screen-space ambient occlusion.
+====================
+*/
+idCVar r_ssaoMethod( "r_ssaoMethod", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER,
+	"ambient occlusion method when r_ssao is on: 0 SSAO (obscurance), 1 HBAO (horizon-based), 2 GTAO (ground-truth), 3 brute-force reference (developer comparison, very slow)",
+	SSAO_METHOD_SSAO, SSAO_METHOD_COUNT - 1, idCmdSystem::ArgCompletion_Integer<SSAO_METHOD_SSAO, SSAO_METHOD_COUNT - 1> );
+idCVar r_ssaoMultiBounceAlbedo( "r_ssaoMultiBounceAlbedo", "0.3", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT,
+	"GTAO: the grey albedo classic surfaces bounce the light their occluders trap with (native PBR uses its own albedo); 0 turns multi-bounce off", 0.0f, 1.0f );
+
+int R_SSAOMethod() {
+	return idMath::ClampInt( SSAO_METHOD_SSAO, SSAO_METHOD_COUNT - 1, r_ssaoMethod.GetInteger() );
+}
+
+bool R_SSAOFiltered() {
+	return R_SSAOMethod() != SSAO_METHOD_REFERENCE;
+}
+
+/*
+====================
+R_SSAOMethodInfo
+
+x the method, y the pattern turn: under temporal AA (a jittered view) HBAO
+and GTAO turn their sixteen sample patterns by a quarter pattern per frame,
+so the history accumulates four times the directions; without it the
+patterns hold still and nothing crawls. z the classic multi-bounce albedo,
+GTAO only (HBAO's even weighting is not the visibility the fit expects).
+====================
+*/
+void R_SSAOMethodInfo( const viewDef_t *viewDef, float info[4] ) {
+	const int method = R_SSAOMethod();
+	const bool temporal = ( method == SSAO_METHOD_HBAO || method == SSAO_METHOD_GTAO )
+		&& viewDef != NULL && viewDef->temporalJitterEnabled;
+	info[0] = static_cast<float>( method );
+	info[1] = temporal ? 0.25f * static_cast<float>( tr.frameCount & 3 ) : 0.0f;
+	info[2] = method == SSAO_METHOD_GTAO ? idMath::ClampFloat( 0.0f, 1.0f, r_ssaoMultiBounceAlbedo.GetFloat() ) : 0.0f;
+	info[3] = 0.0f;
 }
 idCVar r_motionBlur( "r_motionBlur", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "enable subtle camera motion blur post-process" );
 idCVar r_motionBlurStrength( "r_motionBlurStrength", "0.45", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "motion blur strength multiplier", 0.0f, 2.0f );
@@ -5177,6 +5243,7 @@ void GfxInfo_f( const idCmdArgs &args ) {
 		RENDER_GRAPH_MAX_RESOURCE_ACCESSES );
 	R_RenderGraphResources_PrintGfxInfo();
 	R_MaterialResourceTable_PrintGfxInfo();
+	R_Parallax_PrintInfo();
 #if !defined( OPEND3_RENDERER_VK_MODULE ) && !defined( OPEND3_RENDERER_GLES_MODULE )
 	RB_GLPBR_PrintInfo();
 #endif
@@ -5748,6 +5815,7 @@ void GfxInfo_f( const idCmdArgs &args ) {
 		r_pbrGeneratedLegacyFallback.GetBool() ? 1 : 0,
 		r_pbrInferFromLegacyMaterials.GetBool() ? 1 : 0,
 		r_pbrDebug.GetInteger() );
+	R_Volumetric_PrintStatus();
 	R_ModernGLExecutor_PrintGfxInfo();
 #ifndef OPEND3_RENDERER_VK_MODULE
 	RB_HDRPrintGfxInfo();
@@ -6529,6 +6597,7 @@ void R_InitCommands( void ) {
 #endif
 	cmdSystem->AddCommand( "rendererGpuTimerSelfTest", R_RendererGpuTimerSelfTest_f, CMD_FL_RENDERER, "run renderer GPU timer query self tests" );
 	cmdSystem->AddCommand( "rendererTemporalPresentationStatus", R_TemporalPresentation_PrintStatus_f, CMD_FL_RENDERER, "report dynamic-resolution and temporal-history state" );
+	R_Volumetric_RegisterCommands();
 	cmdSystem->AddCommand( "pbrProbeSettle", R_PBRProbeSettle_f, CMD_FL_RENDERER, "finish background reflection-probe filtering on the next frames, as a screenshot does" );
 	cmdSystem->AddCommand( "rendererMotionBlurStatus", R_TemporalPresentation_PrintMotionBlurStatus_f, CMD_FL_RENDERER, "report motion blur requested/effective settings and history decisions; \"reset\" clears the counters" );
 	cmdSystem->AddCommand( "rendererScenePacketSelfTest", R_RendererScenePacketSelfTest_f, CMD_FL_RENDERER, "run renderer front-end scene-packet self tests" );

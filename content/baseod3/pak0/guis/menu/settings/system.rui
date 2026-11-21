@@ -141,6 +141,8 @@
   "settings.baseline.s_maxSoundsPerShader": {"type": "number", "initial": 0},
   "settings.draft.s_numberOfSpeakers": {"type": "number", "initial": 0},
   "settings.baseline.s_numberOfSpeakers": {"type": "number", "initial": 0},
+  "settings.draft.r_ssaoMethod": {"type": "number", "initial": 0},
+  "settings.baseline.r_ssaoMethod": {"type": "number", "initial": 0},
   "settings.draft.r_shadowMapPointSize": {"type": "number", "initial": 512},
   "settings.baseline.r_shadowMapPointSize": {"type": "number", "initial": 512},
   "settings.draft.r_shadowMapFilterTaps": {"type": "number", "initial": 9},

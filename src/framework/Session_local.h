@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #define __SESSIONLOCAL_H__
 #include "NativeInputPublications.h"
 #include "PresentationPacing.h"
+#include "LoadingFramePacer.h"
 
 /*
 
@@ -604,6 +605,9 @@ public:
 	// called by Draw when the scene to scene wipe is still running
 	void				DrawWipeModel();
 	void				StartWipe( const char *materialName, bool hold = false);
+	// Draws the level's first view once, unseen, before the loading screen
+	// hands over; returns the milliseconds it took (0 when skipped).
+	int					WarmFirstGameFrame();
 	void				CompleteWipe();
 	void				ClearWipe();
 
@@ -658,10 +662,10 @@ public:
 	// we don't want to redraw the loading screen for every single
 	// console print that happens
 	int					lastPacifierTime;
-	// Measured cost of the last blocking-load redraw. The pacifier interval backs
-	// off to a multiple of this so loading-screen presentation can never consume an
+	// Paces blocking-load redraws on a steady cadence and charges each redraw's
+	// measured cost, so loading-screen presentation can never consume an
 	// unbounded share of the load's wall clock on a slow present path.
-	int					lastPacifierDrawMsec;
+	opend3::LoadingFramePacer	loadingFramePacer;
 	bool				loadingAssetQueueActive;
 	int					loadingAssetQueueTotal;
 	int					loadingAssetQueueLoaded;
@@ -688,6 +692,10 @@ public:
 
 	bool				insideUpdateScreen;	// true while inside ::UpdateScreen() or a capture draw (sessionCaptureDrawGuard_t)
 	bool				insidePacifierUpdate;	// prevents recursive loading/network updates
+	// A map change that started from the startup screen, until its loading
+	// screen takes over: the startup view keeps presenting instead of a fade
+	// to black and a black hold.
+	bool				startupLoadingHandoff;
 
 	bool				loadingSaveGame;	// currently loading map from a SaveGame
 	idFile *			savegameFile;		// this is the savegame file to load from

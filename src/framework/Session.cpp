@@ -3075,13 +3075,21 @@ static idUserInterface *Session_FindFallbackLoadingGui() {
 }
 
 void idSessionLocal::PrimeMainMenuGuiResources( void ) {
+#if defined( OPEND3 )
+	// Doom 3's main menu has no level montage (Quake 4's menu_bg_* pictures
+	// and their edge mask), and its browser picture is Doom 3's own.
+	static const char *fallbackLevelshot = "guis/assets/splash/pdtempa";
+#else
 	static const char *fallbackLevelshot = "gfx/guis/loadscreens/generic";
+#endif
 
 	if ( guiMainMenu == NULL ) {
 		return;
 	}
 
+#if !defined( OPEND3 )
 	SetMainMenuBackgroundMontageGuiVars();
+#endif
 	guiMainMenu->SetStateString( "browser_levelshot", fallbackLevelshot );
 
 	idMaterial *fallbackMaterial = const_cast<idMaterial *>( declManager->FindMaterial( fallbackLevelshot ) );

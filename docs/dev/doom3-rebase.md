@@ -28,7 +28,13 @@ The branch history, oldest first:
 1. **Merge openQ4** through `55bbe166a`, taking the upstream tree unchanged.
    openQ4's history is now part of openD3's, so later syncs are ordinary
    merges of `openq4-upstream/main`. The latest sync merged upstream through
-   `966d8ae6f` (2026-11-20): cascaded outdoor shadow maps on Quality and
+   `b1f6ed617` (2026-11-21): one GLSL program per shader source with
+   unchanged uniforms skipped, sixteen `shaderTexture`s per GLSL stage, and
+   the retained runtime's frame savings (no layout pass at rest beside
+   settings controls, lists, fields and scrollbars; sliding vectors
+   compiled at cached phases; a vector's alike paths drawn as one
+   geometry). The one before it, through
+   `966d8ae6f` (2026-11-20), brought cascaded outdoor shadow maps on Quality and
    Ultra, a per-receiver normal offset for distant lights' shadows, layered
    OpenGL point-shadow cubes, BC6H (HDR) textures and more texture-pack
    formats, a pak found in two search roots mounted once, particle, decal
@@ -228,6 +234,14 @@ release of Doom 3 (1.3.1 packs):
   and the retained title draws as before. Not run: the new outdoor cascades
   (no outdoor map was captured), BC6H textures, texture packs and a remote
   client.
+- After the `b1f6ed617` sync (2026-11-21), on the staged build: compile and
+  stage of every target. At 1280x720 `game/alphalabs1` draws with its HUD
+  on OpenGL, and a `game/mp/d3dm1` listen server draws the world and HUD on
+  OpenGL and Vulkan and the death screen on OpenGL. The retained title and
+  its pages draw as before (`docs/dev/ui/retained-menus.md`, second
+  refinement round), and the start-up screen draws in about 120 draws a
+  frame where it took about 240. Logs have no error. Not run: shadow maps,
+  `mars_city1`, saves, and Resurrection of Evil.
 - Stock specular follows Doom 3 on every path. `r_correctspecular` and
   `r_normalizebumpmap` default to 0 (they came from Prey at 1), and the OpenGL
   ARB path passes the specular constant unscaled, as id's `draw_arb2.cpp`
@@ -610,6 +624,16 @@ surface-GUI winding fix (`966d8ae6f`) matches openD3's `62c9773c6`; the
 merge takes upstream's wording. Both sides had touched the Vulkan shader
 sources, so the SPIR-V headers were regenerated with the commands
 `vk_shader_header_pin.py` prints.
+
+On the `b1f6ed617` sync the Quake 4 features were the restructured
+multiplayer menus (`3f3665233`: an in-match Audio route, more vote fields,
+the multiplayer HUD's settings) and the weapon order dialog (`a1bd952bc`).
+Their only engine hunks were in the session and the retained adapter's verb
+and setting tables, so `src/framework/Session.cpp` and `Session_menu.cpp`
+keep openD3's side and the adapter drops those verbs and CVars. Git's rename
+detection carried the settings-tree and multiplayer strings from
+`content/baseoq4`'s language tables into openD3's; `content/baseod3` keeps
+openD3's side. No shader source changed.
 
 The script also rewrites openD3's own prose in `docs/` and `assets/` and a
 few tools that the merge did not touch, and the legacy `openq4-ui` format

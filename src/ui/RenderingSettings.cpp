@@ -49,6 +49,16 @@ void RenderingSettings::Capture() {
 	// The inventory the last probe took: opening the page on OpenGL no longer
 	// loads the Vulkan module across every GPU each time. Select checks a
 	// fresh probe before it applies a choice.
+#if defined( OPEND3 )
+	// openD3's SYSTEM page offers no renderer or GPU choice, so on any other
+	// renderer than Vulkan (whose live module answers from its own instance)
+	// it lists no GPUs rather than probe: the first open of the page took
+	// 0.6-4.8 s of the main thread in that probe.
+	if (R_RendererModule_GetStatus().activeApi!=RENDER_MODULE_API_VULKAN) {
+		catalog={};
+		available=false;
+	} else
+#endif
 	available=R_RendererModule_RecentRenderingDevices(catalog);
 	captured=true;
 	if (catalogSerial!=(std::numeric_limits<std::uint64_t>::max)()) token=++catalogSerial;

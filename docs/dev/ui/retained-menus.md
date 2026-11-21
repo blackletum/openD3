@@ -336,6 +336,21 @@ frame that opened it. The title also queues the multiplayer maps'
 levelshots for its idle frames, so Create Server's picture never loads
 late.
 
+A page at rest does no layout. Upstream's runtime skips the style and
+layout pass while nothing but state changes moves (its `925fa37b5` and
+`b045814e3`, merged 21 November), and the edge glow's endless flicker,
+an opacity pulse on a leaf, is painted without one: under `OPEND3` in
+`src/ui/retained/Runtime.cpp` a leaf's fade takes the paint-only path
+beside shown toggles, sliders, lists, fields and scrollbars too, where
+upstream allows it only beside buttons (its own pages loop nothing). The
+retained runtime library is built with `-DOPEND3=1` for that site. The
+SYSTEM page lists no GPUs: under `OPEND3` in
+`src/ui/RenderingSettings.cpp` the settings service does not probe the
+Vulkan module for its `settings.render.*` values unless Vulkan is the
+running renderer, since openD3's page offers no renderer or GPU choice;
+that probe had taken 0.6 to 4.8 s of the frame that first opened the
+page on OpenGL.
+
 ## Motion and state
 
 Sections 7 and 8 of the specification, as the documents play them. The
@@ -931,6 +946,27 @@ from the window.
   same load (the CPU saturated by other programs): 395,000 vertices
   against 552,000, later frames a median of 18 to 22 ms against 20 to 24,
   the first frame 395 to 444 ms against 323 to 345.
+- The second refinement round (21 November), after merging upstream
+  through `b1f6ed617`, at 1280x720 on OpenGL with `ui_retainedProfile`
+  (median UI CPU a frame, layout passes a frame, both views counted):
+  resting pages, before and after: title 1.13 -> 0.23 ms (1.00 -> 0.21),
+  Load Game 1.01 -> 0.47, CONTROLS 1.20 -> 0.40, GAME OPTIONS
+  1.51 -> 0.66 (2.00 -> 0.22), SYSTEM 2.16 -> 0.66 (2.00 -> 0.22), Game
+  Browser 0.95 -> 0.18 (1.00 -> 0.00), Create Server 1.38 -> 0.55
+  (1.00 -> 0.00). Merging upstream alone took the title and CONTROLS
+  down; the settings and list pages stayed at a pass a frame until the
+  edge glow's fade went paint-only. Opening each page from its list:
+  every frame under 36 ms but the Game Browser's first (45 ms, its
+  sockets opening); SYSTEM's first had been 655 to 1,175 ms in this
+  morning's runs and is 35 ms. Eight engine screenshots of GAME OPTIONS
+  37 ms apart show the edge flickering (the left edge's mean 89 to 100);
+  stills of the title, Load Game, CONTROLS, SYSTEM, the browser, Create
+  Server, the credits and the exit dialog look as before the merge, and
+  window grabs of a `d3dm1` death show the death screen with its choices.
+  A traced start-up: 388,000 vertices, about 120 draws (upstream now
+  batches a vector's alike paths), the first frame 393 ms and the rest a
+  median of 24 ms, with `step` reaching 6. A browser run logs 7 warnings
+  where it logged about 265.
 
 Not verified: Resurrection of Evil, Vulkan, a controller, touch, reduced
 motion, languages other than English, the multiplayer pause, a mod's menu, and
@@ -964,8 +1000,10 @@ every platform but Windows.
   and it asks for Quake 4's generic level shot when it opens, which Doom 3
   lacks (a logged warning, nothing drawn). The browser leaves out the stock
   page's filters, its connect-by-address button, its favourites, the Game
-  column and EXIT GAME, and the session's status and notice lines, whose
-  strings (Quake 4 keys such as `#str_107293`) Doom 3's language files lack.
+  column and EXIT GAME, and the session's status and notice lines. Those
+  lines' strings are Quake 4 keys (`#str_107293` and nine more) that
+  openD3's language tables carry since 21 November; before that a scan
+  logged a warning for them every frame.
   A sorted column is not marked. The page does not pan in as the stock
   multiplayer page does: the planet stays where the stock scene has it.
 - **The master server is Quake 4's.** `IDNET_HOST` in
@@ -1017,9 +1055,9 @@ every platform but Windows.
   softer than the picture's sharp flecks. The shade mask assumes the
   near-orthographic view and the light's fixed direction. The planet
   draws twice each frame. The id mark's block carries the picture's own background at its
-  edges. The status line shows the engine's message as it comes, and
-  `step` stays 0, because the engine matches the message against Quake 4
-  string keys. The engine holds the screen still under reduced motion.
+  edges. The status line shows the engine's message as it comes; `step`
+  follows Doom 3's messages (`#str_04346` to `#str_04351`) since
+  21 November, but the document draws nothing from it. The engine holds the screen still under reduced motion.
   As the fallback loading screen it parses when the first such level
   loads (about 0.15 s, or 0.6 s on a saturated CPU), and it does not show
   the stock screen's demo line (`gui::demo`).

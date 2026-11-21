@@ -131,6 +131,18 @@ is limited to what the [rebase record](../doom3-rebase.md#verified) covers. See
   cubes, BC6H textures and more texture-pack formats, each pak mounted once
   when two search roots hold it, and cheaper particles, decals and reverb. Quake 4's in-place switch to The Awakening and its
   Russian gameplay tables stay out.
+- Merge openQ4 through `b1f6ed617`: one GLSL program per shader source, sixteen
+  shader textures per GLSL stage, and retained menus that skip their layout
+  pass at rest and batch a vector's paths. Quake 4's restructured multiplayer
+  menus and weapon order dialog stay out.
+- Keep the retained settings and list pages from laying out every frame for
+  their edge glow's flicker, and open the retained SYSTEM page without probing
+  the Vulkan module for a GPU list it does not show (up to several seconds
+  of one frame on OpenGL).
+- Give the server browser's status strings to every language table, match
+  the start-up screen's steps to Doom 3's messages, and stop priming Quake 4's
+  main menu montage: a run that opens the server browser logged about 265
+  warnings and now logs 7.
 - Show upstream's startup system check, which offers the detected
   performance preset when the presets have changed, on Doom 3 screens of
   openD3's own: the stock `guis/presetcheck.gui` from the retail menu's stars,

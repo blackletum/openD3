@@ -1243,6 +1243,8 @@ if build_engine or get_option('build_native_tests')
     files('src/ui/retained/ScrollbarView.cpp'),
     files('src/ui/retained/PopupPlacement.cpp'),
     dependencies: [rmlui_project.get_variable('rmlui_dep'), jsoncpp_project.get_variable('jsoncpp_dep'), libtess2_project.get_variable('libtess2_dep')],
+    # The runtime's OPEND3 sites (Runtime.cpp's edge-glow fade).
+    cpp_args: ['-DOPEND3=1'],
     pic: true,
     install: false,
   )

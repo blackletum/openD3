@@ -3073,10 +3073,19 @@ struct Runtime::Impl {
 			// their ordinary style/layout update and filter preparation; widgets
 			// in a closed dialog are not shown, as frame replay also finds.
 			auto* opacityElement=opacity ? (input.element ? input.element : CanonicalElement(key.first)) : nullptr;
+#if defined( OPEND3 )
+			// A page at rest skips its layout pass with toggles, sliders, lists,
+			// fields and scrollbars shown (their views paint state changes), so
+			// a decorative leaf's fade beside them is paint-only too. openD3's
+			// pages pulse their edge glow forever, which laid every settings
+			// and list page out on every frame.
+			const bool widgetsBarFade=false;
+#else
+			const bool widgetsBarFade=std::any_of(layoutWidgets.begin(),layoutWidgets.end(),[](const auto* widget){return widget->IsVisible(true);});
+#endif
 			const bool paintOpacity=opacityElement && incremental && !presentationDirty &&
 				!scrollView.Affects(opacityElement) && ((controls.empty() && !interaction.HasAuthoredModals() && !pointerPresent) ||
-				(!interactionAncestors.count(opacityElement) && static_cast<VectorElement*>(opacityElement)->ReplayOpacity() &&
-				 std::none_of(layoutWidgets.begin(),layoutWidgets.end(),[](const auto* widget){return widget->IsVisible(true);})));
+				(!interactionAncestors.count(opacityElement) && static_cast<VectorElement*>(opacityElement)->ReplayOpacity() && !widgetsBarFade));
 			if (opacity) {
 				auto* element=opacityElement;
 				if (!element) { complete=false; return true; }

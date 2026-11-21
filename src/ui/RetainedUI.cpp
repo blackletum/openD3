@@ -2221,7 +2221,12 @@ bool RetainedUI_DrawInitialization(const char* message) {
 	if (changed) {
 		int step = 0;
 		for (int i=0; i<6; ++i) {
+#if defined( OPEND3 )
+			// Doom 3's start-up messages, #str_04346 (sound) to #str_04351 (menus).
+			if (!idStr::Icmp(message,common->GetLanguageDict()->GetString(va("#str_%05d",4346+i)))) step=i+1;
+#else
 			if (!idStr::Icmp(message,common->GetLanguageDict()->GetString(va("#str_%d",104346+i)))) step=i+1;
+#endif
 		}
 		if (!initializationView->runtime->SetState({{"message",std::string(message)}, {"step",double(step)}},error,PresentationTime())) return false;
 		opend3::ui::Runtime::EventEffects effects;

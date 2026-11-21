@@ -4250,7 +4250,12 @@ void idSessionLocal::SetMainMenuGuiVars( bool refreshCatalogs ) {
 	guiMainMenu->SetStateString( "roadhouseCompleted", cvarSystem->GetCVarBool( "g_roadhouseCompleted" ) ? "1" : "0" );
 	guiMainMenu->SetStateString( "wicked", cvarSystem->GetCVarBool( "g_wicked" ) ? "1" : "0" );
 	guiMainMenu->SetStateString( "casino", cvarSystem->GetCVarBool( "g_casino" ) ? "1" : "0" );
+#if defined( OPEND3 )
+	// Doom 3's server browser picture before a server is chosen.
+	guiMainMenu->SetStateString( "browser_levelshot", "guis/assets/splash/pdtempa" );
+#else
 	guiMainMenu->SetStateString( "browser_levelshot", "guis/assets/loading/thumbs/nothing" );
+#endif
 	Session_RefreshMainMenuAudioState( guiMainMenu );
 	SetMainMenuQualityGuiVars( guiMainMenu );
 	SyncMainMenuAspectVisibility( guiMainMenu );

@@ -4173,9 +4173,15 @@ static bool Common_ValidatePerformancePresetIntent( const openD3PerformancePrese
 	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_ssao", preset.ssao, shadowMapTier ? 1 : 0 );
 	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_hdrToneMap", preset.hdrToneMap, shadowMapTier ? 1 : 0 );
 	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_motionBlur", preset.motionBlur, Common_PerformancePresetIsNamed( preset, "maximum" ) ? 1 : 0 );
+#if defined( OPEND3 )
+	// OPEND3: every shadow-map tier maps point lights, Enhanced included, and
+	// the stencil tiers keep the inert default.
+	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapPointLights", preset.shadowMapPointLights, 1 );
+#else
 	// Only Enhanced leaves point lights on stencil shadows; every other shadow-map
 	// tier maps them, and the stencil tiers keep the inert default.
 	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_shadowMapPointLights", preset.shadowMapPointLights, Common_PerformancePresetIsNamed( preset, "enhanced" ) ? 0 : 1 );
+#endif
 	passed &= Common_PerformancePresetCheckExpectedInt( preset, "r_crt", preset.crt, 0 );
 	// Only the two tiers below the documented minimum hardware draw no shadows
 	// and skip the light-grid indirect pass; Low restores both, and every tier

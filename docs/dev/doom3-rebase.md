@@ -210,6 +210,19 @@ release of Doom 3 (1.3.1 packs):
   6 times (Vulkan) in one launch; the merged build marks none, in any capture.
   With time running, `mc_underground` and `alphalabs4`, whose lights swing on
   binds, render mapped on both backends with no shadow-map error or fallback.
+- No stencil shadows under shadow maps (2026-11-22). A temporary hook logged
+  every stencil volume draw while `r_useShadowMap` was 1 (OpenGL
+  `RB_StencilShadowPass`, Vulkan `VK_StencilShadowPass`). Each of 27
+  campaign maps, `mars_city1` to `cpuboss`, ran on both backends: about
+  900 frames from the start, with god mode, `give all`, the flashlight raised,
+  a zombie and an imp spawned beside the player and noclip on. With point
+  lights mapped and subview policy 0 the hook logged nothing on either
+  backend. With `r_shadowMapPointLights 0` (Enhanced's old value) it logged
+  92 draws on `alphalabs1`'s start on each. `delta2a`'s bathroom mirror with
+  the flashlight drew no stencil under subview policy 0 or 1. Applying
+  Enhanced to a profile holding `r_shadowMapPointLights 0` sets it to 1, and
+  the preset self-test passes. Not covered: Resurrection of Evil, play beyond
+  the start of each map, security monitors, multiplayer.
 - After the `65305957d` sync (2026-11-18), on the staged build: configure,
   compile and stage of every target; `vk_shader_header_pin` passes.
   `game/mars_city1` loads on OpenGL (1,969 entities), runs its intro, saves
@@ -559,13 +572,26 @@ Listed roughly by how much they block a player.
    the bake created, that read fails, and the bake reports that another copy
    comes first although the pack loads on the next start.
 10. **Shadow-map follow-ups.**
-    - The performance presets are openQ4's, unchanged by decision: openD3
-      follows upstream's table (identical to openQ4 `822de6800`). So the
-      **Enhanced** preset (the one startup picked on the test machine) sets
-      `r_shadowMapPointLights 0`: its shadow maps cover projected lights only,
-      and Doom 3's point lights, most of its lighting, keep stencil shadows.
-      Quality and above shadow-map every light. The split was measured by
-      upstream on Quake 4 content, not on Doom 3.
+    - The performance presets are openQ4's but for one `OPEND3` value
+      (2026-11-22): **Enhanced** (the one startup picked on the test machine)
+      shadow-maps point lights too, where upstream leaves them on stencil
+      shadows. Every tier that turns shadow maps on now maps every light.
+      Upstream budgeted Enhanced for 144 Hz on Quake 4 content with point
+      lights on stencil, and their cube maps were its largest cost; Enhanced
+      has not been re-timed on Doom 3 since.
+    - Subviews (mirrors, security monitors) render shadow maps like the main
+      view under `OPEND3` (`r_shadowMapSubviewPolicy 0`, moved from the old
+      default 1 once per profile). Upstream's policy 1 may draw stencil volumes
+      in a subview on a cache miss; on `delta2a`'s bathroom mirror, with the
+      flashlight on, it did not (the subview shares the main view's elided
+      volumes, which forces a map), so the change is a safeguard rather than
+      a fix for a seen fallback.
+    - Stencil fallbacks that remain: a light whose map fails to render or
+      sample (render, mask or resource failure, a full atlas) and receivers the
+      map pass cannot shade keep stencil shadows rather than none, and
+      `r_shadowMapPointLights 0`, `r_shadowMapSubviewPolicy 1`/`2` and
+      `r_shadowMapMaxUpdatesPerView` above 0 still choose stencil when set by
+      hand.
     - Upstream's startup system check, which offers the detected preset when
       the preset table changes, runs with Doom 3 screens of openD3's own
       (see "Verified"). Not checked: Vulkan, a controller, a language

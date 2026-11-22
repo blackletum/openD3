@@ -574,7 +574,15 @@ idCVar r_shadowMapReport( "r_shadowMapReport", "0", CVAR_RENDERER | CVAR_INTEGER
 idCVar r_shadowMapReportInterval( "r_shadowMapReportInterval", "30", CVAR_RENDERER | CVAR_INTEGER, "frames between shadow-map diagnostic reports when r_shadowMapReport is enabled", 1, 3600 );
 idCVar r_shadowMapModernStrict( "r_shadowMapModernStrict", "0", CVAR_RENDERER | CVAR_BOOL, "fail-visible modern shadow contract: lights whose descriptor promises shadows but cannot deliver renders black instead of silently unshadowed" );
 idCVar r_shadowMapTranslucentReceivers( "r_shadowMapTranslucentReceivers", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "translucent surfaces sample the shadow map like opaque receivers (parity with r_stencilTranslucentShadows)" );
-idCVar r_shadowMapSubviewPolicy( "r_shadowMapSubviewPolicy", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "shadow maps in mirror/remote subviews: 0 = render like main views, 1 = prefer cache then stencil, 2 = prefer stencil; required maps override when stencil cannot preserve the shadow", 0, 2, idCmdSystem::ArgCompletion_Integer<0,2> );
+#if defined( OPEND3 )
+// OPEND3: Doom 3's security monitors and mirrors are subviews. Under policy 1
+// every light a monitor showed without a resident map drew stencil shadows, so
+// openD3 renders subview maps like main-view maps (R_MigrateShadowMapSubviewPolicy).
+#define OPEND3_SHADOWMAP_SUBVIEW_POLICY_DEFAULT "0"
+#else
+#define OPEND3_SHADOWMAP_SUBVIEW_POLICY_DEFAULT "1"
+#endif
+idCVar r_shadowMapSubviewPolicy( "r_shadowMapSubviewPolicy", OPEND3_SHADOWMAP_SUBVIEW_POLICY_DEFAULT, CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "shadow maps in mirror/remote subviews: 0 = render like main views, 1 = prefer cache then stencil, 2 = prefer stencil; required maps override when stencil cannot preserve the shadow", 0, 2, idCmdSystem::ArgCompletion_Integer<0,2> );
 idCVar r_shadowMapConservativeCasters( "r_shadowMapConservativeCasters", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "submit shadow-map casters conservatively even when their receiver interaction scissor is not visible" );
 idCVar r_shadowMapProjectedCSM( "r_shadowMapProjectedCSM", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "allow ordinary projected lights to use cascades when r_shadowMapCSM is enabled" );
 idCVar r_shadowMapDepthCompare( "r_shadowMapDepthCompare", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "use hardware comparison sampling for projected depth shadow maps when supported; PCSS-lite (r_shadowMapFilterMode 2) implies the manual path" );
@@ -912,6 +920,9 @@ idCVar r_shadowMapPolygonOffset( "r_shadowMapPolygonOffset", "0.5", CVAR_RENDERE
 static idCVar r_shadowMapContactQualityMigrated( "r_shadowMapContactQualityMigrated", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "one-time migration flag for legacy broad shadow filtering defaults" );
 static idCVar r_shadowMapFilterDefaultsMigrated( "r_shadowMapFilterDefaultsMigrated", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "one-time migration flag for the legacy fixed-PCF projected shadow filter defaults" );
 static idCVar r_shadowMapPointCacheDefaultsMigrated( "r_shadowMapPointCacheDefaultsMigrated", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "one-time migration flag for the legacy twelve-slot point shadow cache" );
+#if defined( OPEND3 )
+static idCVar r_shadowMapSubviewPolicyMigrated( "r_shadowMapSubviewPolicyMigrated", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "one-time migration flag for the stencil-preferring subview shadow policy" );
+#endif
 static idCVar r_pbrMaterialsDefaultMigrated( "r_pbrMaterialsDefaultMigrated", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "one-time migration flag for the PBR material default" );
 static idCVar r_temporalAADefaultMigrated( "r_temporalAADefaultMigrated", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "one-time migration flag for the automatic temporal AA default" );
 extern idCVar r_temporalAA;
@@ -6499,6 +6510,30 @@ static void R_MigrateLegacyShadowMapFilterDefaults( void ) {
 	r_shadowMapFilterDefaultsMigrated.SetBool( true );
 }
 
+#if defined( OPEND3 )
+/*
+==================
+R_MigrateShadowMapSubviewPolicy
+
+OPEND3: subviews used to prefer cached maps and then stencil volumes
+(r_shadowMapSubviewPolicy 1), which mixed stencil shadows into a shadow-mapped
+picture wherever a monitor or mirror showed a light. Every archived profile
+carries the old default, so move exactly that value once; 2 is a deliberate
+choice and is kept.
+==================
+*/
+static void R_MigrateShadowMapSubviewPolicy( void ) {
+	if ( r_shadowMapSubviewPolicyMigrated.GetBool() ) {
+		return;
+	}
+	if ( r_shadowMapSubviewPolicy.GetInteger() == 1 ) {
+		common->Printf( "Migrating the subview shadow policy: mirrors and monitors render shadow maps like the main view\n" );
+		r_shadowMapSubviewPolicy.SetInteger( 0 );
+	}
+	r_shadowMapSubviewPolicyMigrated.SetBool( true );
+}
+#endif
+
 /*
 ==================
 R_MigrateLegacyPBRMaterialsDefault
@@ -7023,6 +7058,9 @@ static bool R_InitRendererDevice( bool legacyPolicy, bool forceWindow, char *err
 void idRenderSystemLocal::InitOpenGL( void ) {
 	R_MigrateLegacyShadowMapContactQuality();
 	R_MigrateLegacyShadowMapFilterDefaults();
+#if defined( OPEND3 )
+	R_MigrateShadowMapSubviewPolicy();
+#endif
 	R_MigrateLegacyPBRMaterialsDefault();
 	R_MigrateLegacyTemporalAADefault();
 	char error[1024];

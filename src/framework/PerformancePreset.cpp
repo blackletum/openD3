@@ -5,6 +5,14 @@
 
 namespace opend3 {
 namespace {
+#if defined( OPEND3 )
+// OPEND3: a tier that turns shadow maps on maps every light. Doom 3 lights most
+// of its scenes with point lights, so Enhanced's stencil point lights mixed
+// hard stencil edges into soft mapped shadows across nearly every room.
+static constexpr int EnhancedShadowMapPointLights = 1;
+#else
+static constexpr int EnhancedShadowMapPointLights = 0;
+#endif
 static const std::array<PerformancePreset,PerformancePresetCount> Presets{{
 	// The three bottom recipes are for hardware at and below the documented
 	// minimum (4 GiB RAM, a 1 GiB ARB2-class GPU). Lowering resolution alone left
@@ -53,12 +61,13 @@ static const std::array<PerformancePreset,PerformancePresetCount> Presets{{
 	// Enhanced spends its budget on the modern effects: projected and parallel
 	// lights keep 1024 shadow maps, point lights keep the stencil shadows retail
 	// used (their cube maps were its largest cost), and SMAA high replaces MSAA.
+	// openD3 maps point lights here too (EnhancedShadowMapPointLights).
 	// Keep unlimited updates: a low budget can make moving shadows stale.
 	{ "enhanced", 2, "modern",
 		100, 0, 2, 144,
 		16, 0, 0, 0, 1, 0,
 		1, 1024, 0, 1, 1, 1, 0, 0, 1, 16, 4,
-		0, 1, 48, 512, 5, 5, 0, 0, 4096, 12, 5, 8, 0, 0, 1, 1 },
+		0, 1, 48, 512, 5, 5, 0, 0, 4096, 12, 5, 8, 0, EnhancedShadowMapPointLights, 1, 1 },
 	// Quality shadow-maps every light class: 2048 projected maps with PCSS and
 	// 512 point cubes, with 2x MSAA under SMAA high. Sunlight and distant
 	// sources are cascaded (spotlights keep one map): Quake 4 lights outdoor

@@ -961,6 +961,16 @@ static void VK_Image_NoteBudgetReduction( const vkFormatInfo_t &info, int width,
 			(unsigned int)( usage >> 20 ), (unsigned int)( limit >> 20 ) );
 }
 
+#if defined( OPEND3 )
+bool VK_Image_DeviceLocalFits( VkDeviceSize bytes, double fraction ) {
+	VkDeviceSize usage = 0, limit = 0, budget = 0;
+	if ( !VK_Image_DeviceLocalBudget( usage, limit, budget ) ) {
+		return false;
+	}
+	return (double)( usage + bytes ) <= (double)budget * fraction;
+}
+#endif
+
 void VK_Image_PrintTextureBudget( void ) {
 	VkDeviceSize usage = 0, limit = 0, budget = 0;
 	if ( !VK_Image_DeviceLocalBudget( usage, limit, budget ) ) {

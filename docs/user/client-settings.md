@@ -84,8 +84,9 @@ Doom 3's stencil shadows are the default. Shadow maps replace them light by ligh
 | `g_showPlayerShadow` | `1` | `0` hides your own shadow from your view in single player, as Doom 3 did. Other players always see it, and multiplayer always draws it |
 | `r_useShadowMap` | `0` | `1` draws shadow maps instead of stencil shadows. A light the shadow-map path cannot take that frame keeps its stencil shadows |
 | `r_shadowMapPointLights` | `1` | `0` keeps stencil shadows for point lights, which are most of Doom 3's lights, and shadow-maps only projected lights |
+| `r_shadowMapSubviewPolicy` | `0` | Mirrors and security monitors render shadow maps like the main view. `1` lets them reuse a resident map and otherwise draw stencil shadows; `2` prefers stencil shadows there. A settings file still holding the old default `1` moves to `0` once |
 
-The performance presets choose these for you. **Balanced** and below use stencil shadows only (**Minimum** and **Low Power** draw no shadows). **Enhanced** shadow-maps projected lights only and leaves point lights on stencil shadows. **Quality**, **Ultra** and **Maximum** shadow-map every light.
+The performance presets choose these for you. **Balanced** and below use stencil shadows only (**Minimum** and **Low Power** draw no shadows). **Enhanced**, **Quality**, **Ultra** and **Maximum** shadow-map every light, point lights included.
 
 These settings are saved like any other, so a settings file written by an earlier build keeps its old values: `g_showPlayerShadow 0`, and Prey's specular model in `r_correctspecular 1` and `r_normalizebumpmap 1`. Set them to `1`, `0` and `0` once for your shadow and Doom 3's lighting.
 

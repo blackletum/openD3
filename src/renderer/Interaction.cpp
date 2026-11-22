@@ -2558,12 +2558,23 @@ void idInteraction::AddActiveInteraction( void ) {
 				R_CachedShouldSkipPointLightEmitterCaster( sint, vLight, shadowShader, localLightOrigin, lightDef->parms.lightRadius );
 			const bool sameSpectrumShadowMapCaster =
 				R_ShadowMapShaderSpectrumMatchesLight( shadowShader, lightDef );
+#if defined( OPEND3 )
+			// OPEND3: a surface with nothing in it has nothing to cast. Admitted,
+			// its caster caches could not be made, which counted it as a caster
+			// the map was missing and sent every light on it to stencil shadows
+			// (two empty surfaces of hell1's guardianroom.lwo did that to seven).
+			const bool casterHasGeometry = sint->ambientTris != NULL
+				&& sint->ambientTris->numVerts > 0
+				&& sint->ambientTris->numIndexes > 0;
+#else
+			const bool casterHasGeometry = sint->ambientTris != NULL;
+#endif
 			const bool allowShadowMapCaster =
 				shadowMapsEnabled &&
 				!entityDef->parms.noShadow &&
 				!isViewOnlyEntity &&
 				vEntity->modelDepthHack == 0.0f &&
-				sint->ambientTris != NULL &&
+				casterHasGeometry &&
 				sameSpectrumShadowMapCaster &&
 				// Thin emissive panels can sit directly on their owning point-light origin,
 				// which creates long bogus wedge occluders. Reject only that geometric case
@@ -2577,7 +2588,7 @@ void idInteraction::AddActiveInteraction( void ) {
 				!entityDef->parms.noShadow &&
 				!isViewOnlyEntity &&
 				vEntity->modelDepthHack == 0.0f &&
-				sint->ambientTris != NULL &&
+				casterHasGeometry &&
 				sameSpectrumShadowMapCaster &&
 				R_ShadowMapShaderCanCastTranslucent( shadowShader ) &&
 				casterLODAdmitted;
@@ -2585,7 +2596,7 @@ void idInteraction::AddActiveInteraction( void ) {
 				allowShadowMapCaster ||
 				allowTranslucentShadowMapCaster;
 
-			if ( sint->ambientTris != NULL && !allowShadowMapCaster && !allowTranslucentShadowMapCaster ) {
+			if ( casterHasGeometry && !allowShadowMapCaster && !allowTranslucentShadowMapCaster ) {
 				R_RecordShadowMapRejectedCaster( vLight, R_ClassifyShadowMapCasterReject( entityDef, vEntity, sint, shadowShader, isViewOnlyEntity, translucentShadowMapSupported, skipPointLightEmitterCaster, sameSpectrumShadowMapCaster, casterLODAdmitted ) );
 			}
 

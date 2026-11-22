@@ -221,8 +221,31 @@ release of Doom 3 (1.3.1 packs):
   92 draws on `alphalabs1`'s start on each. `delta2a`'s bathroom mirror with
   the flashlight drew no stencil under subview policy 0 or 1. Applying
   Enhanced to a profile holding `r_shadowMapPointLights 0` sets it to 1, and
-  the preset self-test passes. Not covered: Resurrection of Evil, play beyond
-  the start of each map, security monitors, multiplayer.
+  the preset self-test passes.
+- The same hook, with two more that logged a light drawn unshadowed for a
+  missing map (OpenGL `RB_ShadowMapRunPass`, Vulkan's receiver pass) and a
+  remote camera view, on a tour of each of the 27 maps on both backends: 16
+  places spread over the map, chosen from where players, monsters, items and
+  path corners stand, four headings each, with the flashlight raised. It
+  found three causes, now fixed: Vulkan's scratch cube pool was full (85 cubes;
+  one view inside `alphalabs3` needed 92), two empty surfaces of `hell1`'s
+  `guardianroom.lwo` sent seven lights to stencil on both backends, and
+  Vulkan drew stencil for the optional ownership of a light whose other
+  ownership had to be mapped (a spot in `hellhole`). After the fixes no view
+  inside a map drew a stencil volume or an unshadowed light on either
+  backend. Some places lie outside the playable space, where Doom 3 shows
+  every area (300 to 555 lights in one view): there Vulkan's 256-light table
+  overflows and lights go unshadowed for a frame, then stencil. Players
+  never stand there. The `alphalabs2` security console, driven through its
+  own `setkeyval` commands, showed three cameras' live views on both
+  backends with no stencil or unshadowed light; the mirrors of `delta2a` and
+  `delta3` likewise. On each of `d3dm1` to `d3dm5` a listen server and a
+  second client (OpenGL and Vulkan in both roles across the five) ran with
+  the server's player moved in front of the client, so the client drew
+  another player under shadow maps: neither logged a stencil volume or an
+  unshadowed light. Not covered: Resurrection of Evil
+  (this machine has no `d3xp/pak000.pk4`), combat beyond spawned monsters
+  standing by, the cinematics.
 - After the `65305957d` sync (2026-11-18), on the staged build: configure,
   compile and stage of every target; `vk_shader_header_pin` passes.
   `game/mars_city1` loads on OpenGL (1,969 entities), runs its intro, saves
@@ -587,11 +610,20 @@ Listed roughly by how much they block a player.
       volumes, which forces a map), so the change is a safeguard rather than
       a fix for a seen fallback.
     - Stencil fallbacks that remain: a light whose map fails to render or
-      sample (render, mask or resource failure, a full atlas) and receivers the
-      map pass cannot shade keep stencil shadows rather than none, and
+      sample (render, mask or resource failure, a full atlas, a Vulkan cube
+      pool that video memory cannot grow) and receivers the map pass cannot
+      shade keep stencil shadows rather than none, and
       `r_shadowMapPointLights 0`, `r_shadowMapSubviewPolicy 1`/`2` and
       `r_shadowMapMaxUpdatesPerView` above 0 still choose stencil when set by
-      hand.
+      hand. Such a light, whose volumes were left out because a map was
+      expected, draws unshadowed for the frame it fails.
+    - Vulkan's scratch cube pool can now grow past `r_shadowMapPointCacheMegs`
+      while the device-local heap stays under 80% of its budget, up to 512
+      cubes (512 faces: about 6 MiB each). Unused cubes go back after five
+      seconds. Tour views that saw most of a map, some of them from outside
+      it, held 220 to 310 cubes.
+      Not measured: the frame time of such views, and behaviour on a card
+      with less video memory than the test machine's 8 GB.
     - Upstream's startup system check, which offers the detected preset when
       the preset table changes, runs with Doom 3 screens of openD3's own
       (see "Verified"). Not checked: Vulkan, a controller, a language
@@ -607,10 +639,9 @@ Listed roughly by how much they block a player.
     - OpenGL draws `hell1`'s first view brighter than Vulkan (about 420,000
       pixels), the same with shadow maps, stencil or no shadows. Not
       investigated.
-    - Not covered: Resurrection of Evil, subviews (mirrors, remote cameras),
-      moving lights compared against stencil (they have only been seen
-      rendering, with time running), cascaded shadow maps (`r_shadowMapCSM`),
-      other players' shadows as a client.
+    - Not covered: Resurrection of Evil, moving lights compared against
+      stencil (they have only been seen rendering, with time running),
+      cascaded shadow maps (`r_shadowMapCSM`).
 11. **The master server address is Quake 4's.** `IDNET_HOST`
     (`src/framework/licensee.h`) is `q4master.idsoftware.com`, as upstream
     has it. That server answers: an internet server started from the menu

@@ -87,6 +87,7 @@
 #include "VulkanShadowTiming.h"
 #include "VulkanGpuFrameTiming.h"
 #include "vk_ShadowMap.h"
+#include "vk_Image.h"
 
 static idCVar r_vkShadowFullAtlasClear( "r_vkShadowFullAtlasClear", "0", CVAR_RENDERER | CVAR_BOOL,
 	"clear unused projected shadow atlas space as a validation reference" );
@@ -1890,6 +1891,55 @@ static int VK_ShadowMap_ScratchCubesAllocated( void ) {
 	return allocated;
 }
 
+#if defined( OPEND3 )
+// OPEND3: share of the device-local budget scratch cubes past
+// VK_ShadowMap_ScratchCubeLimit may take the heap to; the texture limit keeps
+// 90% (VK_Image_DeviceLocalBudget), so this leaves textures their room.
+static const double VK_SHADOW_SCRATCH_GROWTH_BUDGET_FRACTION = 0.8;
+#endif
+
+/*
+====================
+VK_ShadowMap_ClaimScratchCube
+
+Readies the next scratch cube of the view (index pointCubesUsed) and says
+whether it may be used. Every map is recorded before the view's interactions,
+so a view holds one cube for each point pass at once, where OpenGL reuses one
+light by light.
+
+OPEND3: Doom 3 lights most rooms with point lights, and a view that held more
+uncached or composing ones than r_shadowMapPointCacheMegs buys (85 cubes of 512
+faces at the default) failed the rest: they drew no shadow for a frame and
+stencil shadows for the next 240 views. A view inside alphalabs3 needed 92.
+Past that figure the pool grows while video memory has room, up to its hard
+bound, and VK_ShadowMap_TrimScratchCubes hands the extra cubes back once the
+views no longer need them.
+====================
+*/
+static bool VK_ShadowMap_ClaimScratchCube( void ) {
+	const int index = vkShadow.pointCubesUsed;
+	if ( index >= VK_SHADOW_MAX_POINT_CUBES ) {
+		return false;
+	}
+	if ( index >= VK_ShadowMap_ScratchCubeLimit() ) {
+#if defined( OPEND3 )
+		if ( vkShadow.pointCubes[ index ].image == VK_NULL_HANDLE ) {
+			const double faceSize = static_cast<double>(
+					Max( 1, VK_ShadowMap_PointSizeValue() ) );
+			const VkDeviceSize cubeBytes = static_cast<VkDeviceSize>(
+					6.0 * faceSize * faceSize * VK_ShadowMap_DepthBytesPerPixel() );
+			if ( !VK_Image_DeviceLocalFits( cubeBytes,
+					VK_SHADOW_SCRATCH_GROWTH_BUDGET_FRACTION ) ) {
+				return false;
+			}
+		}
+#else
+		return false;
+#endif
+	}
+	return VK_ShadowMap_EnsurePointCube( index );
+}
+
 static void VK_ShadowMap_BeginCacheView( const viewDef_t *viewDef ) {
 	const idRenderWorldLocal *renderWorld =
 			viewDef != NULL ? viewDef->renderWorld : NULL;
@@ -2894,8 +2944,7 @@ static bool VK_ShadowMap_ShareProjectedStaticTile( vkShadowLightState_t &light )
 // static source and cubeIndex as what the receivers sample.
 static bool VK_ShadowMap_ClaimPointComposeTarget( vkShadowPassState_t &pass,
 		const int frameSlot ) {
-	if ( vkShadow.pointCubesUsed >= VK_ShadowMap_ScratchCubeLimit()
-			|| !VK_ShadowMap_EnsurePointCube( vkShadow.pointCubesUsed ) ) {
+	if ( !VK_ShadowMap_ClaimScratchCube() ) {
 		return false;
 	}
 	const int cubeIndex = vkShadow.pointCubesUsed;
@@ -3011,9 +3060,7 @@ static bool VK_ShadowMap_AllocatePointPass( vkShadowLightState_t &light,
 		cache.reserved = false;
 	}
 
-	if ( vkShadow.pointCubesUsed >= VK_ShadowMap_ScratchCubeLimit()
-			|| !VK_ShadowMap_EnsurePointCube(
-					vkShadow.pointCubesUsed ) ) {
+	if ( !VK_ShadowMap_ClaimScratchCube() ) {
 		VK_ShadowMap_CancelScheduledPass( schedule, true );
 		return false;
 	}
@@ -3800,8 +3847,28 @@ int VK_ShadowMap_PrepareViewLights( const viewDef_t *viewDef,
 				( passNeeded[ VK_SHADOW_RECEIVER_GLOBAL ] &&
 					passHasCasters[ VK_SHADOW_RECEIVER_GLOBAL ] &&
 					passRequiresMap[ VK_SHADOW_RECEIVER_GLOBAL ] );
-		if ( lightHasRequiredMap != requiredPhase ) {
+#if defined( OPEND3 )
+		// OPEND3: the optional phase comes back to a light whose required
+		// ownership was prepared above and maps its optional one too, which
+		// otherwise drew stencil shadows beside the map of its other ownership
+		// (a flashlight5 spot in hellhole).
+		// The required ownerships of every light still claim the table, atlas
+		// and cube pool first.
+		const bool optionalRevisit = !requiredPhase && lightHasRequiredMap;
+#else
+		const bool optionalRevisit = false;
+#endif
+		if ( lightHasRequiredMap != requiredPhase && !optionalRevisit ) {
 			continue;
+		}
+		int existingIndex = -1;
+		if ( optionalRevisit ) {
+			for ( int i = 0 ; i < vkShadow.numLights ; i++ ) {
+				if ( vkShadow.lights[ i ].vLight == vLight ) {
+					existingIndex = i;
+					break;
+				}
+			}
 		}
 		if ( ( !passNeeded[ VK_SHADOW_RECEIVER_LOCAL ] || !passHasCasters[ VK_SHADOW_RECEIVER_LOCAL ] )
 				&& ( !passNeeded[ VK_SHADOW_RECEIVER_GLOBAL ] || !passHasCasters[ VK_SHADOW_RECEIVER_GLOBAL ] ) ) {
@@ -3816,7 +3883,7 @@ int VK_ShadowMap_PrepareViewLights( const viewDef_t *viewDef,
 			}
 			continue;
 		}
-		if ( vkShadow.numLights >= VK_SHADOW_MAX_LIGHTS ) {
+		if ( existingIndex < 0 && vkShadow.numLights >= VK_SHADOW_MAX_LIGHTS ) {
 			// This otherwise mappable light cannot enter the bounded backend
 			// table. Complete stencil coverage can recover this view; map-only
 			// geometry must report a resource failure until its volumes rebuild.
@@ -3844,14 +3911,17 @@ int VK_ShadowMap_PrepareViewLights( const viewDef_t *viewDef,
 			// hit claims no scratch cube unless it composes live casters.
 			// The r_shadowMapPointLights policy gate ran at classification,
 			// before the caster and capacity checks.
-			vkShadowLightState_t &entry = vkShadow.lights[ vkShadow.numLights ];
-			memset( &entry, 0, sizeof( entry ) );
-			entry.vLight = vLight;
-			entry.pointLight = true;
-			entry.pointFar = R_ShadowMapPointFarDistance( vLight );
-			for ( int i = 0 ; i < 3 ; i++ ) {
-				entry.pointLightOrigin[ i ] =
-						vLight->globalLightOrigin[ i ];
+			vkShadowLightState_t &entry = vkShadow.lights[
+					existingIndex >= 0 ? existingIndex : vkShadow.numLights ];
+			if ( existingIndex < 0 ) {
+				memset( &entry, 0, sizeof( entry ) );
+				entry.vLight = vLight;
+				entry.pointLight = true;
+				entry.pointFar = R_ShadowMapPointFarDistance( vLight );
+				for ( int i = 0 ; i < 3 ; i++ ) {
+					entry.pointLightOrigin[ i ] =
+							vLight->globalLightOrigin[ i ];
+				}
 			}
 			const int pointSize = VK_ShadowMap_PointSizeValue();
 
@@ -3861,7 +3931,7 @@ int VK_ShadowMap_PrepareViewLights( const viewDef_t *viewDef,
 					continue;
 				}
 				if ( lightHasRequiredMap &&
-						!passRequiresMap[ passIndex ] ) {
+						passRequiresMap[ passIndex ] == optionalRevisit ) {
 					continue;
 				}
 				if ( !VK_ShadowMap_MapOrHybridOwnershipComplete(
@@ -3938,8 +4008,10 @@ int VK_ShadowMap_PrepareViewLights( const viewDef_t *viewDef,
 				entry.normalOffsetWorld =
 					2.0f * receiverSettings.normalOffsetScale
 						/ static_cast<float>( Max( 1, faceSize ) );
-				vkShadow.numLights++;
-				prepared++;
+				if ( existingIndex < 0 ) {
+					vkShadow.numLights++;
+					prepared++;
+				}
 			}
 			continue;
 		}
@@ -3970,15 +4042,18 @@ int VK_ShadowMap_PrepareViewLights( const viewDef_t *viewDef,
 			continue;
 		}
 
-		vkShadowLightState_t &entry = vkShadow.lights[ vkShadow.numLights ];
-		memset( &entry, 0, sizeof( entry ) );
-		entry.vLight = vLight;
-		entry.tileSize = projectedState.tileSize;
-		entry.projectedState = projectedState;
+		vkShadowLightState_t &entry = vkShadow.lights[
+				existingIndex >= 0 ? existingIndex : vkShadow.numLights ];
+		if ( existingIndex < 0 ) {
+			memset( &entry, 0, sizeof( entry ) );
+			entry.vLight = vLight;
+			entry.tileSize = projectedState.tileSize;
+			entry.projectedState = projectedState;
 
-		const float invAtlas = 1.0f / (float)vkShadow.atlasSize;
-		entry.invAtlasSize[ 0 ] = invAtlas;
-		entry.invAtlasSize[ 1 ] = invAtlas;
+			const float invAtlas = 1.0f / (float)vkShadow.atlasSize;
+			entry.invAtlasSize[ 0 ] = invAtlas;
+			entry.invAtlasSize[ 1 ] = invAtlas;
+		}
 
 		for ( int passIndex = 0 ; passIndex < VK_SHADOW_RECEIVER_PASS_COUNT ; passIndex++ ) {
 			const vkShadowReceiverPass_t receiverPass = (vkShadowReceiverPass_t)passIndex;
@@ -3986,7 +4061,7 @@ int VK_ShadowMap_PrepareViewLights( const viewDef_t *viewDef,
 				continue;
 			}
 			if ( lightHasRequiredMap &&
-					!passRequiresMap[ passIndex ] ) {
+					passRequiresMap[ passIndex ] == optionalRevisit ) {
 				continue;
 			}
 			if ( !VK_ShadowMap_MapOrHybridOwnershipComplete(
@@ -4036,7 +4111,7 @@ int VK_ShadowMap_PrepareViewLights( const viewDef_t *viewDef,
 		}
 
 		VK_ShadowMap_RefreshLightValidity( entry );
-		if ( entry.valid ) {
+		if ( entry.valid && existingIndex < 0 ) {
 			vkShadow.numLights++;
 			prepared++;
 		}

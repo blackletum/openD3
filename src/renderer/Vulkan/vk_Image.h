@@ -105,5 +105,10 @@ vkImageEntry_t *VK_Image_AcquireDepthResolveScratch( int width, int height,
 void	VK_Image_ShutdownAll( void );
 // rendererVulkanMemoryInfo: textures reduced to fit video memory, and the limit.
 void	VK_Image_PrintTextureBudget( void );
+#if defined( OPEND3 )
+// OPEND3: whether the device-local heap that holds images can take bytes more
+// and stay within fraction of its budget (the driver's, or 80% of the heap).
+bool	VK_Image_DeviceLocalFits( VkDeviceSize bytes, double fraction );
+#endif
 
 #endif /* !__VK_IMAGE_H__ */

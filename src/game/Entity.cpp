@@ -312,10 +312,12 @@ void idGameEdit::ParseSpawnArgsToRefSound( const idDict *args, refSound_t *refSo
 
 	refSound->parms.minDistance = args->GetFloat( "s_mindistance" );
 	refSound->parms.maxDistance = args->GetFloat( "s_maxdistance" );
-	if( args->FindKey( "s_volume" ) != NULL )
+	// s_volume is authored in dB and the engine takes a linear scale. 0 leaves the
+	// shader's own volume, as Doom 3's "no override" did.
+	const float volumeDB = args->GetFloat( "s_volume" );
+	if( volumeDB != 0.0f )
 	{
-		// Doom 3 spawnarg volume values are authored in dB.
-		refSound->parms.volume = idMath::dBToScale( args->GetFloat( "s_volume" ) );
+		refSound->parms.volume = idMath::dBToScale( volumeDB );
 	}
 	refSound->parms.shakes = args->GetFloat( "s_shakes" );
 
@@ -1659,7 +1661,10 @@ idEntity::SetSoundVolume
 ================
 */
 void idEntity::SetSoundVolume( float volume ) {
-	refSound.parms.volume = volume;
+	// The caller's value is in dB, as Doom 3's engine read it; this engine takes a
+	// linear scale. The bounce callers pass 0..1, which Doom 3 played as 0..+1 dB
+	// in place of the shader's volume, and so does this.
+	refSound.parms.volume = volume != 0.0f ? idMath::dBToScale( volume ) : 0.0f;
 }
 
 /*

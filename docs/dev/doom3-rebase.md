@@ -416,6 +416,25 @@ release of Doom 3 (1.3.1 packs):
   and its hardware scan applies the recommendation. The retained SYSTEM page
   steps Video Quality Low, Medium, High (Low, Performance, Balanced), and
   APPLY CHANGES with KEEP saves Balanced.
+- Volume follows Doom 3 (2026-11-22). A fresh profile starts at full volume
+  (`s_volume_dB 0`, `s_volume 1`, as retail's `DoomConfig.cfg`), with
+  `s_quadraticFalloff 1` and the music scale at unity, since Doom 3 has no
+  music volume. A profile still on the old -6 dB master and music pairs moves
+  to 0 dB once (audio migration step 3). Quake 4's speaker attenuation, which
+  cut every spatialized sound but the weapon and item channels by 3.7 dB, is
+  gone with `s_speakerFraction` and `s_radioChatterFraction`. Shader volumes
+  are no longer clamped at +10 dB (56 retail shaders ask for more), and
+  `leadinVolume` is read in dB, as Doom 3 reads it. On `game/mars_city1`
+  with `s_soundDistances` during the intro, all 106 live channels carry
+  exactly the shader volume times the quadratic falloff. The game converts
+  its dB values to the engine's linear scale in three places: an entity's
+  `s_volume` (where 0 still means the shader's volume), `SetSoundVolume`
+  (bouncing moveables, ragdolls and projectiles, which Doom 3 played at
+  0 to +1 dB in place of the shader's volume) and the heartbeat. Those three
+  were checked by reading the code, not in play. Doom 3's software mixer
+  panning (`s_globalFraction`, `s_dotbias2`, `s_minVolume2`) is not
+  replicated, since OpenAL pans, and neither is RoE's slow-motion distance
+  scaling (`s_slowAttenuate`).
 
 That is all that has been run. In particular, nothing here is evidence for:
 playing past the first cinematic, combat, AI, the PDA beyond its first page,
@@ -505,8 +524,7 @@ Listed roughly by how much they block a player.
    the retained HUD looks for a Quake 4 HUD document; the engine asks for a
    `guisounds` shader and string `#str_107240`, which Doom 3 does not have;
    the stock menus reference the removed `s_driver` cvar; the engine and the
-   game both declare `r_showSkel`; sound shader volumes above +10 dB are
-   clamped. A `mars_city1` load currently logs about 25 distinct warnings,
+   game both declare `r_showSkel`. A `mars_city1` load currently logs about 25 distinct warnings,
    some of them the retail content's own.
 5. **The retained interface has fifteen Doom 3 documents.** The start-up
    screen, the title, the
@@ -520,7 +538,7 @@ Listed roughly by how much they block a player.
    `ui_retained 1` ([retained Doom 3 menus](ui/retained-menus.md)). Every
    other page and the HUD have none, so launches
    still
-   pin `ui_retained 0` and the stock Doom 3 GUIs remain the interface. With
+   pin `ui_retained 0` (the cvar itself defaults to 1) and the stock Doom 3 GUIs remain their interface. With
    `ui_retained 1` the pages without a document are the stock ones, reached
    from the retained home, and a map load warns that the retained HUD
    documents are missing before it uses the stock HUD.

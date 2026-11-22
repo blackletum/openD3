@@ -5020,7 +5020,7 @@ void idPlayer::SetCurrentHeartRate( void ) {
 			// modify just this channel to a custom volume
 			soundShaderParms_t	parms;
 			memset( &parms, 0, sizeof( parms ) );
-			parms.volume = pct;
+			parms.volume = idMath::dBToScale( pct );	// pct is in dB, the engine takes a linear scale
 			refSound.referenceSound->ModifySound( SND_CHANNEL_HEART, &parms );
 		}
 

@@ -168,7 +168,11 @@ idCVar com_profanity( "com_profanity", "0", CVAR_ARCHIVE | CVAR_SYSTEM | CVAR_BO
 // r_correctspecular and r_normalizebumpmap drive the renderer's stock
 // interaction and are registered there (ClassicInteractionDomain.cpp).
 idCVar r_lowParticleDetail( "r_lowParticleDetail", "0", CVAR_ARCHIVE | CVAR_RENDERER | CVAR_BOOL, "reduce particle quality when non-zero" );
+#if defined( OPEND3 )
+idCVar s_musicvolume_dB( "s_musicvolume_dB", "0", CVAR_ARCHIVE | CVAR_SOUND | CVAR_FLOAT, "music volume in decibels", -60.0f, 0.0f );	// Doom 3 has no music volume
+#else
 idCVar s_musicvolume_dB( "s_musicvolume_dB", "-6", CVAR_ARCHIVE | CVAR_SOUND | CVAR_FLOAT, "music volume in decibels", -60.0f, 0.0f );
+#endif
 idCVar s_reverse( "s_reverse", "0", CVAR_ARCHIVE | CVAR_SOUND | CVAR_BOOL, "reverse stereo channels" );
 idCVar g_levelloadmusic( "g_levelloadmusic", "1", CVAR_ARCHIVE | CVAR_GAME | CVAR_BOOL, "play map-defined music while levels are loading" );
 
@@ -347,17 +351,28 @@ Step 1:
   it on headphones and OpenAL Soft's automatic HRTF never engaged. The device
   layout (0) gives a 5.1 system the same 5.1, so 6 is moved to it. 2 is left
   alone: it was retail's default and may be a deliberate choice.
-- s_radioChatterFraction 0.5 was a guess; Quake 4 1.4.2 ships 0.9.
-- s_quadraticFalloff 1 was Doom 3's value; Quake 4 1.4.2 ships 0 (linear) and
-  does not archive it.
 
 Step 2:
 - The minimum, lowpower and performance presets switched room reverb off. Every
   preset keeps it now, so a profile still on one of those presets with reverb
   off gets it back.
+
+Step 3:
+- The master and music volumes started at -6 dB (s_volume_dB -6 with s_volume
+  0.5, s_musicvolume_dB -6 with s_musicVolume 0.5). Doom 3 starts at full
+  volume and has no music volume, so a profile still on both legacy values of a
+  pair moves to 0 dB.
 ==================
 */
-static const int OPEND3_AUDIO_DEFAULTS_MIGRATION_STEPS = 2;
+static const int OPEND3_AUDIO_DEFAULTS_MIGRATION_STEPS = 3;
+
+static void Common_MigrateLegacyVolumePair( const char *linearName, const char *dbName ) {
+	if ( cvarSystem->GetCVarFloat( linearName ) == 0.5f && cvarSystem->GetCVarFloat( dbName ) == -6.0f ) {
+		common->Printf( "Migrating legacy audio config: %s -6 -> 0 dB (Doom 3's full volume)\n", dbName );
+		cvarSystem->SetCVarFloat( dbName, 0.0f, CVAR_ARCHIVE );
+		cvarSystem->SetCVarFloat( linearName, 1.0f, CVAR_ARCHIVE );
+	}
+}
 
 static void Common_MigrateLegacyAudioDefaults( void ) {
 	const int applied = s_audioDefaultsMigrated.GetInteger();
@@ -369,14 +384,6 @@ static void Common_MigrateLegacyAudioDefaults( void ) {
 			common->Printf( "Migrating legacy audio config: s_numberOfSpeakers 6 -> 0 (the output device's own layout)\n" );
 			cvarSystem->SetCVarInteger( "s_numberOfSpeakers", 0, CVAR_ARCHIVE );
 		}
-		if ( cvarSystem->GetCVarFloat( "s_radioChatterFraction" ) == 0.5f ) {
-			common->Printf( "Migrating legacy audio config: s_radioChatterFraction 0.5 -> 0.9\n" );
-			cvarSystem->SetCVarFloat( "s_radioChatterFraction", 0.9f, CVAR_ARCHIVE );
-		}
-		if ( cvarSystem->GetCVarBool( "s_quadraticFalloff" ) ) {
-			common->Printf( "Migrating legacy audio config: s_quadraticFalloff 1 -> 0 (linear, as retail)\n" );
-			cvarSystem->SetCVarBool( "s_quadraticFalloff", false );
-		}
 	}
 	if ( applied < 2 && !cvarSystem->GetCVarBool( "s_useEAXReverb" ) ) {
 		static const char * const reverblessPresets[] = { "minimum", "lowpower", "performance" };
@@ -387,6 +394,10 @@ static void Common_MigrateLegacyAudioDefaults( void ) {
 				break;
 			}
 		}
+	}
+	if ( applied < 3 ) {
+		Common_MigrateLegacyVolumePair( "s_volume", "s_volume_dB" );
+		Common_MigrateLegacyVolumePair( "s_musicVolume", "s_musicvolume_dB" );
 	}
 	s_audioDefaultsMigrated.SetInteger( OPEND3_AUDIO_DEFAULTS_MIGRATION_STEPS );
 }

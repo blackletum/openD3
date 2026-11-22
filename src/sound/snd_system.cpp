@@ -44,8 +44,15 @@ extern idCVar s_musicvolume_dB;
 // cheats resets every other unarchived CVar, which switched a dedicated server's
 // silence (and a player's own s_noSound) back off.
 idCVar s_noSound( "s_noSound", "0", CVAR_SOUND | CVAR_BOOL | CVAR_NOCHEAT, "returns NULL for all sounds loaded and does not update the sound rendering" );
+#if defined( OPEND3 )
+// Doom 3 plays at full volume (s_volume_dB 0) and has no music volume of its own:
+// its score is mixed like every other sound, so the music scale starts at unity.
+idCVar s_volume( "s_volume", "1", CVAR_ARCHIVE | CVAR_FLOAT, "master volume (0-1)", 0.0f, 1.0f );
+idCVar s_musicVolume( "s_musicVolume", "1", CVAR_ARCHIVE | CVAR_FLOAT, "music volume (0-1)", 0.0f, 1.0f );
+#else
 idCVar s_volume( "s_volume", "0.5", CVAR_ARCHIVE | CVAR_FLOAT, "master volume (0-1)", 0.0f, 1.0f );
 idCVar s_musicVolume( "s_musicVolume", "0.5", CVAR_ARCHIVE | CVAR_FLOAT, "music volume (0-1)", 0.0f, 1.0f );
+#endif
 idCVar s_dialogueVolume( "s_dialogueVolume", "1", CVAR_ARCHIVE | CVAR_FLOAT, "spoken dialogue volume (0-1), independent of music and multiplayer voice chat", 0.0f, 1.0f );
 idCVar ui_subtitles( "ui_subtitles", "0", CVAR_GUI | CVAR_ARCHIVE | CVAR_BOOL | CVAR_NOCHEAT, "show installed dialogue transcripts during playback" );
 idCVar ui_subtitleScale( "ui_subtitleScale", "1", CVAR_GUI | CVAR_ARCHIVE | CVAR_FLOAT | CVAR_NOCHEAT, "subtitle text size", 1.0f, 2.0f );
@@ -53,8 +60,6 @@ idCVar ui_subtitleBackground( "ui_subtitleBackground", "0.6", CVAR_GUI | CVAR_AR
 idCVar ui_subtitleSpeakers( "ui_subtitleSpeakers", "1", CVAR_GUI | CVAR_ARCHIVE | CVAR_BOOL | CVAR_NOCHEAT, "show available subtitle speaker names" );
 idCVar s_logSubtitles( "s_logSubtitles", "0", CVAR_SOUND | CVAR_BOOL, "print SOUND_SUBTITLE whenever the Prey sound-shader subtitle queue changes: sound time, shader, cue, channel start and whether a hardware voice is playing it" );
 idCVar ui_subtitleUntranscribed( "ui_subtitleUntranscribed", "1", CVAR_GUI | CVAR_ARCHIVE | CVAR_BOOL | CVAR_NOCHEAT, "mark spoken dialogue that has no transcript instead of leaving it blank" );
-idCVar s_speakerFraction( "s_speakerFraction", "0.65", CVAR_ARCHIVE | CVAR_FLOAT, "speaker attenuation fraction" );
-idCVar s_radioChatterFraction( "s_radioChatterFraction", "0.9", CVAR_ARCHIVE | CVAR_FLOAT, "radio chatter attenuation fraction" );
 idCVar s_frequencyShift( "s_frequencyShift", "1", CVAR_BOOL, "enable sound shader frequency shift playback" );
 idCVar s_useOpenAL( "s_useOpenAL", "1", CVAR_ARCHIVE | CVAR_BOOL, "use OpenAL audio backend" );
 idCVar s_deviceName( "s_deviceName", "", CVAR_ARCHIVE, "OpenAL device name override" );

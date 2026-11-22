@@ -45,8 +45,6 @@ extern idCVar s_volume;
 extern idCVar s_musicVolume;
 extern idCVar s_dialogueVolume;
 extern idCVar s_constantAmplitude;
-extern idCVar s_speakerFraction;
-extern idCVar s_radioChatterFraction;
 extern idCVar s_quadraticFalloff;
 extern idCVar s_frequencyShift;
 extern idCVar com_profanity;
@@ -57,8 +55,6 @@ static const float SOUND_SHADER_SCREEN_SHAKE_SCALE = 600.0f;
 static const float SOUND_SHADER_MATERIAL_SHAKE_SCALE = 2800.0f;
 static const float SOUND_SHADER_SHAKE_NORMALIZE = 1.0f / 32768.0f;
 static const float SOUND_WORLD_VOLUME_EPSILON = 1.0f / 1024.0f;
-static const int Q4_SOUND_CHANNEL_SPECIAL_ATTENUATION_EXEMPT_0 = 6;
-static const int Q4_SOUND_CHANNEL_SPECIAL_ATTENUATION_EXEMPT_1 = 7;
 static const int Q4_SOUND_CHANNEL_RADIO_CHATTER = 10;
 static const float SOUND_FREQUENCY_SHIFT_MIN = 0.25f;
 static const float SOUND_FREQUENCY_SHIFT_MAX = 4.0f;
@@ -365,13 +361,6 @@ static int SoundPriorityFromVolumeDB( float volumeDB )
 	}
 	volumeDB = idMath::ClampFloat( DB_SILENCE, 24.0f, volumeDB );
 	return idMath::Ftoi( volumeDB * 100.0f );
-}
-
-static bool ReceivesQuake4ExtraAttenuation( const idSoundChannel* chan )
-{
-	return chan->logicalChannel != Q4_SOUND_CHANNEL_SPECIAL_ATTENUATION_EXEMPT_0 &&
-		   chan->logicalChannel != Q4_SOUND_CHANNEL_SPECIAL_ATTENUATION_EXEMPT_1 &&
-		   chan->parms.soundClass != SOUND_CLASS_MUSICAL;
 }
 
 static bool SoundUsesMusicVolume( const soundShaderParms_t& parms )
@@ -1004,20 +993,9 @@ void idSoundChannel::UpdateVolume( int currentTime )
 		const bool noOcclusion = ( parms.soundShaderFlags & SSF_NO_OCCLUSION ) != 0 || !s_useOcclusion.GetBool();
 		const float distance = noOcclusion ? emitter->directDistance : emitter->spatializedDistance;
 		SoundWorldApplyDistanceFalloff( volumeScale, distance, parms.minDistance, parms.maxDistance );
-
-		// openD3 keeps the SDK's SSF_IS_VO name for bit 13; retail uses the same bit to bypass
-		// this extra speaker/radio attenuation pass.
-		if( ( parms.soundShaderFlags & SSF_IS_VO ) == 0 && ReceivesQuake4ExtraAttenuation( this ) )
-		{
-			if( IsRadioChatterChannel( this ) )
-			{
-				volumeScale *= SoundSanitizeUnitValue( s_radioChatterFraction.GetFloat(), 1.0f );
-			}
-			else
-			{
-				volumeScale *= SoundSanitizeUnitValue( s_speakerFraction.GetFloat(), 1.0f );
-			}
-		}
+		// Doom 3 has no further attenuation pass. Quake 4's speaker and radio
+		// fractions cut every spatialized sound but those on channels 6 and 7
+		// (Doom 3's weapon and item) by 3.7 dB.
 	}
 
 	if( SoundUsesMusicVolume( parms ) )

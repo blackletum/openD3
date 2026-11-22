@@ -323,10 +323,19 @@ idCVar s_cushionFadeLimit( "s_cushionFadeLimit", "-30", CVAR_FLOAT, "Never cushi
 idCVar s_cushionFadeOver( "s_cushionFadeOver", "10", CVAR_FLOAT, "DB above s_cushionFadeLimit to start ramp to silence" );
 idCVar s_unpauseFadeInTime( "s_unpauseFadeInTime", "250", CVAR_INTEGER, "When unpausing a sound world, milliseconds to fade sounds in over" );
 idCVar s_doorDistanceAdd( "s_doorDistanceAdd", "150", CVAR_FLOAT, "reduce sound volume with this distance when going through a door" );
+#if defined( OPEND3 )
+// Doom 3's defaults: quadratic falloff, and full master volume (DoomConfig.cfg ships s_volume_dB 0).
+idCVar s_quadraticFalloff( "s_quadraticFalloff", "1", CVAR_BOOL, "use quadratic sound distance falloff" );
+#else
 idCVar s_quadraticFalloff( "s_quadraticFalloff", "0", CVAR_BOOL, "use quadratic sound distance falloff" );
+#endif
 idCVar s_drawSounds( "s_drawSounds", "0", CVAR_INTEGER, "", 0, 2, idCmdSystem::ArgCompletion_Integer<0, 2> );
 idCVar s_showVoices( "s_showVoices", "0", CVAR_BOOL, "show active voices" );
+#if defined( OPEND3 )
+idCVar s_volume_dB( "s_volume_dB", "0", CVAR_ARCHIVE | CVAR_SOUND | CVAR_FLOAT, "volume in dB", DB_SILENCE, 0.0f );
+#else
 idCVar s_volume_dB( "s_volume_dB", "-6", CVAR_ARCHIVE | CVAR_SOUND | CVAR_FLOAT, "volume in dB", DB_SILENCE, 0.0f );
+#endif
 extern idCVar s_noSound;
 
 extern void WriteDeclCache( idDemoFile* f, int demoCategory, int demoCode, declType_t  declType );

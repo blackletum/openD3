@@ -35,7 +35,12 @@ extern idCVar s_maxSoundsPerShader;
 
 static const int SOUND_SHADER_MAX_SAMPLES = 32;
 static const float SOUND_SHADER_DEFAULT_FREQUENCY_SHIFT = 1.0f;
+// Doom 3 plays a shader's volume as authored, so OPEND3 drops this ceiling (Doom 3
+// BFG's). 56 retail shaders ask for more than +10 dB, up to +30, and the difference
+// is heard once distance or a fade takes the sound below full scale.
+#if !defined( OPEND3 )
 static const float SOUND_SHADER_MAX_VOLUME_DB = 10.0f;
+#endif
 static const char *SOUND_SHADER_DEFAULT_DESCRIPTION = "<no description>";
 
 class rvSoundShaderEditLocal : public rvSoundShaderEdit {
@@ -406,7 +411,11 @@ bool idSoundShader::RebuildTextSource() {
 		file.WriteFloatString( "\tfrequencyshift\t%.4g,%.4g\r\n", minFrequencyShift, maxFrequencyShift );
 	}
 	if ( leadinVolume != 1.0f ) {
+#if defined( OPEND3 )
+		file.WriteFloatString( "\tleadinVolume\t%.4g\r\n", idMath::ScaleToDb( leadinVolume ) );
+#else
 		file.WriteFloatString( "\tleadinVolume\t%.4g\r\n", leadinVolume );
+#endif
 	}
 	if ( parms.shakes != 0.0f ) {
 		file.WriteFloatString( "\tshakes\t\t%.2g\r\n", parms.shakes );
@@ -575,10 +584,12 @@ bool idSoundShader::ParseShader( idLexer& src )
 		}
 		else if (!token.Icmp("volumeDb")) {
 			float db = src.ParseFloat();
+#if !defined( OPEND3 )
 			if ( db > SOUND_SHADER_MAX_VOLUME_DB ) {
 				common->Warning( "Clamping volume of '%s' to +10dB (3 times louder)", GetName() );
 				db = SOUND_SHADER_MAX_VOLUME_DB;
 			}
+#endif
 			parms.volume = idMath::dBToScale(db);
 		}
 		else if (!token.Icmp("useDoppler")) {
@@ -655,17 +666,24 @@ bool idSoundShader::ParseShader( idLexer& src )
 		else if( !token.Icmp( "volume" ) )
 		{
 			float db = src.ParseFloat();
+#if !defined( OPEND3 )
 			if( db > SOUND_SHADER_MAX_VOLUME_DB )
 			{
 				src.Warning( "Clamping volume to +10dB" );
 				db = SOUND_SHADER_MAX_VOLUME_DB;
 			}
+#endif
 			parms.volume = idMath::dBToScale( db );
 		}
 		// leadinVolume is used to allow light breaking leadin sounds to be much louder than the broken loop
 		else if( !token.Icmp( "leadinVolume" ) )
 		{
+#if defined( OPEND3 )
+			// dB, as Doom 3 reads it (the breaking lights ask for 10); 0 leaves it unset
+			leadinVolume = idMath::dBToScale( src.ParseFloat() );
+#else
 			leadinVolume = src.ParseFloat();
+#endif
 		}
 		// speaker mask
 		else if( !token.Icmp( "mask_center" ) )
@@ -829,9 +847,8 @@ bool idSoundShader::ParseShader( idLexer& src )
 				token.SetFileExtension( ".wav" );
 			}
 
-			// BFG's rule, for openD3's own SSF_VO. Retail's SSF_IS_VO marks lip-synced speech and
-			// is the game's to set: inferred from the path it took map speakers playing VO out of
-			// s_speakerFraction, 3.7 dB louder than Quake 4 played them.
+			// BFG's rule, for openD3's own SSF_VO (centre-channel routing). SSF_IS_VO stays the
+			// game's to set: inferring it from the path changed which sounds counted as speech.
 			if( token.IcmpPrefixPath( "sound/vo/" ) == 0 || token.IcmpPrefixPath( "sound/guis/" ) == 0 )
 			{
 				parms.soundShaderFlags |= SSF_VO;

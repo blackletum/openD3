@@ -1758,4 +1758,6 @@
 	"#str_232515"	"Kapalı;Bacaklar ve gövde;Kollarla"
 	"#str_232540"	"Kapalı;Her zaman;Akıllı"
 	"#str_232541"	"Son silah"
+	"#str_100625"	"Bu bağlantı ayarlarıyla internette adanmış olmayan bir sunucu %d oyuncuya uygundur; daha fazlası için adanmış sunucu önerilir. Yine de adanmış olmayan sunucu başlatılsın mı?"
+	"#str_100626"	"Uyarı"
 }

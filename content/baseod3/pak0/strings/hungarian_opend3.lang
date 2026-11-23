@@ -1758,4 +1758,6 @@
 	"#str_232515"	"Ki;Lábak és törzs;Karokkal"
 	"#str_232540"	"Ki;Mindig;Okos"
 	"#str_232541"	"Előző fegyver"
+	"#str_100625"	"Ezekkel a kapcsolati beállításokkal egy nem dedikált szerver %d játékost bír az interneten; ennél többhöz dedikált szerver ajánlott. Mégis elindítod a nem dedikált szervert?"
+	"#str_100626"	"Figyelmeztetés"
 }

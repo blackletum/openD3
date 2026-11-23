@@ -4191,6 +4191,28 @@ void idGameLocal::RandomizeInitialSpawns( void ) {
 }
 
 /*
+============
+SpawnSpotChoices
+
+How many spots of a list sorted farthest first a spawn chooses among. Doom 3
+took the farther half, which keeps clear of the other players while fewer than
+half the spots are taken, as on its four player servers. With up to 16
+players (MP_MAX_PLAYERS) on maps of 12 to 15 spots more can be, and a player
+spawned on a taken spot telefrags whoever stands there; so take the free spots
+of that half, and the farthest spot only when none is free.
+============
+*/
+static int SpawnSpotChoices( const spawnSpot_t *spots, int numSpots ) {
+	// taken: another player within two player widths
+	const int taken = 64 * 64;
+	int clear = 0;
+	while ( clear < numSpots && spots[ clear ].dist > taken ) {
+		clear++;
+	}
+	return Max( 1, Min( numSpots / 2, clear ) );
+}
+
+/*
 ===========
 idGameLocal::SelectInitialSpawnPoint
 spectators are spawned randomly anywhere
@@ -4253,8 +4275,8 @@ idEntity *idGameLocal::SelectInitialSpawnPoint( idPlayer *player ) {
 		// sort the list
 		qsort( ( void * )spawnSpots.Ptr(), spawnSpots.Num(), sizeof( spawnSpot_t ), ( int (*)(const void *, const void *) )sortSpawnPoints );
 
-		// choose a random one in the top half
-		which = random.RandomInt( spawnSpots.Num() / 2 );
+		// choose a random one in the top half, clear of other players
+		which = random.RandomInt( SpawnSpotChoices( spawnSpots.Ptr(), spawnSpots.Num() ) );
 		spot = spawnSpots[ which ];
 	}
 	return spot.ent;

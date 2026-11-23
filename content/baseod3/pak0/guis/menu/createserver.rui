@@ -20827,7 +20827,7 @@
                "label": "#str_02299",
                "action": "createMaxPlayers",
                "value": {"state": "create.maxplayers"},
-               "maxBytes": 1,
+               "maxBytes": 2,
                "parts": {
                 "viewport": "create_maxplayers-viewport",
                 "text": "create_maxplayers-text",
@@ -20845,7 +20845,7 @@
                },
                "role": "number",
                "minimum": 1,
-               "maximum": 8,
+               "maximum": 16,
                "integer": true,
                "exponent": false
               }

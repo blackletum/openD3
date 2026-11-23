@@ -1758,4 +1758,6 @@
 	"#str_232515"	"Off;Legs and Torso;With Arms"
 	"#str_232540"	"Off;Always;Smart"
 	"#str_232541"	"Last Weapon"
+	"#str_100625"	"With these connection settings a listen server suits %d players over the internet; a dedicated server is recommended for more. Start a listen server anyway?"
+	"#str_100626"	"Warning"
 }

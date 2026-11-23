@@ -391,7 +391,7 @@ def create_server_document() -> dict:
         team_damage,
         edit_row(doc, "create_fraglimit", "#str_01982", page_row(3), "create.fraglimit", "createFragLimit", 3, integer=(1, 100)),
         edit_row(doc, "create_timelimit", "#str_01983", page_row(4), "create.timelimit", "createTimeLimit", 2, integer=(0, 60)),
-        edit_row(doc, "create_maxplayers", "#str_02299", page_row(5), "create.maxplayers", "createMaxPlayers", 1, integer=(1, 8)),
+        edit_row(doc, "create_maxplayers", "#str_02299", page_row(5), "create.maxplayers", "createMaxPlayers", 2, integer=(1, 16)),
         flag_row(doc, "create_warmup", "#str_01984", page_row(6), "create.warmup", "createWarmup"),
         flag_row(doc, "create_spectators", "#str_02300", page_row(7), "create.spectators", "createSpectators"),
         flag_row(doc, "create_dedicated", "#str_02301", page_row(8), "create.dedicated", "createDedicated"),

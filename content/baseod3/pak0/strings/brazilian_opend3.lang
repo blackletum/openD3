@@ -1758,4 +1758,6 @@
 	"#str_232515"	"Não;Pernas e tronco;Com braços"
 	"#str_232540"	"Não;Sempre;Inteligente"
 	"#str_232541"	"Última arma"
+	"#str_100625"	"Com estas configurações de conexão, um servidor não dedicado comporta %d jogadores pela internet; para mais, recomenda-se um servidor dedicado. Iniciar um servidor não dedicado mesmo assim?"
+	"#str_100626"	"Aviso"
 }

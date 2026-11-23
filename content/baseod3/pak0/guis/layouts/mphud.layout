@@ -30,6 +30,44 @@ gui "guis/mphud.gui" {
 		screenaligny top
 	}
 
+	// openD3 servers seat up to 16 players. When more rank than the four score
+	// boxes hold, the game keeps the last box for you and numbers each box
+	// with its place (gui::player<n>_rank, idMultiplayerGame::UpdateHudRanks);
+	// the number stands in the box's colour square. With four or fewer the
+	// numbers are empty and the boxes are Doom 3's.
+	window ScoreBorder1a {
+		text "gui::player1_rank"
+		textscale 0.2
+		textalign 1
+		textaligny -3
+		shadow 1
+		forecolor 1, 1, 1, 0.9
+	}
+	window ScoreBorder2a {
+		text "gui::player2_rank"
+		textscale 0.2
+		textalign 1
+		textaligny -3
+		shadow 1
+		forecolor 1, 1, 1, 0.9
+	}
+	window ScoreBorder3a {
+		text "gui::player3_rank"
+		textscale 0.2
+		textalign 1
+		textaligny -3
+		shadow 1
+		forecolor 1, 1, 1, 0.9
+	}
+	window ScoreBorder4a {
+		text "gui::player4_rank"
+		textscale 0.2
+		textalign 1
+		textaligny -3
+		shadow 1
+		forecolor 1, 1, 1, 0.9
+	}
+
 	// The lag meter on the top left, votes on the left.
 	window Lag {
 		screenalignx left

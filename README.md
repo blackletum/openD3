@@ -58,9 +58,9 @@ What has been run so far, on Windows x64 against the Steam release of Doom 3:
 - 🗺️ **Loads the campaign's first map.** `game/mars_city1` loads, plays its opening cinematic with working in-world screens, and autosaves.
 - 🎨 **OpenGL and Vulkan.** The same map renders on the default OpenGL renderer and on the native Vulkan renderer (`+set r_renderApi vulkan`).
 - 📺 **Doom 3's own menus.** The original main menu starts and plays the intro video.
-- 🖥️ **Dedicated server.** `openD3-ded_x64` starts a deathmatch map; see [Server Setup](docs/user/server-setup.md).
+- 🖥️ **Dedicated server.** `openD3-ded_x64` starts a deathmatch map and seats up to 16 players, where Doom 3 stopped at 4; see [Server Setup](docs/user/server-setup.md).
 
-Not yet checked, so don't rely on it: playing beyond the first cinematic, loading saves, level changes, a client joining a multiplayer server, and every platform other than Windows x64.
+Not yet checked, so don't rely on it: playing beyond the first cinematic, loading saves, level changes, a full multiplayer match between players, and every platform other than Windows x64.
 
 Not working yet:
 

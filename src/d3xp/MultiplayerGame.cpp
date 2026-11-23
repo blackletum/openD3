@@ -445,6 +445,101 @@ void idMultiplayerGame::UpdateRankColor( idUserInterface *gui, const char *mask,
 
 /*
 ================
+idMultiplayerGame::RankPlace
+
+The place of rankedPlayers[ rank ] in the standings: players on the same
+score share a place, so three players level on 5 frags are all 2nd.
+================
+*/
+int idMultiplayerGame::RankPlace( int rank ) const {
+	const int score = playerState[ rankedPlayers[ rank ]->entityNumber ].fragCount;
+	while ( rank > 0 && playerState[ rankedPlayers[ rank - 1 ]->entityNumber ].fragCount == score ) {
+		rank--;
+	}
+	return rank + 1;
+}
+
+/*
+================
+idMultiplayerGame::UpdateScoreboardSeats
+
+The scoreboard has a row for each of MP_MAX_PLAYERS seats and lays out as
+many as the server has ("slots"), so a 4 player server keeps Doom 3's board
+and a 16 player one gets 16 rows; "lines" is how many rows hold a player and
+"playercount" says how full the server is.
+================
+*/
+void idMultiplayerGame::UpdateScoreboardSeats( idUserInterface *scoreBoard, int lines ) {
+	const int seats = idMath::ClampInt( 1, MP_MAX_PLAYERS, gameLocal.serverInfo.GetInt( "si_maxPlayers" ) );
+	scoreBoard->SetStateInt( "lines", lines );
+	scoreBoard->SetStateInt( "slots", idMath::ClampInt( 1, MP_MAX_PLAYERS, Max( lines, seats ) ) );
+	scoreBoard->SetStateString( "playercount", va( "%s: %i / %i", common->GetLanguageDict()->GetString( "#str_01990" ), lines, seats ) );
+}
+
+/*
+================
+idMultiplayerGame::UpdateHudRanks
+
+Fills the HUD's rank list (guis/mphud.gui), MP_HUD_RANKS boxes of a colour
+and a score, and returns how many it filled. While every ranked player fits
+it is Doom 3's list. With more, the leaders keep the first boxes and the last
+one shows this player in place of the next best, each box numbered with its
+place (player<n>_rank); in the team games the boxes show the teams instead,
+leading team first, with this player's team framed.
+================
+*/
+int idMultiplayerGame::UpdateHudRanks( idPlayer *player, idUserInterface *hud ) {
+	int i;
+	const bool crowded = numRankedPlayers > MP_HUD_RANKS;
+
+	if ( crowded && IsGametypeTeamBased() ) {
+		int boxes = 0;
+		int leadingTeam = -1;
+		for ( i = 0; i < numRankedPlayers && boxes < 2; i++ ) {
+			const idPlayer *ranked = rankedPlayers[ i ];
+			if ( boxes == 1 && ranked->team == leadingTeam ) {
+				continue;
+			}
+			leadingTeam = ( boxes == 0 ) ? ranked->team : leadingTeam;
+			boxes++;
+			hud->SetStateInt( va( "player%i_score", boxes ), playerState[ ranked->entityNumber ].teamFragCount );
+			hud->SetStateString( va( "player%i_rank", boxes ), "" );
+			hud->SetStateInt( va( "rank%i", boxes ), 1 );
+			UpdateRankColor( hud, "rank%i_color%i", boxes, ranked->colorBar );
+			if ( !player->spectating && ranked->team == player->team ) {
+				hud->SetStateInt( "rank_self", boxes );
+			}
+		}
+		return boxes;
+	}
+
+	int shown[ MP_HUD_RANKS ];
+	const int boxes = Min( numRankedPlayers, MP_HUD_RANKS );
+	for ( i = 0; i < boxes; i++ ) {
+		shown[ i ] = i;
+	}
+	for ( i = MP_HUD_RANKS; i < numRankedPlayers; i++ ) {
+		if ( rankedPlayers[ i ] == player ) {
+			shown[ MP_HUD_RANKS - 1 ] = i;
+			break;
+		}
+	}
+	for ( i = 0; i < boxes; i++ ) {
+		const idPlayer *ranked = rankedPlayers[ shown[ i ] ];
+		const int score = IsGametypeTeamBased() ? playerState[ ranked->entityNumber ].teamFragCount : playerState[ ranked->entityNumber ].fragCount;
+		hud->SetStateInt( va( "player%i_score", i+1 ), score );
+		hud->SetStateString( va( "player%i_rank", i+1 ), crowded ? va( "%i", RankPlace( shown[ i ] ) ) : "" );
+		hud->SetStateInt( va( "rank%i", i+1 ), 1 );
+		UpdateRankColor( hud, "rank%i_color%i", i+1, ranked->colorBar );
+		if ( ranked == player ) {
+			hud->SetStateInt( "rank_self", i+1 );
+		}
+	}
+	return boxes;
+}
+
+/*
+================
 idMultiplayerGame::UpdateScoreboard
 ================
 */
@@ -567,13 +662,11 @@ void idMultiplayerGame::UpdateScoreboard( idUserInterface *scoreBoard, idPlayer 
 		}
 	}
 
+	UpdateScoreboardSeats( scoreBoard, iline );
+
 	// clear remaining lines (empty slots)
 	iline++;
-#ifdef _D3XP
-	while ( iline < MAX_CLIENTS ) { //Max players is now 8
-#else
-	while ( iline < 5 ) {
-#endif
+	while ( iline <= MP_MAX_PLAYERS ) {
 		scoreBoard->SetStateString( va( "player%i", iline ), "" );
 		scoreBoard->SetStateString( va( "player%i_score", iline ), "" );
 		scoreBoard->SetStateString( va( "player%i_tdm_tscore", iline ), "" );
@@ -764,7 +857,7 @@ void idMultiplayerGame::UpdateCTFScoreboard( idUserInterface *scoreBoard, idPlay
         else
             curTeam = redTeam;
         
-        for ( j = ilines[ i ]+1; j <= 8; j++ )
+        for ( j = ilines[ i ]+1; j <= MP_MAX_PLAYERS; j++ )
         {
             scoreBoard->SetStateString( va( "player%i_%s", j, curTeam ), "" );
             scoreBoard->SetStateString( va( "player%i_%s_score", j, curTeam ), "" );
@@ -2532,27 +2625,11 @@ void idMultiplayerGame::UpdateHud( idPlayer *player, idUserInterface *hud ) {
 	}
 
 	hud->SetStateInt( "rank_self", 0 );
-	if ( gameState == GAMEON ) {
-		for ( i = 0; i < numRankedPlayers; i++ ) {
-			if (  IsGametypeTeamBased() ) { /* CTF */
-				hud->SetStateInt( va( "player%i_score", i+1 ), playerState[ rankedPlayers[ i ]->entityNumber ].teamFragCount );
-			} else {
-				hud->SetStateInt( va( "player%i_score", i+1 ), playerState[ rankedPlayers[ i ]->entityNumber ].fragCount );
-			}
-			hud->SetStateInt( va( "rank%i", i+1 ), 1 );
-			UpdateRankColor( hud, "rank%i_color%i", i+1, rankedPlayers[ i ]->colorBar );
-			if ( rankedPlayers[ i ] == player ) {
-				hud->SetStateInt( "rank_self", i+1 );
-			}
-		}
-	}
-#ifdef _D3XP
-	for ( i = ( gameState == GAMEON ? numRankedPlayers : 0 ) ; i < MAX_CLIENTS; i++ ) {
-#else
-	for ( i = ( gameState == GAMEON ? numRankedPlayers : 0 ) ; i < 5; i++ ) {
-#endif
+	const int boxes = ( gameState == GAMEON ) ? UpdateHudRanks( player, hud ) : 0;
+	for ( i = boxes; i < MAX_CLIENTS; i++ ) {
 		hud->SetStateString( va( "player%i", i+1 ), "" );
 		hud->SetStateString( va( "player%i_score", i+1 ), "" );
+		hud->SetStateString( va( "player%i_rank", i+1 ), "" );
 		hud->SetStateInt( va( "rank%i", i+1 ), 0 );
 	}
 

@@ -7171,12 +7171,12 @@ typedef struct retainedCreateSetting_s {
 #if defined( OPEND3 )
 // Doom 3's Create Server page and its ADVANCED SERVER OPTIONS. Server Type
 // and Dedicated are not CVars in Doom 3: the menu keeps them in its own state
-// (HandleRetainedCreateServerRequest, StartMenuServer). The game clamps the
-// player count to what it takes (4, or 8 in Resurrection of Evil).
+// (HandleRetainedCreateServerRequest, StartMenuServer). Both of openD3's
+// games seat up to 16 players (MP_MAX_PLAYERS in src/game/MultiplayerGame.h).
 static const retainedCreateSetting_t RETAINED_CREATE_SETTINGS[] = {
 	{ "createFragLimit",	"fraglimit",	"si_fragLimit",				1, 100,	false },
 	{ "createTimeLimit",	"timelimit",	"si_timeLimit",				0, 60,	false },
-	{ "createMaxPlayers",	"maxplayers",	"si_maxPlayers",			1, 8,	false },
+	{ "createMaxPlayers",	"maxplayers",	"si_maxPlayers",			1, 16,	false },
 	{ "createTeamDamage",	"teamdamage",	"si_teamDamage",			0, 1,	true },
 	{ "createWarmup",		"warmup",		"si_warmup",				0, 1,	true },
 	{ "createSpectators",	"spectators",	"si_spectators",			0, 1,	true },

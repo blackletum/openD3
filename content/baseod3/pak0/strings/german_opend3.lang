@@ -1758,4 +1758,6 @@
 	"#str_232515"	"Aus;Beine und Rumpf;Mit Armen"
 	"#str_232540"	"Aus;Immer;Intelligent"
 	"#str_232541"	"Letzte Waffe"
+	"#str_100625"	"Mit diesen Verbindungseinstellungen eignet sich ein Listen-Server im Internet für %d Spieler; für mehr wird ein dedizierter Server empfohlen. Trotzdem einen Listen-Server starten?"
+	"#str_100626"	"Warnung"
 }

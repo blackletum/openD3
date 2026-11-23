@@ -107,16 +107,24 @@ showed as two arrows that never lined up.
 | File | GUIs | Layout |
 | --- | --- | --- |
 | `hud.layout` | `guis/hud.gui` | Health, armour, stamina, air and the pickup and download notices at the bottom-left; ammunition, the weapon strip and the soul cube at the bottom-right; objective updates from the right, inventory items, tips and the message line ("Game Saved") from the left |
-| `mphud.layout` | `guis/mphud.gui`, `chat.gui`, `mpmsgmode.gui`, `spectate.gui`, `mpmain.gui` | The same corners for the multiplayer HUD, the clock and scores at the top-right, chat and votes on the left; the in-game menu's panels stay centred and its line about Escape goes to the bottom-left corner |
-| `mainmenu.layout` | `guis/mainmenu.gui` (the expansion's extra dialogs are named too, unverified) | The background grid continues to the edges with its brighter fifth lines in step (vertical lines repeat every 600 units, horizontal ones span the width and repeat every 450); frame and bars to the edges; Options, New Game and multiplayer lists docked to their sides; credits and multiplayer frames across the width; dialogs dim the whole screen |
+| `mphud.layout` | `guis/mphud.gui`, `chat.gui`, `mpmsgmode.gui`, `spectate.gui`, `mpmain.gui` | The same corners for the multiplayer HUD, the clock and scores at the top-right, chat and votes on the left; the in-game menu's panels stay centred and its line about Escape goes to the bottom-left corner. Not layout: each score box's colour square shows its place (`gui::player<n>_rank`), which the game sets only when more players rank than the four boxes hold |
+| `mainmenu.layout` | `guis/mainmenu.gui` (the expansion's extra dialogs are named too, unverified) | The background grid continues to the edges with its brighter fifth lines in step (vertical lines repeat every 600 units, horizontal ones span the width and repeat every 450); frame and bars to the edges; Options, New Game and multiplayer lists docked to their sides; credits and multiplayer frames across the width; dialogs dim the whole screen. Not layout: Create Server's Max Players field takes two digits, up to 16 |
 | `pda.layout` | `guis/pda.gui` | 4:3 over the softened view |
 | `loading.layout` | `guis/map/*.gui` | The level picture fills (cropped), the bars span the width, the title and meter keep to the left; the first level's screen, a word and a meter on black, stays centred |
 | `screens.layout` | `msg.gui`, `netmenu.gui`, `restart.gui`, `gameover.gui`, `credits.gui`, `intro.gui` | Full-screen layers and dims fill (a message box's dim is its desktop's own fill, so the desktop stretches); the boxes, choices and films stay centred |
 
 Not patched, because they need nothing: `scoreboard.gui` (a floating panel over
-the game), `cursor.gui` (the crosshair), `takenotes*.gui`, and the
-in-world GUIs, which are never aspect-corrected. Cinematics keep their own
-framing.
+the game, and openD3's own: `tools/ui/build_doom3_scoreboard.py` writes it
+for 16 seats from the retail board's art), `cursor.gui` (the crosshair),
+`takenotes*.gui`, and the in-world GUIs, which are never aspect-corrected.
+Cinematics keep their own framing.
+
+Two entries are not layout and go with the patches only because they are the
+way to change a property of a retail window by name: the rank numbers in
+`mphud.layout` and the Max Players field in `mainmenu.layout`, both there for
+openD3's 16-player servers. With `ui_widescreenLayouts 0` the HUD shows no
+place numbers (the boxes still show the leaders and you) and the stock field
+takes one digit up to 4, though `si_maxPlayers` still takes 16.
 
 ## Writing a layout
 

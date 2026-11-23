@@ -1767,4 +1767,6 @@
 	"#str_232515"	"No;Gambe e busto;Con le braccia"
 	"#str_232540"	"No;Sempre;Intelligente"
 	"#str_232541"	"Ultima arma"
+	"#str_100625"	"Con queste impostazioni di connessione, un server non dedicato è adatto a %d giocatori su Internet; per più giocatori si consiglia un server dedicato. Avviare comunque un server non dedicato?"
+	"#str_100626"	"Avviso"
 }

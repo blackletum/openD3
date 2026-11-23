@@ -496,7 +496,8 @@ CTF, the last offered only where the loaded game's `si_gameType` lists it;
 a value the page does not offer (`singleplayer` after a campaign) shows as
 the first, and CREATE writes the shown type before it starts the server.
 `RETAINED_CREATE_SETTINGS` is the stock page's and its advanced dialog's
-settings. A yes-or-no row is a `toggle` control and a limit a `number`
+settings; Max Players takes 1 to 16, the seats both of openD3's games offer
+(`MP_MAX_PLAYERS`), where the stock page stopped at 4. A yes-or-no row is a `toggle` control and a limit a `number`
 field, each sending `<verb> <value>` through `session.menuValue`; the name,
 the two passwords and the map cycle are text fields that write their page
 state and then ask (`createName` and the like). The session names the

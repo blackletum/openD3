@@ -58,11 +58,12 @@ The server listens on UDP port 28004 unless `net_port` says otherwise. If player
 | --- | --- |
 | `si_map` | The map to load, for example `game/mp/d3dm1` |
 | `si_gameType` | `deathmatch`, `Team DM`, `Tourney` or `Last Man` |
-| `si_maxPlayers` | Player limit, 1 to 4 |
+| `si_maxPlayers` | Player limit, spectators included: 1 to 16, 8 by default (Doom 3 itself stopped at 4) |
 | `net_port` | The port to listen on |
 
 ## Notes
 
 - Use the same openD3 build on the server and on every client. Retail Doom 3 clients are not expected to be able to join.
+- Doom 3's five maps have 12 to 15 spawn points. A player spawns on a point nobody stands on while one is free; on a crowded 16-player server none may be, and then Doom 3's rule applies: the newcomer telefrags whoever stands there.
 - Capture the Flag belongs to Resurrection of Evil, which is [not playable yet](campaigns.md#resurrection-of-evil).
 - The bots, multi-view demos and repeater described in openQ4's guides need game code Doom 3 does not have. They are switched off in openD3.

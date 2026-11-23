@@ -471,10 +471,35 @@ release of Doom 3 (1.3.1 packs):
   panning (`s_globalFraction`, `s_dotbias2`, `s_minVolume2`) is not
   replicated, since OpenAL pans, and neither is RoE's slow-motion distance
   scaling (`s_slowAttenuate`).
+- Sixteen-player multiplayer, 2026-11-23, Vulkan, windowed. `si_maxPlayers`
+  takes 1 to 16 in both games (`MP_MAX_PLAYERS`, 8 by default; Doom 3 took
+  1 to 4 and Resurrection of Evil 1 to 8). A dedicated server on
+  `game/mp/d3dm1` (deathmatch, 16 seats, LAN, loopback) took 15 clients run
+  on the same machine: they joined, spawned and suicided on cue, and three
+  timed out while the others were starting (two rejoined), which was not
+  looked into further. One client's HUD rank list then showed the leader
+  (1 frag), two players level on 0 and its own box framed, numbered
+  1, 2, 2, 2, as the server log's frags say. Four telefrags in that match
+  came from joining players sent to spawn points idle players stood on;
+  `SpawnSpotChoices` (both games) now keeps the choice to free points, which
+  was checked by reading the code, not rerun in play. The client that
+  spectated saw "Spectating" without the scoreboard, so the scoreboard has
+  not been seen with game data: openD3's `guis/scoreboard.gui`
+  (`tools/ui/build_doom3_scoreboard.py`) was checked with `testGUI` and
+  made-up state at 16:9 with 4, 8, 12 and 16 seats, Team DM at 16, and its
+  opening, against the retail board at 4 seats, which it matches but for the
+  player count in the title row; the HUD's rank list likewise, crowded
+  (1, 2, 2, 9 with the last box framed) and with four players (Doom 3's,
+  unnumbered). Create Server's Max Players: the retained page took 12, saved
+  to the config, and refused 30; the stock page showed 12 and the log
+  confirmed `mainmenu.layout`'s patch reached its field. Not shown: the
+  listen-server warning (`#str_100625`, now in all twelve string tables),
+  Team DM, Tourney and Last Man with many players, and anything in
+  Resurrection of Evil.
 
 That is all that has been run. In particular, nothing here is evidence for:
 playing past the first cinematic, combat, AI, the PDA beyond its first page,
-video playback, level transitions, a multiplayer client joining a server,
+video playback, level transitions, fighting between players in multiplayer,
 Linux, macOS, Android, ARM64 or VR. The TrueType text was not compared
 screen by screen with the bitmap path, and was not checked on Vulkan, in the
 PDA, on in-world screens or in a language other than English. The wide and
@@ -496,7 +521,10 @@ Listed roughly by how much they block a player.
    main menu fails to parse. That needs repeating with a full install before
    deciding whether it is a GUI parser gap. The renderer carries
    `renderEntity_t::xrayIndex` and the sound world `SetSlowmo` only so the
-   game compiles; neither has an effect.
+   game compiles; neither has an effect. The expansion seats 16 players like
+   the base game, but its own `guis/scoreboard.gui` and
+   `guis/ctfscoreboard.gui`, which its packs put ahead of `baseod3`, were
+   made for its 8 and may not show them all; no RoE board has been looked at.
 2. **Savegames are not stamped.** The engine's hardened savegame framework
    expects the game to write a versioned, checksummed payload. Doom 3's game
    library writes its original unstamped payload, which `Session.cpp` accepts

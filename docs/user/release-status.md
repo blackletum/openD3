@@ -27,7 +27,7 @@ Nothing in this list is known to be broken. Nobody has tried it yet:
 - Playing past the first cinematic: combat, AI, the PDA and video playback.
 - Moving from one level to the next.
 - Loading a saved game from the menus, and loading an autosave or quicksave.
-- A multiplayer client joining a server.
+- A full multiplayer match: fighting between players, a match to its end and the scoreboard during play.
 - Linux, macOS, Android, ARM64 and VR.
 
 ## Known problems
@@ -47,7 +47,7 @@ The guides in this directory describe the current source. There is no released v
 | Campaign | The first map loads; nothing further has been played |
 | Resurrection of Evil | The game module loads; no map has been run |
 | Saves | Written on autosave; loading is untested and saves do not carry across builds |
-| Multiplayer | A dedicated server starts a map; no client has joined one |
+| Multiplayer | A dedicated server seats up to 16; 15 clients on one machine joined it and spawned |
 | Platforms | Windows x64 only |
 | Interface | Doom 3's own menus and HUD, with `ui_retained 0` |
 

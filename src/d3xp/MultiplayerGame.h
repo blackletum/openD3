@@ -99,6 +99,14 @@ const int MP_PLAYER_MAXFRAGS = 100;
 const int MP_PLAYER_MAXWINS	= 100;
 const int MP_PLAYER_MAXPING	= 999;
 
+// The most clients, spectators included, a server seats (si_maxPlayers).
+// Doom 3 shipped 4 and Resurrection of Evil 8; the engine takes 32. openD3's
+// scoreboard (guis/scoreboard.gui) has a row for each of 16.
+const int MP_MAX_PLAYERS	= 16;
+// The HUD's rank list has four boxes (guis/mphud.gui). With more ranked
+// players than that, UpdateHud keeps the last box for this player.
+const int MP_HUD_RANKS		= 4;
+
 #ifdef CTF
 const int MP_CTF_MAXPOINTS = 25;
 #endif
@@ -394,6 +402,9 @@ private:
     
 	void			DrawScoreBoard( idPlayer *player );
 	void			UpdateHud( idPlayer *player, idUserInterface *hud );
+	int				UpdateHudRanks( idPlayer *player, idUserInterface *hud );
+	int				RankPlace( int rank ) const;
+	void			UpdateScoreboardSeats( idUserInterface *scoreBoard, int lines );
 	bool			Warmup( void );
 	void			CheckVote( void );
 	bool			AllPlayersReady( void );

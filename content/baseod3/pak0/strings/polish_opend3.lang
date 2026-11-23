@@ -1410,7 +1410,7 @@
 	"#str_231057"	"Czat głosowy jest niedostępny."
 	"#str_231058"	"Według broni"
 	"#str_231059"	"Wpisz liczbę całkowitą od 0 do 10000."
-	"#str_100625"	"Parametry twojego systemu pozwalają łącznie na %d graczy."
+	"#str_100625"	"Przy tych ustawieniach połączenia serwer niededykowany w internecie obsłuży %d graczy; dla większej liczby zalecany jest serwer dedykowany. Mimo to uruchomić serwer niededykowany?"
 	"#str_100626"	"Ostrzeżenie"
 	"#str_104254"	"Zezwalaj na obserwatorów"
 	"#str_104311"	"Aby zapisać grę, musisz żyć."

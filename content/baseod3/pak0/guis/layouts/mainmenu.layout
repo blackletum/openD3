@@ -102,6 +102,15 @@ gui "guis/mainmenu.gui" {
 		screenstretchx right
 	}
 
+	// ------------------------------------------------------- create server
+	// openD3 servers seat up to 16 players (MP_MAX_PLAYERS in
+	// src/game/MultiplayerGame.h): the Max Players field takes two digits and
+	// stops at 16 instead of 4.
+	window MPLANCS6Primary {
+		maxchars 2
+		cvarMax 16
+	}
+
 	// --------------------------------------------------------------- credits
 	window CreditsText*, CreditsTextA*, CreditsTextFlash* {
 		screenalignx left
